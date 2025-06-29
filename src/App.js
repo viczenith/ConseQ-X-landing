@@ -432,7 +432,7 @@ export default function HomePage() {
                     <div className={`mt-2 text-sm ${
                       darkMode ? "text-gray-300" : "text-gray-600"
                     }`}>
-                      Our unique 5-step approach ensures sustainable transformation through systemic design
+                      We deliver measurable outcomes by aligning critical organizational components with strategic goals, ensuring resilience and growth in dynamic industries.
                     </div>
                     <div className="absolute w-4 h-4 transform rotate-45 -bottom-2 left-1/2 -ml-2" 
                          style={{ 
