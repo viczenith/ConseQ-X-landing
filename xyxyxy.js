@@ -1,24 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, useAnimation, useInView, AnimatePresence } from "framer-motion";
+import { motion, useAnimation, useInView } from "framer-motion";
 import Lenis from "@studio-freight/lenis";
-import { FaSun, FaMoon, FaQuoteLeft, FaQuoteRight, FaTimes } from "react-icons/fa";
+import { FaSun, FaMoon } from "react-icons/fa";
 import Logo3D from "./assets/ConseQ-X-3d.png";
 
 export default function HomePage() {
   const [navScrolled, setNavScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [activeTab, setActiveTab] = useState("flagship");
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  const [showToolModal, setShowToolModal] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    company: "",
-    message: ""
-  });
-  
   const controls = useAnimation();
   const servicesRef = useRef(null);
   const servicesInView = useInView(servicesRef, { once: true, margin: "-100px" });
@@ -28,18 +17,6 @@ export default function HomePage() {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle('dark', !darkMode);
     localStorage.setItem('darkMode', !darkMode ? 'true' : 'false');
-  };
-
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Form submission logic would go here
-    console.log("Form submitted:", formData);
-    setShowBookingModal(false);
   };
 
   useEffect(() => {
@@ -107,76 +84,6 @@ export default function HomePage() {
     },
   };
 
-  const modalVariants = {
-    hidden: { 
-      opacity: 0,
-      scale: 0.8,
-      y: 50
-    },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut"
-      }
-    },
-    exit: {
-      opacity: 0,
-      scale: 0.8,
-      y: 50,
-      transition: {
-        duration: 0.3
-      }
-    }
-  };
-
-  const backdropVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1 }
-  };
-
-  // Enhanced button animation
-  const buttonHover = {
-    scale: 1.05,
-    boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)",
-    transition: { duration: 0.3 }
-  };
-
-  const buttonTap = {
-    scale: 0.95,
-    transition: { duration: 0.2 }
-  };
-
-  // PDF content integration
-  const flagshipPrograms = [
-    "Organizational Health & Diagnostic Audit",
-    "Alignment & Operating Blueprint Design",
-    "Organizational Systems Design"
-  ];
-
-  const toolkitsSaaS = [
-    "Maturity Scorecard",
-    "ConseQ-ULTRA Assessment Tool",
-    "OSAM Frameworks"
-  ];
-
-  const ourSolutionProgram = [
-    "Diagnosing systemic misalignment (TORIL Diagnostic)",
-    "Designing scalable operating blueprints",
-    "Embedding feedback loops and role clarity",
-    "Aligning leadership behavior with strategy",
-    "Productizing transformation for scale",
-  ];
-
-  const whyDifferent = [
-    "We systematize what others guess",
-    "We embed, not just advise",
-    "We think in loops, not silos",
-    "We design for humans and scale"
-  ];
-
   return (
     <div className={`min-h-screen font-sans overflow-x-hidden transition-colors duration-500 ${
       darkMode 
@@ -200,26 +107,20 @@ export default function HomePage() {
             transition={{ duration: 0.6 }}
             className="flex items-center"
           >
-            {/* Enhanced 3D logo with glow effect */}
+            {/* Updated Logo with 3D effect */}
             <motion.div 
               className="flex items-center"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.3 }}
             >
-              <motion.img 
+              <img 
                 src={Logo3D} 
                 alt="ConseQ-X Logo" 
                 className="h-20 w-auto mr-3 transition-all duration-500"
-                whileHover={{
-                  filter: "drop-shadow(0 0 12px rgba(234, 179, 8, 1))",
-                  transition: { duration: 0.5 }
-                }}
-                animate={{
-                  filter: darkMode 
-                    ? "drop-shadow(0 0 8px rgba(234, 179, 8, 0.8))" 
-                    : "drop-shadow(0 0 6px rgba(234, 179, 8, 0.6))"
-                }}
               />
+              {/* <span className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"} hidden sm:block`}>
+                Conse<span className="text-yellow-500">Q</span>-X
+              </span> */}
             </motion.div>
           </motion.div>
           
@@ -236,11 +137,6 @@ export default function HomePage() {
                   className={`transition-colors font-medium hover:text-yellow-500 ${
                     darkMode ? "text-gray-300" : "text-gray-700"
                   }`}
-                  whileHover={{ 
-                    y: -3,
-                    textShadow: "0 0 8px rgba(234, 179, 8, 0.5)",
-                    transition: { duration: 0.3 }
-                  }}
                 >
                   {item}
                 </motion.a>
@@ -349,16 +245,15 @@ export default function HomePage() {
             variants={staggerChildren}
             className="max-w-4xl"
           >
-            <span className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
-                Conse<span className="text-yellow-500">Q</span>-X
-              </span>
             <motion.div variants={fadeUp} className="mb-6">
-
               <span className={`inline-block px-4 py-1 rounded-full text-sm font-medium mb-4 ${
                 darkMode 
                   ? "bg-yellow-500/20 text-yellow-400" 
                   : "bg-yellow-500/10 text-yellow-700"
               }`}>
+                <p className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"} hidden sm:block`}>
+                Conse<span className="text-yellow-500">Q</span>-X
+              </p>
                 Systems-Thinking Consulting
               </span>
             </motion.div>
@@ -385,65 +280,24 @@ export default function HomePage() {
               variants={fadeUp}
               className="flex flex-wrap gap-4"
             >
-              {/* <motion.button
-                whileHover={buttonHover}
-                whileTap={buttonTap}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 className="px-8 py-3 bg-yellow-500 text-gray-900 font-semibold rounded-lg shadow-lg hover:bg-yellow-600 transition-colors"
               >
                 Start Transformation
-              </motion.button> */}
-              
-              {/* Tooltip for Our Approach button */}
-              <div className="relative">
-                <motion.button
-                  whileHover={{ ...buttonHover, backgroundColor: darkMode ? "#1f2937" : "#374151" }}
-                  whileTap={buttonTap}
-                  onMouseEnter={() => setShowTooltip(true)}
-                  onMouseLeave={() => setShowTooltip(false)}
-                  className={`px-8 py-3 font-semibold rounded-lg transition-colors ${
-                    darkMode 
-                      ? "bg-gray-700 text-white hover:bg-gray-600" 
-                      : "bg-gray-800 text-white hover:bg-gray-900"
-                  }`}
-                >
-                  Our Approach
-                </motion.button>
-                
-                {/* Advanced Tooltip */}
-                {showTooltip && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className={`absolute z-50 w-64 p-4 mt-2 rounded-lg shadow-xl ${
-                      darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"
-                    }`}
-                    style={{ 
-                      left: "50%", 
-                      transform: "translateX(-50%)",
-                      bottom: "100%"
-                    }}
-                  >
-                    <div className={`text-sm font-medium ${
-                      darkMode ? "text-yellow-400" : "text-yellow-600"
-                    }`}>
-                      Systems-Thinking Methodology
-                    </div>
-                    <div className={`mt-2 text-sm ${
-                      darkMode ? "text-gray-300" : "text-gray-600"
-                    }`}>
-                      Our unique 5-step approach ensures sustainable transformation through systemic design
-                    </div>
-                    <div className="absolute w-4 h-4 transform rotate-45 -bottom-2 left-1/2 -ml-2" 
-                         style={{ 
-                           backgroundColor: darkMode ? "#1f2937" : "#ffffff",
-                           borderRight: darkMode ? "1px solid #374151" : "1px solid #e5e7eb",
-                           borderBottom: darkMode ? "1px solid #374151" : "1px solid #e5e7eb"
-                         }} 
-                    />
-                  </motion.div>
-                )}
-              </div>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`px-8 py-3 font-semibold rounded-lg transition-colors ${
+                  darkMode 
+                    ? "bg-gray-700 text-white hover:bg-gray-600" 
+                    : "bg-gray-800 text-white hover:bg-gray-900"
+                }`}
+              >
+                Our Approach
+              </motion.button>
             </motion.div>
           </motion.div>
         </div>
@@ -464,19 +318,9 @@ export default function HomePage() {
           }`}>
             Scroll to explore
           </span>
-          <motion.div 
-            className={`w-0.5 h-8 rounded-full ${
-              darkMode ? "bg-gray-600" : "bg-gray-400"
-            }`}
-            animate={{ 
-              y: [0, 10, 0],
-            }}
-            transition={{ 
-              duration: 1.5,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
+          <div className={`w-0.5 h-8 rounded-full ${
+            darkMode ? "bg-gray-600" : "bg-gray-400"
+          }`}></div>
         </motion.div>
       </section>
 
@@ -529,13 +373,10 @@ export default function HomePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                   </div>
-                  <h3 className={`text-xl font-bold mb-3 ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}>
-                    Who We Are
-                  </h3>
                   <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                    ConseQ-X is a systems-first, transformation-focused consulting firm. We are a next-generation management consulting firm that productizes transformation.
+                    <h3 className={`text-xl font-bold mb-3 ${
+                    darkMode ? "text-white" : "text-gray-900", "display: inline"
+                  }`}>ConseQ-X</h3> is a systems-first, transformation-focused consulting firm
                   </p>
                 </div>
                 
@@ -547,13 +388,11 @@ export default function HomePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
-                  <h3 className={`text-xl font-bold mb-3 ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}>
-                    The Problem We Solve
-                  </h3>
+                  
                   <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                    Organizations grow but become misaligned, inefficient, and reactive with broken culture, siloed functions, unclear goals, and low execution energy.
+                    <h3 className={`text-xl font-bold mb-3 ${
+                    darkMode ? "text-white" : "text-gray-900", "display: inline"
+                  }`}>Our Core Idea:</h3> We are a next-generation management consulting firm that productizes transformation
                   </p>
                 </div>
               </motion.div>
@@ -590,23 +429,17 @@ export default function HomePage() {
                 variants={fadeUp}
                 className="relative"
               >
-                <div className="flex flex-col items-start">
-                  <FaQuoteLeft 
-                    className={`text-3xl mb-4 ${darkMode ? "text-yellow-500/30" : "text-yellow-500/20"}`} 
-                    style={{ marginTop: "-0.5rem" }}
-                  />
-                  <p className={`text-2xl md:text-3xl font-light pl-4 max-w-4xl ${
-                    darkMode ? "text-gray-300" : "text-gray-800"
-                  }`}>
-                    Help organizations scale with <span className="font-semibold text-yellow-600">alignment</span>, <span className="font-semibold text-yellow-600">flow</span>, and <span className="font-semibold text-yellow-600">intentionality</span>.
-                  </p>
-                  <div className="self-end mt-4">
-                    <FaQuoteRight 
-                      className={`text-3xl ${darkMode ? "text-yellow-500/30" : "text-yellow-500/20"}`} 
-                      style={{ marginRight: "7rem" }}
-                    />
-                  </div>
-                </div>
+                <div className={`absolute -left-8 top-0 text-8xl font-serif ${
+                  darkMode ? "text-yellow-500/30" : "text-yellow-500/20"
+                }`}>“</div>
+                <p className={`text-2xl md:text-3xl font-light pl-10 max-w-4xl ${
+                  darkMode ? "text-gray-300" : "text-gray-800"
+                }`}>
+                  Help organizations scale with <span className="font-semibold text-yellow-600">alignment</span>, <span className="font-semibold text-yellow-600">flow</span>, and <span className="font-semibold text-yellow-600">intentionality</span>.
+                </p>
+                <div className={`absolute -right-8 bottom-0 text-8xl font-serif rotate-180 ${
+                  darkMode ? "text-yellow-500/30" : "text-yellow-500/20"
+                }`}>“</div>
               </motion.div>
               
               <motion.div 
@@ -621,52 +454,41 @@ export default function HomePage() {
                       What We See
                     </h3>
                     <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                      To become the most trusted systems-designing consulting partner in emerging and high-growth markets.
+                      To Become the most trusted systems-designing consulting partner in emerging and high-growth markets.
                     </p>
                   </div>
                   <div className="flex-1">
                     <h3 className={`text-xl font-bold mb-4 ${
                       darkMode ? "text-white" : "text-gray-900"
                     }`}>
-                      Our DNA
+                      Flow
                     </h3>
-                    <ul className={`space-y-2 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                      <li>• TORIL Framework (Systems-Based Transformation)</li>
-                      <li>• Proprietary Maturity Models</li>
-                      <li>• Feedback Loop Architecture</li>
-                      <li>• Scalable Consulting Toolkits</li>
-                      <li>• Human-Centric Change Programs</li>
-                    </ul>
+                    <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                      Creating seamless processes that eliminate friction and enable smooth operations at scale.
+                    </p>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className={`text-xl font-bold mb-4 ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}>
+                      Intentionality
+                    </h3>
+                    <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                      Designing systems with purpose, where every component serves a strategic objective.
+                    </p>
                   </div>
                 </div>
               </motion.div>
             </motion.div>
-        </div>
-            <div className="flex flex-wrap gap-4 mb-8 mt-8 justify-center">
-                
-                <motion.button
-                  whileHover={buttonHover}
-                  whileTap={buttonTap}
-                  onClick={() => setShowToolModal(true)}
-                 
-                
-                  className={`px-8 py-3 bg-yellow-500 from-gray-700 to-gray-800 text-white font-semibold hover:bg-yellow-600 rounded-lg shadow-lg transition-all ${
-                    darkMode 
-                      ? "hover:from-gray-800 hover:to-gray-900" 
-                      : "hover:from-gray-800 hover:to-gray-900"
-                  }`}
-                >
-                  Start Transformation
-                </motion.button>
-              </div>
           </div>
+        </div>
       </section>
 
-      {/* Services Section with Enhanced Background */}
+      {/* Services Section */}
       <section id="services" className={`py-20 md:py-32 ${
         darkMode 
-          ? "bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800" 
-          : "bg-gradient-to-br from-blue-50 via-yellow-50 to-blue-50"
+          ? "bg-gradient-to-br from-gray-800 to-gray-900" 
+          : "bg-gradient-to-br from-gray-900 to-gray-800 text-white"
       }`}>
         <div className="container mx-auto px-4">
           <motion.div
@@ -677,13 +499,13 @@ export default function HomePage() {
           >
             <motion.div variants={fadeUp} className="mb-2">
               <span className={`font-bold text-sm uppercase tracking-wider ${
-                darkMode ? "text-yellow-400" : "text-yellow-500"
+                darkMode ? "text-yellow-400" : "text-yellow-400"
               }`}>
                 How We Deliver Value
               </span>
             </motion.div>
             <motion.h2 variants={fadeUp} className={`text-4xl md:text-5xl font-bold mb-16 ${
-              darkMode ? "text-white" : "text-gray-800"
+              darkMode ? "text-white" : "text-white"
             }`}>
               Our Services
             </motion.h2>
@@ -734,260 +556,20 @@ export default function HomePage() {
                 className={`p-8 rounded-xl border transition-all ${
                   darkMode 
                     ? "bg-gray-800/50 border-gray-700 hover:border-yellow-500" 
-                    : "bg-white border border-gray-100 hover:border-yellow-500"
-                } shadow-lg hover:shadow-xl`}
-                whileHover={{ 
-                  y: -10,
-                  borderColor: darkMode ? "rgba(234, 179, 8, 0.5)" : "rgba(234, 179, 8, 0.5)"
-                }}
+                    : "bg-gray-800/50 border-gray-700 hover:border-yellow-500"
+                }`}
               >
                 <div className="text-4xl mb-6">{service.icon}</div>
                 <h3 className={`text-xl font-bold mb-4 ${
-                  darkMode ? "text-white" : "text-gray-900"
+                  darkMode ? "text-white" : "text-white"
                 }`}>
                   {service.title}
                 </h3>
-                <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                <p className={darkMode ? "text-gray-300" : "text-gray-300"}>
                   {service.description}
                 </p>
               </motion.div>
             ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Offerings Section */}
-      <section className={`py-20 md:py-32 ${
-        darkMode ? "bg-gray-900" : "bg-white"
-      }`}>
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerChildren}
-          >
-            <motion.div variants={fadeUp} className="mb-2">
-              <span className={`font-bold text-sm uppercase tracking-wider ${
-                darkMode ? "text-yellow-400" : "text-yellow-500"
-              }`}>
-                Our Solutions
-              </span>
-            </motion.div>
-            <motion.h2 variants={fadeUp} className={`text-4xl md:text-5xl font-bold mb-8 ${
-                darkMode ? "text-white" : "text-gray-900"
-              }`}>
-              Our Offerings
-            </motion.h2>
-          </motion.div>
-          
-          <div className="max-w-5xl mx-auto">
-            {/* Tabs for Offerings */}
-            <div className={`mb-8 flex border-b ${
-              darkMode ? "border-gray-700" : "border-gray-200"
-            }`}>
-              <button
-                onClick={() => setActiveTab("flagship")}
-                className={`py-3 px-6 font-medium text-sm ${
-                  activeTab === "flagship"
-                    ? darkMode
-                      ? "text-yellow-400 border-b-2 border-yellow-400"
-                      : "text-yellow-600 border-b-2 border-yellow-600"
-                    : darkMode
-                      ? "text-gray-400"
-                      : "text-gray-500"
-                }`}
-              >
-                Flagship Programs
-              </button>
-              <button
-                onClick={() => setActiveTab("toolkits")}
-                className={`py-3 px-6 font-medium text-sm ${
-                  activeTab === "toolkits"
-                    ? darkMode
-                      ? "text-yellow-400 border-b-2 border-yellow-400"
-                      : "text-yellow-600 border-b-2 border-yellow-600"
-                    : darkMode
-                      ? "text-gray-400"
-                      : "text-gray-500"
-                }`}
-              >
-                Toolkits/SaaS
-              </button>
-              <button
-                onClick={() => setActiveTab("ourSolution")}
-                className={`py-3 px-6 font-medium text-sm ${
-                  activeTab === "ourSolution"
-                    ? darkMode
-                      ? "text-yellow-400 border-b-2 border-yellow-400"
-                      : "text-yellow-600 border-b-2 border-yellow-600"
-                    : darkMode
-                      ? "text-gray-400"
-                      : "text-gray-500"
-                }`}
-              >
-                Our Solution
-              </button>
-            </div>
-            
-            {/* Tab Content */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeUp}
-            >
-              {activeTab === "flagship" && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {flagshipPrograms.map((program, index) => (
-                    <motion.div 
-                      key={index}
-                      whileHover={{ y: -5 }}
-                      className={`p-6 rounded-lg ${
-                        darkMode 
-                          ? "bg-gray-800/50 border border-gray-700" 
-                          : "bg-gray-50 border border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center mb-3">
-                        <div className={`w-8 h-8 rounded-full ${
-                          darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
-                        } flex items-center justify-center mr-3`}>
-                          <span className="text-yellow-500 font-bold">{index + 1}</span>
-                        </div>
-                        <h3 className={`text-lg font-semibold ${
-                          darkMode ? "text-white" : "text-gray-900"
-                        }`}>
-                          {program}
-                        </h3>
-                      </div>
-                      {/* <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                        Comprehensive solution designed for enterprise transformation
-                      </p> */}
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-              
-              {activeTab === "toolkits" && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {toolkitsSaaS.map((toolkit, index) => (
-                    <motion.div 
-                      key={index}
-                      whileHover={{ y: -5 }}
-                      className={`p-6 rounded-lg ${
-                        darkMode 
-                          ? "bg-gray-800/50 border border-gray-700" 
-                          : "bg-gray-50 border border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center mb-3">
-                        <div className={`w-8 h-8 rounded-full ${
-                          darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
-                        } flex items-center justify-center mr-3`}>
-                          <span className="text-yellow-500 font-bold">{index + 1}</span>
-                        </div>
-                        <h3 className={`text-lg font-semibold ${
-                          darkMode ? "text-white" : "text-gray-900"
-                        }`}>
-                          {toolkit}
-                        </h3>
-                      </div>
-                      {/* <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                        Scalable solutions for continuous improvement
-                      </p> */}
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {activeTab === "ourSolution" && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {ourSolutionProgram.map((toolkit, index) => (
-                    <motion.div 
-                      key={index}
-                      whileHover={{ y: -5 }}
-                      className={`p-6 rounded-lg ${
-                        darkMode 
-                          ? "bg-gray-800/50 border border-gray-700" 
-                          : "bg-gray-50 border border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center mb-3">
-                        <div className={`w-8 h-8 rounded-full ${
-                          darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
-                        } flex items-center justify-center mr-3`}>
-                          <span className="text-yellow-500 font-bold">{index + 1}</span>
-                        </div>
-                        <h3 className={`text-lg font-semibold ${
-                          darkMode ? "text-white" : "text-gray-900"
-                        }`}>
-                          {toolkit}
-                        </h3>
-                      </div>
-                      {/* <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                        Scalable solutions for continuous improvement
-                      </p> */}
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Why Different Section */}
-      <section className={`py-20 md:py-32 ${
-        darkMode 
-          ? "bg-gradient-to-r from-gray-800 to-gray-900" 
-          : "bg-gradient-to-r from-gray-50 to-gray-100"
-      }`}>
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerChildren}
-          >
-            <motion.div variants={fadeUp} className="mb-2">
-              <span className={`font-bold text-sm uppercase tracking-wider ${
-                darkMode ? "text-yellow-400" : "text-yellow-500"
-              }`}>
-                Our Unique Approach
-              </span>
-            </motion.div>
-            <motion.h2 variants={fadeUp} className={`text-4xl md:text-5xl font-bold mb-8 ${
-              darkMode ? "text-white" : "text-gray-900"
-            }`}>
-              Why We Are Different
-            </motion.h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {whyDifferent.map((point, index) => (
-                <motion.div 
-                  key={index}
-                  variants={fadeUp}
-                  className={`p-6 rounded-xl ${
-                    darkMode ? "bg-gray-800/50" : "bg-white"
-                  } shadow-md`}
-                  whileHover={{ 
-                    scale: 1.03,
-                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)"
-                  }}
-                >
-                  <div className={`w-12 h-12 rounded-lg ${
-                    darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
-                  } flex items-center justify-center mb-4`}>
-                    <span className="text-yellow-500 font-bold text-lg">{index + 1}</span>
-                  </div>
-                  <p className={`text-lg ${
-                    darkMode ? "text-gray-200" : "text-gray-800"
-                  }`}>
-                    {point}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
           </motion.div>
         </div>
       </section>
@@ -1103,9 +685,8 @@ export default function HomePage() {
             
             <motion.button
               variants={fadeUp}
-              whileHover={buttonHover}
-              whileTap={buttonTap}
-              onClick={() => setShowToolModal(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className={`mt-10 px-8 py-4 font-bold rounded-lg shadow-lg transition-colors ${
                 darkMode 
                   ? "bg-gray-800 text-white hover:bg-gray-700" 
@@ -1159,36 +740,7 @@ export default function HomePage() {
                 darkMode ? "bg-gray-700/50" : "bg-white"
               }`}
             >
-              {/* Enhanced Buttons */}
-              <div className="flex flex-wrap gap-4 mb-8 justify-center">
-                <motion.button
-                  whileHover={buttonHover}
-                  whileTap={buttonTap}
-                  onClick={() => setShowBookingModal(true)}
-                  className={`px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-semibold rounded-lg shadow-lg transition-all ${
-                    darkMode 
-                      ? "hover:from-yellow-600 hover:to-yellow-700" 
-                      : "hover:from-yellow-600 hover:to-yellow-700"
-                  }`}
-                >
-                  Book a Diagnostic Session
-                </motion.button>
-                
-                <motion.button
-                  whileHover={buttonHover}
-                  whileTap={buttonTap}
-                  onClick={() => setShowToolModal(true)}
-                  className={`px-8 py-3 bg-gradient-to-r from-gray-700 to-gray-800 text-white font-semibold rounded-lg shadow-lg transition-all ${
-                    darkMode 
-                      ? "hover:from-gray-800 hover:to-gray-900" 
-                      : "hover:from-gray-800 hover:to-gray-900"
-                  }`}
-                >
-                  Check Our ConseQ-ULTRA Tool
-                </motion.button>
-              </div>
-              
-              {/* <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className={`block mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`} htmlFor="name">Name</label>
                   <input 
@@ -1242,23 +794,20 @@ export default function HomePage() {
                   ></textarea>
                 </div>
                 <div className="md:col-span-2">
-                  <motion.button 
+                  <button 
                     type="submit"
-                    whileHover={buttonHover}
-                    whileTap={buttonTap}
                     className="w-full px-6 py-4 bg-yellow-500 text-gray-900 font-bold rounded-lg hover:bg-yellow-600 transition-colors"
                   >
                     Send Message
-                  </motion.button>
+                  </button>
                 </div>
-              </form> */}
+              </form>
             </motion.div>
-
           </div>
         </div>
       </section>
 
-      {/* Footer with Attribution */}
+      {/* Footer */}
       <footer className={`py-12 ${
         darkMode ? "bg-gray-900" : "bg-gray-900"
       }`}>
@@ -1267,26 +816,20 @@ export default function HomePage() {
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="mb-6 md:mb-0">
                 <div className="flex items-center">
-                  {/* Footer Logo with enhanced glow */}
-                  <motion.img 
+                  {/* Footer Logo */}
+                  <img 
                     src={Logo3D} 
                     alt="ConseQ-X Logo" 
                     className="h-20 w-auto mr-3 transition-all duration-500"
-                    animate={{
-                      filter: darkMode 
-                        ? "drop-shadow(0 0 8px rgba(234, 179, 8, 0.8))" 
-                        : "drop-shadow(0 0 6px rgba(234, 179, 8, 0.6))"
-                    }}
                   />
+                  {/* <span className="text-xl font-bold text-white hidden sm:block">
+                    Conse<span className="text-yellow-500">Q</span>-X
+                  </span> */}
                 </div>
                 <p className={`mt-4 text-sm max-w-xs ${
                   darkMode ? "text-gray-400" : "text-gray-400"
                 }`}>
                   Engineering Healthier, Aligned, and More Effective Organizations
-                  <br />
-                  <span>Email Us: </span><a href="mailto:osd@conseq-x.com" className="text-yellow-500 hover:underline">
-                    osd@conseq-x.com
-                  </a>
                 </p>
               </div>
               
@@ -1323,208 +866,13 @@ export default function HomePage() {
             <div className={`border-t mt-12 pt-8 text-sm text-center ${
               darkMode ? "border-gray-800 text-gray-500" : "border-gray-800 text-gray-500"
             }`}>
-              © {new Date().getFullYear()} ConseQ-X. All rights reserved.
-              <div className="mt-2 text-gray-600">
-                Designed and Developed by <a className="text-yellow-500" href="https://www.fescode.com" target="_blank"> <em>FesCode Limited</em></a>
-              </div>
+              © {new Date().getFullYear()} ConseQ-X. All rights reserved. <br/> <span>
+                    Designed and Developed by<span className="text-yellow-500"><a href="https://www.fescode.com" target="_blank"> <em>FesCode Limited</em></a> </span>
+                  </span> 
             </div>
           </div>
         </div>
       </footer>
-
-      {/* Booking Modal */}
-      <AnimatePresence>
-        {showBookingModal && (
-          <motion.div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-          >
-            <div 
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-              onClick={() => setShowBookingModal(false)}
-            />
-            <motion.div 
-              className={`relative max-w-md w-full rounded-xl z-10 ${
-                darkMode ? "bg-gray-800" : "bg-white"
-              } p-8`}
-              variants={modalVariants}
-            >
-              <button 
-                className={`absolute top-4 right-4 p-2 rounded-full ${
-                  darkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-500 hover:bg-gray-100"
-                }`}
-                onClick={() => setShowBookingModal(false)}
-              >
-                <FaTimes />
-              </button>
-              
-              <h2 className={`text-2xl font-bold mb-6 ${
-                darkMode ? "text-white" : "text-gray-900"
-              }`}>
-                Book a Diagnostic Session
-              </h2>
-              
-              <form onSubmit={handleSubmit}>
-                <div className="mb-4">
-                  <label className={`block mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`} htmlFor="name">Name</label>
-                  <input 
-                    type="text" 
-                    id="name"
-                    required
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 ${
-                      darkMode 
-                        ? "bg-gray-700 border-gray-600 text-white" 
-                        : "border-gray-300"
-                    }`}
-                    value={formData.name}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <label className={`block mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`} htmlFor="email">Email</label>
-                  <input 
-                    type="email" 
-                    id="email"
-                    required
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 ${
-                      darkMode 
-                        ? "bg-gray-700 border-gray-600 text-white" 
-                        : "border-gray-300"
-                    }`}
-                    value={formData.email}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <label className={`block mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`} htmlFor="company">Company</label>
-                  <input 
-                    type="text" 
-                    id="company"
-                    required
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 ${
-                      darkMode 
-                        ? "bg-gray-700 border-gray-600 text-white" 
-                        : "border-gray-300"
-                    }`}
-                    value={formData.company}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="mb-6">
-                  <label className={`block mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`} htmlFor="message">Message</label>
-                  <textarea 
-                    id="message"
-                    rows="4"
-                    required
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 ${
-                      darkMode 
-                        ? "bg-gray-700 border-gray-600 text-white" 
-                        : "border-gray-300"
-                    }`}
-                    value={formData.message}
-                    onChange={handleInputChange}
-                  ></textarea>
-                </div>
-                
-                <motion.button
-                  whileHover={buttonHover}
-                  whileTap={buttonTap}
-                  type="submit"
-                  className="w-full px-4 py-3 bg-yellow-500 text-gray-900 font-semibold rounded-lg hover:bg-yellow-600 transition-colors"
-                >
-                  Book Session
-                </motion.button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Tool Modal */}
-      <AnimatePresence>
-        {showToolModal && (
-          <motion.div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-          >
-            <div 
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-              onClick={() => setShowToolModal(false)}
-            />
-            <motion.div 
-              className={`relative max-w-md w-full rounded-xl z-10 ${
-                darkMode ? "bg-gray-800" : "bg-white"
-              } p-8`}
-              variants={modalVariants}
-            >
-              <button 
-                className={`absolute top-4 right-4 p-2 rounded-full ${
-                  darkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-500 hover:bg-gray-100"
-                }`}
-                onClick={() => setShowToolModal(false)}
-              >
-                <FaTimes />
-              </button>
-              
-              <div className="text-center">
-                <div className={`w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center ${
-                  darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
-                }`}>
-                  <span className="text-3xl text-yellow-500">🔧</span>
-                </div>
-                
-                <h2 className={`text-2xl font-bold mb-4 ${
-                  darkMode ? "text-white" : "text-gray-900"
-                }`}>
-                  ConseQ-ULTRA Tool
-                </h2>
-                
-                <p className={`mb-6 ${
-                  darkMode ? "text-gray-300" : "text-gray-600"
-                }`}>
-                  You are about to access our advanced organizational assessment tool. This powerful diagnostic will provide insights into your company's alignment, efficiency, and growth potential.
-                </p>
-                
-                <div className="flex flex-col gap-3">
-                  <motion.button
-                    whileHover={buttonHover}
-                    whileTap={buttonTap}
-                    className={`px-4 py-3 rounded-lg font-semibold ${
-                      darkMode 
-                        ? "bg-yellow-500 text-gray-900 hover:bg-yellow-600" 
-                        : "bg-yellow-500 text-gray-900 hover:bg-yellow-600"
-                    }`}
-                  >
-                    Continue to Tool
-                  </motion.button>
-                  
-                  <motion.button
-                    whileHover={{ ...buttonHover, backgroundColor: darkMode ? "#374151" : "#e5e7eb" }}
-                    whileTap={buttonTap}
-                    className={`px-4 py-3 rounded-lg font-medium ${
-                      darkMode 
-                        ? "bg-gray-700 text-gray-300 hover:bg-gray-600" 
-                        : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                    }`}
-                    onClick={() => setShowToolModal(false)}
-                  >
-                    Learn More First
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
