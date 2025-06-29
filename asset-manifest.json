@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.css": "/ConseQ-X-landing/static/css/main.02afa89b.css",
-    "main.js": "/ConseQ-X-landing/static/js/main.284a8d71.js",
+    "main.css": "/ConseQ-X-landing/static/css/main.4e94ab3b.css",
+    "main.js": "/ConseQ-X-landing/static/js/main.c4855c39.js",
     "static/js/453.2a5a80e9.chunk.js": "/ConseQ-X-landing/static/js/453.2a5a80e9.chunk.js",
     "static/media/ConseQ-X-3d.png": "/ConseQ-X-landing/static/media/ConseQ-X-3d.884c70e7aaf4d4f1b78f.png",
     "index.html": "/ConseQ-X-landing/index.html",
-    "main.02afa89b.css.map": "/ConseQ-X-landing/static/css/main.02afa89b.css.map",
-    "main.284a8d71.js.map": "/ConseQ-X-landing/static/js/main.284a8d71.js.map",
+    "main.4e94ab3b.css.map": "/ConseQ-X-landing/static/css/main.4e94ab3b.css.map",
+    "main.c4855c39.js.map": "/ConseQ-X-landing/static/js/main.c4855c39.js.map",
     "453.2a5a80e9.chunk.js.map": "/ConseQ-X-landing/static/js/453.2a5a80e9.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.02afa89b.css",
-    "static/js/main.284a8d71.js"
+    "static/css/main.4e94ab3b.css",
+    "static/js/main.c4855c39.js"
   ]
 }
