@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.css": "/ConseQ-X-landing/static/css/main.7c4dfb24.css",
-    "main.js": "/ConseQ-X-landing/static/js/main.a21c7c54.js",
+    "main.css": "/ConseQ-X-landing/static/css/main.2e673ede.css",
+    "main.js": "/ConseQ-X-landing/static/js/main.e1d4a8bc.js",
     "static/js/453.2a5a80e9.chunk.js": "/ConseQ-X-landing/static/js/453.2a5a80e9.chunk.js",
     "static/media/ConseQ-X-3d.png": "/ConseQ-X-landing/static/media/ConseQ-X-3d.884c70e7aaf4d4f1b78f.png",
     "index.html": "/ConseQ-X-landing/index.html",
-    "main.7c4dfb24.css.map": "/ConseQ-X-landing/static/css/main.7c4dfb24.css.map",
-    "main.a21c7c54.js.map": "/ConseQ-X-landing/static/js/main.a21c7c54.js.map",
+    "main.2e673ede.css.map": "/ConseQ-X-landing/static/css/main.2e673ede.css.map",
+    "main.e1d4a8bc.js.map": "/ConseQ-X-landing/static/js/main.e1d4a8bc.js.map",
     "453.2a5a80e9.chunk.js.map": "/ConseQ-X-landing/static/js/453.2a5a80e9.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.7c4dfb24.css",
-    "static/js/main.a21c7c54.js"
+    "static/css/main.2e673ede.css",
+    "static/js/main.e1d4a8bc.js"
   ]
 }
