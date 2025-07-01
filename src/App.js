@@ -427,7 +427,7 @@ export default function HomePage() {
                     <div className={`text-sm font-medium ${
                       darkMode ? "text-yellow-400" : "text-yellow-600"
                     }`}>
-                      Systems-Thinking Methodology
+                     ConseQ-X Methodology
                     </div>
                     <div className={`mt-2 text-sm ${
                       darkMode ? "text-gray-300" : "text-gray-600"
@@ -609,57 +609,34 @@ export default function HomePage() {
                 </div>
               </motion.div>
               
+              {/* Beautifully aligned text above button */}
               <motion.div 
                 variants={fadeUp}
-                className="mt-20"
+                className="mt-16 text-center"
               >
-                <div className="flex flex-col md:flex-row gap-8">
-                  <div className="flex-1">
-                    <h3 className={`text-xl font-bold mb-4 ${
-                      darkMode ? "text-white" : "text-gray-900"
-                    }`}>
-                      What We See
-                    </h3>
-                    <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                      To become the most trusted systems-designing consulting partner in emerging and high-growth markets.
-                    </p>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className={`text-xl font-bold mb-4 ${
-                      darkMode ? "text-white" : "text-gray-900"
-                    }`}>
-                      Our DNA
-                    </h3>
-                    <ul className={`space-y-2 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                      <li>• TORIL Framework (Systems-Based Transformation)</li>
-                      <li>• Proprietary Maturity Models</li>
-                      <li>• Feedback Loop Architecture</li>
-                      <li>• Scalable Consulting Toolkits</li>
-                      <li>• Human-Centric Change Programs</li>
-                    </ul>
-                  </div>
+                <p className={`text-xl md:text-2xl font-medium mb-8 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}>
+                  Let's see how healthier your organization is.
+                </p>
+                
+                {/* Centered button with animation */}
+                <div className="flex justify-center">
+                  <motion.button
+                    whileHover={buttonHover}
+                    whileTap={buttonTap}
+                    onClick={() => setShowToolModal(true)}
+                    className={`px-8 py-3 bg-yellow-500 text-white font-semibold hover:bg-yellow-600 rounded-lg shadow-lg transition-all ${
+                      darkMode ? "hover:bg-yellow-600" : "hover:bg-yellow-600"
+                    }`}
+                  >
+                    Start Transformation
+                  </motion.button>
                 </div>
               </motion.div>
             </motion.div>
-        </div>
-            <div className="flex flex-wrap gap-4 mb-8 mt-8 justify-center">
-                
-                <motion.button
-                  whileHover={buttonHover}
-                  whileTap={buttonTap}
-                  onClick={() => setShowToolModal(true)}
-                 
-                
-                  className={`px-8 py-3 bg-yellow-500 from-gray-700 to-gray-800 text-white font-semibold hover:bg-yellow-600 rounded-lg shadow-lg transition-all ${
-                    darkMode 
-                      ? "hover:from-gray-800 hover:to-gray-900" 
-                      : "hover:from-gray-800 hover:to-gray-900"
-                  }`}
-                >
-                  Start Transformation
-                </motion.button>
-              </div>
           </div>
+        </div>
       </section>
 
       {/* Services Section with Enhanced Background */}
@@ -675,14 +652,14 @@ export default function HomePage() {
             viewport={{ once: true, margin: "-100px" }}
             variants={staggerChildren}
           >
-            <motion.div variants={fadeUp} className="mb-2">
+            <motion.div variants={fadeUp} className="mb-2 text-center">
               <span className={`font-bold text-sm uppercase tracking-wider ${
                 darkMode ? "text-yellow-400" : "text-yellow-500"
               }`}>
                 How We Deliver Value
               </span>
             </motion.div>
-            <motion.h2 variants={fadeUp} className={`text-4xl md:text-5xl font-bold mb-16 ${
+            <motion.h2 variants={fadeUp} className={`text-4xl md:text-5xl font-bold mb-16 text-center ${
               darkMode ? "text-white" : "text-gray-800"
             }`}>
               Our Services
@@ -691,7 +668,7 @@ export default function HomePage() {
           
           <motion.div 
             ref={servicesRef}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
             variants={staggerChildren}
             initial="hidden"
             animate={controls}
@@ -708,22 +685,12 @@ export default function HomePage() {
                 icon: "🧩"
               },
               {
-                title: "Flow Optimization",
-                description: "Streamlining operations to enhance efficiency and reduce friction across all functions.",
-                icon: "⚡"
-              },
-              {
                 title: "Leadership Alignment",
                 description: "Ensuring executive teams are strategically aligned and equipped to drive transformation.",
                 icon: "🤝"
               },
               {
-                title: "Growth Scaling",
-                description: "Designing systems that enable sustainable scaling in high-growth environments.",
-                icon: "📈"
-              },
-              {
-                title: "Cultural Engineering",
+                title: "Outcome Engineering",
                 description: "Shaping organizational culture to support your strategic vision and operational excellence.",
                 icon: "🌱"
               }
@@ -731,11 +698,11 @@ export default function HomePage() {
               <motion.div 
                 key={index}
                 variants={serviceItem}
-                className={`p-8 rounded-xl border transition-all ${
+                className={`p-8 rounded-xl border transition-all h-full ${
                   darkMode 
                     ? "bg-gray-800/50 border-gray-700 hover:border-yellow-500" 
                     : "bg-white border border-gray-100 hover:border-yellow-500"
-                } shadow-lg hover:shadow-xl`}
+                } shadow-lg hover:shadow-xl flex flex-col`}
                 whileHover={{ 
                   y: -10,
                   borderColor: darkMode ? "rgba(234, 179, 8, 0.5)" : "rgba(234, 179, 8, 0.5)"
@@ -747,7 +714,7 @@ export default function HomePage() {
                 }`}>
                   {service.title}
                 </h3>
-                <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                <p className={`${darkMode ? "text-gray-300" : "text-gray-600"} flex-grow`}>
                   {service.description}
                 </p>
               </motion.div>
@@ -1007,85 +974,102 @@ export default function HomePage() {
               <span className={`font-bold text-sm uppercase tracking-wider ${
                 darkMode ? "text-yellow-400" : "text-yellow-500"
               }`}>
-                Our Methodology
+                Our Core Philosophy
               </span>
             </motion.div>
-            <motion.h2 variants={fadeUp} className={`text-4xl md:text-5xl font-bold mb-8 ${
+            <motion.h2 variants={fadeUp} className={`text-4xl md:text-5xl font-bold mb-16 ${
               darkMode ? "text-white" : "text-gray-900"
             }`}>
-              Systems-Thinking Approach
+              Our Methodology
             </motion.h2>
           </motion.div>
           
           <div className="max-w-5xl mx-auto">
-            <div className="relative">
-              {/* Vertical line */}
-              <div className={`absolute left-4 top-0 h-full w-0.5 transform -translate-x-1/2 ${
-                darkMode ? "bg-gray-700" : "bg-gray-200"
-              }`}></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              {/* What We See */}
+              <motion.div 
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                variants={fadeUp}
+                className={`p-8 rounded-xl shadow-lg ${
+                  darkMode ? "bg-gray-800/50" : "bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center mb-6">
+                  <div className={`w-12 h-12 rounded-lg ${
+                    darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
+                  } flex items-center justify-center mr-4`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </div>
+                  <h3 className={`text-2xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-900"
+                  }`}>
+                    What We See
+                  </h3>
+                </div>
+                <p className={`text-lg ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                  To become the most trusted systems-designing consulting partner in emerging and high-growth markets.
+                </p>
+              </motion.div>
               
-              {/* Timeline items */}
-              {[
-                {
-                  step: "1",
-                  title: "Understand",
-                  description: "Deep dive into your organization's unique context, challenges, and aspirations.",
-                  color: "bg-yellow-500"
-                },
-                {
-                  step: "2",
-                  title: "Diagnose",
-                  description: "Identify systemic patterns, leverage points, and root causes of challenges.",
-                  color: "bg-yellow-600"
-                },
-                {
-                  step: "3",
-                  title: "Design",
-                  description: "Co-create solutions that align with your strategic objectives and operational reality.",
-                  color: darkMode ? "bg-gray-700" : "bg-gray-800"
-                },
-                {
-                  step: "4",
-                  title: "Implement",
-                  description: "Execute with precision, ensuring smooth integration into your organization.",
-                  color: darkMode ? "bg-gray-600" : "bg-gray-700"
-                },
-                {
-                  step: "5",
-                  title: "Optimize",
-                  description: "Continuously refine systems for peak performance and adaptability.",
-                  color: darkMode ? "bg-gray-500" : "bg-gray-600"
-                }
-              ].map((item, index) => (
-                <motion.div 
-                  key={index}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  variants={fadeUp}
-                  className="flex items-start mb-12"
-                >
-                  <div className={`${item.color} w-8 h-8 rounded-full flex items-center justify-center text-white font-bold z-10`}>
-                    {item.step}
+              {/* Our DNA */}
+              <motion.div 
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                variants={fadeUp}
+                className={`p-8 rounded-xl shadow-lg ${
+                  darkMode ? "bg-gray-800/50" : "bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center mb-6">
+                  <div className={`w-12 h-12 rounded-lg ${
+                    darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
+                  } flex items-center justify-center mr-4`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
                   </div>
-                  <div className="ml-10">
-                    <h3 className={`text-xl font-bold mb-2 ${
-                      darkMode ? "text-white" : "text-gray-900"
-                    }`}>
-                      {item.title}
-                    </h3>
-                    <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                      {item.description}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
+                  <h3 className={`text-2xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-900"
+                  }`}>
+                    Our DNA
+                  </h3>
+                </div>
+                <ul className={`space-y-3 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                  <li className="flex items-start">
+                    <span className="text-yellow-500 mr-2 mt-1">•</span>
+                    <span>TORIL Framework (Systems-Based Transformation)</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-yellow-500 mr-2 mt-1">•</span>
+                    <span>Proprietary Maturity Models</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-yellow-500 mr-2 mt-1">•</span>
+                    <span>Feedback Loop Architecture</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-yellow-500 mr-2 mt-1">•</span>
+                    <span>Scalable Consulting Toolkits</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-yellow-500 mr-2 mt-1">•</span>
+                    <span>Human-Centric Change Programs</span>
+                  </li>
+                </ul>
+              </motion.div>
             </div>
           </div>
         </div>
       </section>
+      
 
-      {/* Motto Section */}
+      {/* Enhanced Motto Section */}
       <section className="py-20 md:py-40 bg-gradient-to-r from-yellow-500 to-yellow-600">
         <div className="container mx-auto px-4">
           <motion.div
@@ -1096,21 +1080,37 @@ export default function HomePage() {
           >
             <motion.div 
               variants={fadeUp}
-              className="text-3xl md:text-5xl font-bold text-white mb-8 leading-tight"
+              className="text-center mb-10"
             >
-              Engineering Healthier, Aligned, and More Effective Organizations through system-based diagnostics and design.
+              {/* Professional Text Structure */}
+              <div className="grid gap-6">
+                <h2 className="text-4xl md:text-5xl font-bold text-white leading-snug">
+                  Distinctive Value
+                </h2>
+                
+                <div className="space-y-4 text-white">
+                  <p className="text-2xl md:text-4xl font-medium leading-relaxed">
+                    ConseQ-X uniquely integrates intangible drivers, relationships, systems, 
+                    and organizational behavior into structured, measurable outcomes.
+                  </p>
+                  
+                  <p className="text-2xl md:text-4xl font-medium leading-relaxed">
+                    Our innovative systems-focused approach guarantees lasting transformation, 
+                    positioning ConseQ-X ahead of conventional consulting firms.
+                  </p>
+                </div>
+              </div>
             </motion.div>
             
             <motion.button
               variants={fadeUp}
-              whileHover={buttonHover}
-              whileTap={buttonTap}
+              whileHover={{ 
+                scale: 1.05,
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.25)"
+              }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setShowToolModal(true)}
-              className={`mt-10 px-8 py-4 font-bold rounded-lg shadow-lg transition-colors ${
-                darkMode 
-                  ? "bg-gray-800 text-white hover:bg-gray-700" 
-                  : "bg-gray-900 text-white hover:bg-gray-800"
-              }`}
+              className="mt-10 px-10 py-5 bg-gray-900 text-xl font-bold text-white rounded-lg shadow-xl hover:bg-gray-800 transition-all duration-300 transform"
             >
               Transform Your Organization
             </motion.button>
