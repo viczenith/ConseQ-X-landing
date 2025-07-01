@@ -723,58 +723,78 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Professional Offerings Section */}
-      <section className={`py-20 md:py-32 ${darkMode ? "bg-gray-900" : "bg-white"}`}>
+      {/* Offerings Section */}
+      <section className={`py-20 md:py-32 ${
+        darkMode ? "bg-gray-900" : "bg-white"
+      }`}>
         <div className="container mx-auto px-4">
           <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             variants={staggerChildren}
-            className="text-center mb-16"
           >
-            <motion.div variants={fadeUp} className="mb-3">
-              <span className={`font-bold text-sm uppercase tracking-wider ${darkMode ? "text-yellow-400" : "text-yellow-500"}`}>
-                Strategic Solutions
+            <motion.div variants={fadeUp} className="mb-2">
+              <span className={`font-bold text-sm uppercase tracking-wider ${
+                darkMode ? "text-yellow-400" : "text-yellow-500"
+              }`}>
+                Our Solutions
               </span>
             </motion.div>
-            <motion.h2 
-              variants={fadeUp} 
-              className={`text-4xl md:text-5xl font-bold ${darkMode ? "text-white" : "text-gray-900"} mb-4`}
-            >
-              Our Service Offerings
+            <motion.h2 variants={fadeUp} className={`text-4xl md:text-5xl font-bold mb-8 ${
+                darkMode ? "text-white" : "text-gray-900"
+              }`}>
+              Our Offerings
             </motion.h2>
-            <motion.div variants={fadeUp} className="max-w-3xl mx-auto">
-              <p className={`text-lg ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                Comprehensive solutions designed to drive measurable organizational transformation
-              </p>
-            </motion.div>
           </motion.div>
           
-          <div className="max-w-6xl mx-auto">
-            {/* Enhanced Tabs */}
-            <div className={`mb-12 flex justify-center border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-              <div className="flex space-x-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-                {["flagship", "toolkits", "ourSolution"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-6 py-3 text-sm font-medium transition-colors rounded-md min-w-[160px] ${
-                      activeTab === tab
-                        ? darkMode
-                          ? "bg-gray-700 text-yellow-400 shadow-inner"
-                          : "bg-white text-yellow-600 shadow-sm"
-                        : darkMode
-                          ? "text-gray-300 hover:text-white"
-                          : "text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    {tab === "flagship" && "Flagship Programs"}
-                    {tab === "toolkits" && "Toolkits/SaaS"}
-                    {tab === "ourSolution" && "Our Solution"}
-                  </button>
-                ))}
-              </div>
+          <div className="max-w-5xl mx-auto">
+            {/* Tabs for Offerings */}
+            <div className={`mb-8 flex border-b ${
+              darkMode ? "border-gray-700" : "border-gray-200"
+            }`}>
+              <button
+                onClick={() => setActiveTab("flagship")}
+                className={`py-3 px-6 font-medium text-sm ${
+                  activeTab === "flagship"
+                    ? darkMode
+                      ? "text-yellow-400 border-b-2 border-yellow-400"
+                      : "text-yellow-600 border-b-2 border-yellow-600"
+                    : darkMode
+                      ? "text-gray-400"
+                      : "text-gray-500"
+                }`}
+              >
+                Flagship Programs
+              </button>
+              <button
+                onClick={() => setActiveTab("toolkits")}
+                className={`py-3 px-6 font-medium text-sm ${
+                  activeTab === "toolkits"
+                    ? darkMode
+                      ? "text-yellow-400 border-b-2 border-yellow-400"
+                      : "text-yellow-600 border-b-2 border-yellow-600"
+                    : darkMode
+                      ? "text-gray-400"
+                      : "text-gray-500"
+                }`}
+              >
+                Toolkits/SaaS
+              </button>
+              <button
+                onClick={() => setActiveTab("ourSolution")}
+                className={`py-3 px-6 font-medium text-sm ${
+                  activeTab === "ourSolution"
+                    ? darkMode
+                      ? "text-yellow-400 border-b-2 border-yellow-400"
+                      : "text-yellow-600 border-b-2 border-yellow-600"
+                    : darkMode
+                      ? "text-gray-400"
+                      : "text-gray-500"
+                }`}
+              >
+                Our Solution
+              </button>
             </div>
             
             {/* Tab Content */}
@@ -784,90 +804,96 @@ export default function HomePage() {
               variants={fadeUp}
             >
               {activeTab === "flagship" && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {flagshipPrograms.map((program, index) => (
                     <motion.div 
                       key={index}
-                      whileHover={{ y: -8 }}
-                      className={`p-7 rounded-xl shadow-lg transition-all ${
+                      whileHover={{ y: -5 }}
+                      className={`p-6 rounded-lg ${
                         darkMode 
-                          ? "bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700" 
-                          : "bg-white border border-gray-100"
+                          ? "bg-gray-800/50 border border-gray-700" 
+                          : "bg-gray-50 border border-gray-200"
                       }`}
                     >
-                      <div className="flex items-start mb-5">
-                        <div className={`w-10 h-10 rounded-lg flex-shrink-0 ${
+                      <div className="flex items-center mb-3">
+                        <div className={`w-8 h-8 rounded-full ${
                           darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
-                        } flex items-center justify-center mr-4`}>
-                          <span className="text-yellow-500 font-bold text-lg">{index + 1}</span>
+                        } flex items-center justify-center mr-3`}>
+                          <span className="text-yellow-500 font-bold">{index + 1}</span>
                         </div>
-                        <h3 className={`text-xl font-bold leading-tight ${darkMode ? "text-white" : "text-gray-900"}`}>
+                        <h3 className={`text-lg font-semibold ${
+                          darkMode ? "text-white" : "text-gray-900"
+                        }`}>
                           {program}
                         </h3>
                       </div>
-                      <p className={`mt-3 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                        Comprehensive enterprise transformation program designed for measurable outcomes
-                      </p>
+                      {/* <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                        Comprehensive solution designed for enterprise transformation
+                      </p> */}
                     </motion.div>
                   ))}
                 </div>
               )}
               
               {activeTab === "toolkits" && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {toolkitsSaaS.map((toolkit, index) => (
                     <motion.div 
                       key={index}
-                      whileHover={{ y: -8 }}
-                      className={`p-7 rounded-xl shadow-lg ${
+                      whileHover={{ y: -5 }}
+                      className={`p-6 rounded-lg ${
                         darkMode 
-                          ? "bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700" 
-                          : "bg-white border border-gray-100"
+                          ? "bg-gray-800/50 border border-gray-700" 
+                          : "bg-gray-50 border border-gray-200"
                       }`}
                     >
-                      <div className="flex items-start mb-5">
-                        <div className={`w-10 h-10 rounded-lg flex-shrink-0 ${
+                      <div className="flex items-center mb-3">
+                        <div className={`w-8 h-8 rounded-full ${
                           darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
-                        } flex items-center justify-center mr-4`}>
-                          <span className="text-yellow-500 font-bold text-lg">{index + 1}</span>
+                        } flex items-center justify-center mr-3`}>
+                          <span className="text-yellow-500 font-bold">{index + 1}</span>
                         </div>
-                        <h3 className={`text-xl font-bold leading-tight ${darkMode ? "text-white" : "text-gray-900"}`}>
+                        <h3 className={`text-lg font-semibold ${
+                          darkMode ? "text-white" : "text-gray-900"
+                        }`}>
                           {toolkit}
                         </h3>
                       </div>
-                      <p className={`mt-3 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                        Scalable solutions for continuous improvement and sustainable growth
-                      </p>
+                      {/* <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                        Scalable solutions for continuous improvement
+                      </p> */}
                     </motion.div>
                   ))}
                 </div>
               )}
 
               {activeTab === "ourSolution" && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {ourSolutionProgram.map((solution, index) => (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {ourSolutionProgram.map((toolkit, index) => (
                     <motion.div 
                       key={index}
-                      whileHover={{ y: -8 }}
-                      className={`p-7 rounded-xl shadow-lg ${
+                      whileHover={{ y: -5 }}
+                      className={`p-6 rounded-lg ${
                         darkMode 
-                          ? "bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700" 
-                          : "bg-white border border-gray-100"
+                          ? "bg-gray-800/50 border border-gray-700" 
+                          : "bg-gray-50 border border-gray-200"
                       }`}
                     >
-                      <div className="flex items-start mb-5">
-                        <div className={`w-10 h-10 rounded-lg flex-shrink-0 ${
+                      <div className="flex items-center mb-3">
+                        <div className={`w-8 h-8 rounded-full ${
                           darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
-                        } flex items-center justify-center mr-4`}>
-                          <span className="text-yellow-500 font-bold text-lg">{index + 1}</span>
+                        } flex items-center justify-center mr-3`}>
+                          <span className="text-yellow-500 font-bold">{index + 1}</span>
                         </div>
-                        <h3 className={`text-xl font-bold leading-tight ${darkMode ? "text-white" : "text-gray-900"}`}>
-                          {solution}
+                        <h3 className={`text-lg font-semibold ${
+                          darkMode ? "text-white" : "text-gray-900"
+                        }`}>
+                          {toolkit}
                         </h3>
                       </div>
-                      <p className={`mt-3 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                        Innovative approaches for organizational excellence and strategic alignment
-                      </p>
+                      {/* <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                        Scalable solutions for continuous improvement
+                      </p> */}
                     </motion.div>
                   ))}
                 </div>
