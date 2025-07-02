@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSun, FaMoon, FaArrowRight, FaArrowLeft, FaStar, FaRegStar } from 'react-icons/fa';
+import { FaSun, FaMoon, FaArrowRight, FaArrowLeft, FaStar, FaRegStar, FaTimes } from 'react-icons/fa';
 
 // System data structure
 const systems = [
@@ -220,29 +220,30 @@ export default function AssessmentPlatform() {
   const [bookingRequested, setBookingRequested] = useState(false);
   const [rating, setRating] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [activeModal, setActiveModal] = useState(null); // 'results', 'booking', 'thankyou'
 
-  // Toggle dark mode
+  // Toggle dark mode (unchanged)
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle('dark', !darkMode);
     localStorage.setItem('darkMode', !darkMode ? 'true' : 'false');
   };
 
-  // Handle user info submission
+  // Handle user info submission (unchanged)
   const handleUserInfoSubmit = () => {
     if (userInfo.name && userInfo.organization && userInfo.email) {
       setStep(1);
     }
   };
 
-  // Handle system selection
+  // Handle system selection (unchanged)
   const handleSystemSelect = (system) => {
     setCurrentSystem(system);
     setCurrentQuestion(0);
     setStep(2);
   };
 
-  // Handle answer selection
+  // Handle answer selection (unchanged)
   const handleAnswerSelect = (answer) => {
     const newAnswers = { ...answers };
     if (!newAnswers[currentSystem.id]) newAnswers[currentSystem.id] = {};
@@ -261,16 +262,19 @@ export default function AssessmentPlatform() {
   // Handle results request
   const handleResultsRequest = () => {
     setResultsRequested(true);
+    setActiveModal('results');
   };
 
   // Handle booking request
   const handleBookingRequest = () => {
     setBookingRequested(true);
+    setActiveModal('booking');
   };
 
   // Submit rating and finish
   const handleRatingSubmit = () => {
     setSubmitted(true);
+    setActiveModal('thankyou');
     // In a real app, you would send data to your backend here
     console.log({
       userInfo,
@@ -280,7 +284,12 @@ export default function AssessmentPlatform() {
     });
   };
 
-  // Calculate completion percentage
+  // Close modal
+  const closeModal = () => {
+    setActiveModal(null);
+  };
+
+  // Calculate completion percentage (unchanged)
   const completionPercentage = () => {
     const answered = Object.keys(answers).length;
     return Math.round((answered / systems.length) * 100);
@@ -319,6 +328,40 @@ export default function AssessmentPlatform() {
         ease: "easeOut" 
       } 
     },
+  };
+
+  const modalOverlay = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { duration: 0.3 }
+    },
+    exit: { opacity: 0 }
+  };
+
+  const modalContent = {
+    hidden: { opacity: 0, y: 50, scale: 0.9 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      scale: 1,
+      transition: { 
+        type: "spring", 
+        damping: 25, 
+        stiffness: 300,
+        delay: 0.1
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      scale: 0.95,
+      transition: { duration: 0.2 } 
+    }
+  };
+
+  const starBounce = {
+    hover: { scale: 1.2, transition: { type: "spring", stiffness: 500 } },
+    tap: { scale: 0.9 }
   };
 
   useEffect(() => {
@@ -768,372 +811,390 @@ export default function AssessmentPlatform() {
               </div>
             </motion.div>
           )}
+        </AnimatePresence>
+      </div>
 
-          {/* Results Request */}
-          {resultsRequested && !bookingRequested && (
+      {/* Modal Overlay */}
+      <AnimatePresence>
+        {activeModal && (
+          <motion.div
+            key="modal-overlay"
+            variants={modalOverlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70"
+            onClick={closeModal}
+          >
+            {/* Modal Content */}
             <motion.div
-              key="results-request"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="max-w-3xl mx-auto"
-            >
-              <div className={`p-8 rounded-2xl shadow-xl ${
+              variants={modalContent}
+              className={`relative max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden ${
                 darkMode 
                   ? "bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700" 
                   : "bg-gradient-to-br from-white to-gray-50 border border-gray-200"
-              }`}>
-                <h2 className={`text-3xl font-bold mb-6 text-center ${
-                  darkMode ? "text-white" : "text-gray-900"
-                }`}>
-                  Assessment Results
-                </h2>
-                
-                <div className={`p-6 rounded-xl mb-8 ${
-                  darkMode ? "bg-gray-800/30" : "bg-gray-100"
-                }`}>
-                  <h3 className={`text-xl font-bold mb-4 ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}>
-                    Summary
-                  </h3>
-                  <div className="flex items-center mb-4">
-                    <div className="w-full bg-gray-200 rounded-full h-3 mr-4">
-                      <div 
-                        className="h-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full"
-                        style={{ width: `${completionPercentage()}%` }}
-                      />
-                    </div>
-                    <span className="text-lg font-medium">{completionPercentage()}%</span>
-                  </div>
-                  <p className={darkMode ? "text-gray-300" : "text-gray-700"}>
-                    You've completed {Object.keys(answers).length} of {systems.length} systems. 
-                    Select the results you'd like to receive.
-                  </p>
-                </div>
-                
-                <div className="space-y-6 mb-8">
-                  <div 
-                    className={`p-4 rounded-lg cursor-pointer transition-all ${
-                      resultsType === 'all' 
-                        ? darkMode 
-                          ? "bg-indigo-900/30 border border-indigo-700" 
-                          : "bg-indigo-100 border border-indigo-300"
-                        : darkMode 
-                          ? "bg-gray-800/30 border border-gray-700 hover:border-indigo-500" 
-                          : "bg-gray-100 border border-gray-200 hover:border-indigo-300"
-                    }`}
-                    onClick={() => setResultsType('all')}
-                  >
-                    <div className="flex items-start">
-                      <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mr-4 mt-0.5 ${
-                        resultsType === 'all' 
-                          ? "bg-indigo-600 text-white" 
-                          : darkMode 
-                            ? "bg-gray-700" 
-                            : "bg-gray-300"
-                      }`}>
-                        {resultsType === 'all' && "✓"}
-                      </div>
-                      <div>
-                        <h3 className={`font-bold mb-1 ${
-                          darkMode ? "text-white" : "text-gray-900"
-                        }`}>
-                          Full Report
-                        </h3>
-                        <p className={`text-sm ${
-                          darkMode ? "text-gray-400" : "text-gray-600"
-                        }`}>
-                          Comprehensive report with all completed assessments and detailed analysis
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div 
-                    className={`p-4 rounded-lg cursor-pointer transition-all ${
-                      resultsType === 'specific' 
-                        ? darkMode 
-                          ? "bg-indigo-900/30 border border-indigo-700" 
-                          : "bg-indigo-100 border border-indigo-300"
-                        : darkMode 
-                          ? "bg-gray-800/30 border border-gray-700 hover:border-indigo-500" 
-                          : "bg-gray-100 border border-gray-200 hover:border-indigo-300"
-                    }`}
-                    onClick={() => setResultsType('specific')}
-                  >
-                    <div className="flex items-start">
-                      <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mr-4 mt-0.5 ${
-                        resultsType === 'specific' 
-                          ? "bg-indigo-600 text-white" 
-                          : darkMode 
-                            ? "bg-gray-700" 
-                            : "bg-gray-300"
-                      }`}>
-                        {resultsType === 'specific' && "✓"}
-                      </div>
-                      <div>
-                        <h3 className={`font-bold mb-1 ${
-                          darkMode ? "text-white" : "text-gray-900"
-                        }`}>
-                          Selected Systems
-                        </h3>
-                        <p className={`text-sm ${
-                          darkMode ? "text-gray-400" : "text-gray-600"
-                        }`}>
-                          Receive reports only for specific systems
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {resultsType === 'specific' && (
-                    <div className="ml-10 mt-4 space-y-3">
-                      {systems.map(system => (
-                        <div 
-                          key={system.id} 
-                          className={`p-3 rounded-lg cursor-pointer ${
-                            answers[system.id]
-                              ? darkMode 
-                                ? "bg-gray-700/30 hover:bg-gray-700/50" 
-                                : "bg-gray-100 hover:bg-gray-200"
-                              : "opacity-50 cursor-not-allowed"
-                          }`}
-                        >
-                          <div className="flex items-center">
-                            <div className={`w-5 h-5 rounded mr-3 ${
-                              darkMode ? "bg-gray-600" : "bg-gray-300"
-                            }`}></div>
-                            <span className={`${answers[system.id] ? (darkMode ? "text-white" : "text-gray-900") : (darkMode ? "text-gray-500" : "text-gray-400")}`}>
-                              {system.title} {!answers[system.id] && '(Not completed)'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="text-center">
-                  <p className={`mb-6 ${
-                    darkMode ? "text-gray-400" : "text-gray-600"
-                  }`}>
-                    Results will be sent to: <span className="font-semibold">{userInfo.email}</span>
-                  </p>
-                  <motion.button
-                    whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)" }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleBookingRequest}
-                    className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-semibold rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition"
-                  >
-                    Send Results & Continue
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Booking Session */}
-          {bookingRequested && !submitted && (
-            <motion.div
-              key="booking-session"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="max-w-3xl mx-auto"
+              }`}
+              onClick={e => e.stopPropagation()}
             >
-              <div className={`p-8 rounded-2xl shadow-xl ${
-                darkMode 
-                  ? "bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700" 
-                  : "bg-gradient-to-br from-white to-gray-50 border border-gray-200"
-              }`}>
-                <div className="text-center mb-8">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <h2 className={`text-3xl font-bold mb-2 ${
+              {/* Close Button */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={closeModal}
+                className={`absolute top-4 right-4 z-10 p-2 rounded-full ${
+                  darkMode 
+                    ? "bg-gray-700 hover:bg-gray-600 text-gray-300" 
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                }`}
+              >
+                <FaTimes />
+              </motion.button>
+
+              {/* Results Request Modal */}
+              {activeModal === 'results' && (
+                <div className="p-8">
+                  <h2 className={`text-3xl font-bold mb-6 text-center ${
                     darkMode ? "text-white" : "text-gray-900"
                   }`}>
-                    Results Sent Successfully!
+                    Assessment Results
                   </h2>
-                  <p className={`text-xl ${
-                    darkMode ? "text-gray-300" : "text-gray-700"
-                  }`}>
-                    Your assessment results have been sent to <span className="font-semibold">{userInfo.email}</span>
-                  </p>
-                </div>
-                
-                <div className={`p-6 rounded-xl mb-10 ${
-                  darkMode ? "bg-gray-800/30" : "bg-gray-100"
-                }`}>
-                  <h3 className={`text-xl font-bold mb-6 text-center ${
-                    darkMode ? "text-yellow-400" : "text-yellow-600"
-                  }`}>
-                    Schedule a Consultation
-                  </h3>
-                  <p className={`text-lg mb-6 text-center ${
-                    darkMode ? "text-gray-300" : "text-gray-700"
-                  }`}>
-                    Discuss your results with one of our organizational health specialists
-                  </p>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                    {['Mon, Oct 10 - 10:00 AM', 'Tue, Oct 11 - 2:00 PM', 'Wed, Oct 12 - 11:00 AM', 
-                      'Thu, Oct 13 - 3:00 PM', 'Fri, Oct 14 - 9:00 AM', 'Mon, Oct 17 - 1:00 PM'].map((time, index) => (
-                      <motion.button
-                        key={index}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.98 }}
-                        className={`p-4 text-center rounded-lg transition-all ${
-                          darkMode 
-                            ? "bg-gray-700/50 border border-gray-600 hover:border-yellow-500" 
-                            : "bg-white border border-gray-200 hover:border-yellow-500"
-                        }`}
-                      >
-                        {time}
-                      </motion.button>
-                    ))}
+                  <div className={`p-6 rounded-xl mb-8 ${
+                    darkMode ? "bg-gray-800/30" : "bg-gray-100"
+                  }`}>
+                    <h3 className={`text-xl font-bold mb-4 ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}>
+                      Summary
+                    </h3>
+                    <div className="flex items-center mb-4">
+                      <div className="w-full bg-gray-200 rounded-full h-3 mr-4">
+                        <div 
+                          className="h-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full"
+                          style={{ width: `${completionPercentage()}%` }}
+                        />
+                      </div>
+                      <span className="text-lg font-medium">{completionPercentage()}%</span>
+                    </div>
+                    <p className={darkMode ? "text-gray-300" : "text-gray-700"}>
+                      You've completed {Object.keys(answers).length} of {systems.length} systems. 
+                      Select the results you'd like to receive.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-6 mb-8">
+                    <div 
+                      className={`p-4 rounded-lg cursor-pointer transition-all ${
+                        resultsType === 'all' 
+                          ? darkMode 
+                            ? "bg-indigo-900/30 border border-indigo-700" 
+                            : "bg-indigo-100 border border-indigo-300"
+                          : darkMode 
+                            ? "bg-gray-800/30 border border-gray-700 hover:border-indigo-500" 
+                            : "bg-gray-100 border border-gray-200 hover:border-indigo-300"
+                      }`}
+                      onClick={() => setResultsType('all')}
+                    >
+                      <div className="flex items-start">
+                        <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mr-4 mt-0.5 ${
+                          resultsType === 'all' 
+                            ? "bg-indigo-600 text-white" 
+                            : darkMode 
+                              ? "bg-gray-700" 
+                              : "bg-gray-300"
+                        }`}>
+                          {resultsType === 'all' && "✓"}
+                        </div>
+                        <div>
+                          <h3 className={`font-bold mb-1 ${
+                            darkMode ? "text-white" : "text-gray-900"
+                          }`}>
+                            Full Report
+                          </h3>
+                          <p className={`text-sm ${
+                            darkMode ? "text-gray-400" : "text-gray-600"
+                          }`}>
+                            Comprehensive report with all completed assessments and detailed analysis
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div 
+                      className={`p-4 rounded-lg cursor-pointer transition-all ${
+                        resultsType === 'specific' 
+                          ? darkMode 
+                            ? "bg-indigo-900/30 border border-indigo-700" 
+                            : "bg-indigo-100 border border-indigo-300"
+                          : darkMode 
+                            ? "bg-gray-800/30 border border-gray-700 hover:border-indigo-500" 
+                            : "bg-gray-100 border border-gray-200 hover:border-indigo-300"
+                      }`}
+                      onClick={() => setResultsType('specific')}
+                    >
+                      <div className="flex items-start">
+                        <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mr-4 mt-0.5 ${
+                          resultsType === 'specific' 
+                            ? "bg-indigo-600 text-white" 
+                            : darkMode 
+                              ? "bg-gray-700" 
+                              : "bg-gray-300"
+                        }`}>
+                          {resultsType === 'specific' && "✓"}
+                        </div>
+                        <div>
+                          <h3 className={`font-bold mb-1 ${
+                            darkMode ? "text-white" : "text-gray-900"
+                          }`}>
+                            Selected Systems
+                          </h3>
+                          <p className={`text-sm ${
+                            darkMode ? "text-gray-400" : "text-gray-600"
+                          }`}>
+                            Receive reports only for specific systems
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {resultsType === 'specific' && (
+                      <div className="ml-10 mt-4 space-y-3">
+                        {systems.map(system => (
+                          <div 
+                            key={system.id} 
+                            className={`p-3 rounded-lg cursor-pointer ${
+                              answers[system.id]
+                                ? darkMode 
+                                  ? "bg-gray-700/30 hover:bg-gray-700/50" 
+                                  : "bg-gray-100 hover:bg-gray-200"
+                                : "opacity-50 cursor-not-allowed"
+                            }`}
+                          >
+                            <div className="flex items-center">
+                              <div className={`w-5 h-5 rounded mr-3 ${
+                                darkMode ? "bg-gray-600" : "bg-gray-300"
+                              }`}></div>
+                              <span className={`${answers[system.id] ? (darkMode ? "text-white" : "text-gray-900") : (darkMode ? "text-gray-500" : "text-gray-400")}`}>
+                                {system.title} {!answers[system.id] && '(Not completed)'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="text-center">
-                    <p className={`mb-4 ${
+                    <p className={`mb-6 ${
                       darkMode ? "text-gray-400" : "text-gray-600"
                     }`}>
-                      Or suggest your preferred time:
+                      Results will be sent to: <span className="font-semibold">{userInfo.email}</span>
                     </p>
-                    <div className="flex max-w-md mx-auto">
-                      <input
-                        type="text"
-                        placeholder="e.g., Friday afternoon"
-                        className={`flex-1 px-4 py-2 border-l border-t border-b rounded-l-lg focus:outline-none ${
-                          darkMode 
-                            ? "bg-gray-700 border-gray-600 text-white" 
-                            : "border-gray-300"
-                        }`}
-                      />
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className={`px-4 py-2 rounded-r-lg ${
-                          darkMode 
-                            ? "bg-indigo-700 text-white" 
-                            : "bg-indigo-600 text-white"
-                        }`}
-                      >
-                        Suggest
-                      </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)" }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleBookingRequest}
+                      className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-semibold rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition"
+                    >
+                      Send Results & Continue
+                    </motion.button>
+                  </div>
+                </div>
+              )}
+
+              {/* Booking Session Modal */}
+              {activeModal === 'booking' && (
+                <div className="p-8">
+                  <div className="text-center mb-8">
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                      className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </motion.div>
+                    <h2 className={`text-3xl font-bold mb-2 ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}>
+                      Results Sent Successfully!
+                    </h2>
+                    <p className={`text-xl ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}>
+                      Your assessment results have been sent to <span className="font-semibold">{userInfo.email}</span>
+                    </p>
+                  </div>
+                  
+                  <div className={`p-6 rounded-xl mb-10 ${
+                    darkMode ? "bg-gray-800/30" : "bg-gray-100"
+                  }`}>
+                    <h3 className={`text-xl font-bold mb-6 text-center ${
+                      darkMode ? "text-yellow-400" : "text-yellow-600"
+                    }`}>
+                      Schedule a Consultation
+                    </h3>
+                    <p className={`text-lg mb-6 text-center ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}>
+                      Discuss your results with one of our organizational health specialists
+                    </p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                      {['Mon, Oct 10 - 10:00 AM', 'Tue, Oct 11 - 2:00 PM', 'Wed, Oct 12 - 11:00 AM', 
+                        'Thu, Oct 13 - 3:00 PM', 'Fri, Oct 14 - 9:00 AM', 'Mon, Oct 17 - 1:00 PM'].map((time, index) => (
+                        <motion.button
+                          key={index}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`p-4 text-center rounded-lg transition-all ${
+                            darkMode 
+                              ? "bg-gray-700/50 border border-gray-600 hover:border-yellow-500" 
+                              : "bg-white border border-gray-200 hover:border-yellow-500"
+                          }`}
+                        >
+                          {time}
+                        </motion.button>
+                      ))}
+                    </div>
+                    
+                    <div className="text-center">
+                      <p className={`mb-4 ${
+                        darkMode ? "text-gray-400" : "text-gray-600"
+                      }`}>
+                        Or suggest your preferred time:
+                      </p>
+                      <div className="flex max-w-md mx-auto">
+                        <input
+                          type="text"
+                          placeholder="e.g., Friday afternoon"
+                          className={`flex-1 px-4 py-2 border-l border-t border-b rounded-l-lg focus:outline-none ${
+                            darkMode 
+                              ? "bg-gray-700 border-gray-600 text-white" 
+                              : "border-gray-300"
+                          }`}
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={`px-4 py-2 rounded-r-lg ${
+                            darkMode 
+                              ? "bg-indigo-700 text-white" 
+                              : "bg-indigo-600 text-white"
+                          }`}
+                        >
+                          Suggest
+                        </motion.button>
+                      </div>
                     </div>
                   </div>
+                  
+                  <div className="text-center">
+                    <p className={`text-xl mb-6 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}>
+                      How would you rate your assessment experience?
+                    </p>
+                    
+                    <div className="flex justify-center space-x-2 mb-8">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <motion.button
+                          key={star}
+                          variants={starBounce}
+                          whileHover="hover"
+                          whileTap="tap"
+                          onClick={() => setRating(star)}
+                          className="text-3xl focus:outline-none"
+                        >
+                          {star <= rating ? 
+                            <FaStar className="text-yellow-500" /> : 
+                            <FaRegStar className={darkMode ? "text-gray-600" : "text-gray-400"} />
+                          }
+                        </motion.button>
+                      ))}
+                    </div>
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)" }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleRatingSubmit}
+                      className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition"
+                    >
+                      Finish Assessment
+                    </motion.button>
+                  </div>
                 </div>
-                
-                <div className="text-center">
-                  <p className={`text-xl mb-6 ${
+              )}
+
+              {/* Thank You Modal */}
+              {activeModal === 'thankyou' && (
+                <div className="p-8 text-center">
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                    className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </motion.div>
+                  <h2 className={`text-4xl font-bold mb-4 ${
+                    darkMode ? "text-white" : "text-gray-900"
+                  }`}>
+                    Thank You!
+                  </h2>
+                  <p className={`text-xl mb-10 max-w-2xl mx-auto ${
                     darkMode ? "text-gray-300" : "text-gray-700"
                   }`}>
-                    How would you rate your assessment experience?
+                    Your assessment is complete and your results have been sent to your email.
+                    We appreciate your feedback and look forward to our consultation.
                   </p>
                   
-                  <div className="flex justify-center space-x-2 mb-8">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <motion.button
-                        key={star}
-                        whileHover={{ scale: 1.2 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => setRating(star)}
-                        className="text-3xl focus:outline-none"
-                      >
-                        {star <= rating ? 
-                          <FaStar className="text-yellow-500" /> : 
-                          <FaRegStar className={darkMode ? "text-gray-600" : "text-gray-400"} />
-                        }
-                      </motion.button>
-                    ))}
+                  <div className={`p-6 rounded-xl max-w-md mx-auto ${
+                    darkMode ? "bg-gray-800/30" : "bg-gray-100"
+                  }`}>
+                    <h3 className={`text-xl font-bold mb-4 ${
+                      darkMode ? "text-yellow-400" : "text-yellow-600"
+                    }`}>
+                      Next Steps
+                    </h3>
+                    <ul className={`space-y-3 text-left ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}>
+                      <li className="flex items-start">
+                        <span className="text-yellow-500 mr-2 mt-1">•</span>
+                        <span>Check your email for your results</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-yellow-500 mr-2 mt-1">•</span>
+                        <span>Review your calendar invitation for your consultation</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-yellow-500 mr-2 mt-1">•</span>
+                        <span>Prepare any questions for your session</span>
+                      </li>
+                    </ul>
                   </div>
                   
-                  <motion.button
-                    whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)" }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleRatingSubmit}
-                    className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition"
-                  >
-                    Finish Assessment
-                  </motion.button>
+                  <div className="mt-10">
+                    <motion.button
+                      whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)" }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => window.location.reload()}
+                      className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-800 transition"
+                    >
+                      Start New Assessment
+                    </motion.button>
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
-          )}
-
-          {/* Thank You Screen */}
-          {submitted && (
-            <motion.div
-              key="thank-you"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="max-w-3xl mx-auto text-center"
-            >
-              <div className={`p-12 rounded-2xl shadow-xl ${
-                darkMode 
-                  ? "bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700" 
-                  : "bg-gradient-to-br from-white to-gray-50 border border-gray-200"
-              }`}>
-                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <h2 className={`text-4xl font-bold mb-4 ${
-                  darkMode ? "text-white" : "text-gray-900"
-                }`}>
-                  Thank You!
-                </h2>
-                <p className={`text-xl mb-10 max-w-2xl mx-auto ${
-                  darkMode ? "text-gray-300" : "text-gray-700"
-                }`}>
-                  Your assessment is complete and your results have been sent to your email.
-                  We appreciate your feedback and look forward to our consultation.
-                </p>
-                
-                <div className={`p-6 rounded-xl max-w-md mx-auto ${
-                  darkMode ? "bg-gray-800/30" : "bg-gray-100"
-                }`}>
-                  <h3 className={`text-xl font-bold mb-4 ${
-                    darkMode ? "text-yellow-400" : "text-yellow-600"
-                  }`}>
-                    Next Steps
-                  </h3>
-                  <ul className={`space-y-3 text-left ${
-                    darkMode ? "text-gray-300" : "text-gray-700"
-                  }`}>
-                    <li className="flex items-start">
-                      <span className="text-yellow-500 mr-2 mt-1">•</span>
-                      <span>Check your email for your results</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-yellow-500 mr-2 mt-1">•</span>
-                      <span>Review your calendar invitation for your consultation</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-yellow-500 mr-2 mt-1">•</span>
-                      <span>Prepare any questions for your session</span>
-                    </li>
-                  </ul>
-                </div>
-                
-                <div className="mt-10">
-                  <motion.button
-                    whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)" }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => window.location.reload()}
-                    className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-800 transition"
-                  >
-                    Start New Assessment
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
