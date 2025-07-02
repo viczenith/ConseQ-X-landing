@@ -553,7 +553,7 @@ export default function HomePage() {
                     The Problem We Solve
                   </h3>
                   <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                    Organizations grow but become misaligned, inefficient, and reactive with broken culture, siloed functions, unclear goals, and low execution energy.
+                    As organizations grow, they often face challenges such as misalignment, inefficiency, and a reactive approach, leading to broken cultures and siloed functions that ultimately result in lost revenue.
                   </p>
                 </div>
               </motion.div>
@@ -617,7 +617,7 @@ export default function HomePage() {
                 <p className={`text-xl md:text-2xl font-medium mb-8 ${
                   darkMode ? "text-gray-300" : "text-gray-700"
                 }`}>
-                  Let's see how healthier your organization is.
+                  Is your organization healthy? Let's check
                 </p>
                 
                 {/* Centered button with animation */}
@@ -974,13 +974,13 @@ export default function HomePage() {
               <span className={`font-bold text-sm uppercase tracking-wider ${
                 darkMode ? "text-yellow-400" : "text-yellow-500"
               }`}>
-                Our Core Philosophy
+                Philosophy
               </span>
             </motion.div>
             <motion.h2 variants={fadeUp} className={`text-4xl md:text-5xl font-bold mb-16 ${
               darkMode ? "text-white" : "text-gray-900"
             }`}>
-              Our Methodology
+              Our Core Philosophy
             </motion.h2>
           </motion.div>
           
@@ -1012,7 +1012,7 @@ export default function HomePage() {
                   </h3>
                 </div>
                 <p className={`text-lg ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                  To become the most trusted systems-designing consulting partner in emerging and high-growth markets.
+                  Design influences behaviour and behaviour determines organizational performance!
                 </p>
               </motion.div>
               
