@@ -1,14 +1,14 @@
 {
   "files": {
-    "main.css": "/ConseQ-X-landing/static/css/main.023094ac.css",
-    "main.js": "/ConseQ-X-landing/static/js/main.fea509f7.js",
+    "main.css": "/ConseQ-X-landing/static/css/main.6eb7b543.css",
+    "main.js": "/ConseQ-X-landing/static/js/main.ad9dae6a.js",
     "static/media/ConseQ-X-3d.png": "/ConseQ-X-landing/static/media/ConseQ-X-3d.884c70e7aaf4d4f1b78f.png",
     "index.html": "/ConseQ-X-landing/index.html",
-    "main.023094ac.css.map": "/ConseQ-X-landing/static/css/main.023094ac.css.map",
-    "main.fea509f7.js.map": "/ConseQ-X-landing/static/js/main.fea509f7.js.map"
+    "main.6eb7b543.css.map": "/ConseQ-X-landing/static/css/main.6eb7b543.css.map",
+    "main.ad9dae6a.js.map": "/ConseQ-X-landing/static/js/main.ad9dae6a.js.map"
   },
   "entrypoints": [
-    "static/css/main.023094ac.css",
-    "static/js/main.fea509f7.js"
+    "static/css/main.6eb7b543.css",
+    "static/js/main.ad9dae6a.js"
   ]
 }
