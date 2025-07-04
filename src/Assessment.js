@@ -448,7 +448,7 @@ export default function AssessmentPlatform() {
               variants={fadeUp}
               >
                 <span className={darkMode ? "text-white" : "text-gray-600"}>
-                  Conse<span className="text-yellow-500">Q</span>-X-Ultra
+                  Conse<span className="text-yellow-500">Q</span>-Ultra
                 </span>
                 {/* <span className="text-sm ml-2 font-normal text-gray-500">Assessment</span> */}
               </motion.div>
