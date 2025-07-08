@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Routes, Route } from "react-router-dom";
 import HomePage from "./HomePage";
 import Assessment from "./Assessment";
+import InterdependencySystem from './pages/Systems/InterdependencySystem';
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -9,6 +10,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/assessment" element={<Assessment />} />
+        <Route path="/interdependency" element={<InterdependencySystem />} />
         <Route path="*" element={<div>Page not found</div>} />
       </Routes>
   );
