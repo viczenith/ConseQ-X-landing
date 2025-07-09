@@ -236,8 +236,8 @@ const SystemOfIllustration = ({
             </div>
           </>
         ) : (
-          /* Drill‑in view (questions only) */
           <motion.div
+            key={currentQuestion}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className={`rounded-2xl shadow-xl overflow-hidden ${
