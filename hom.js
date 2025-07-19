@@ -173,25 +173,12 @@ export default function HomePage() {
     "Productizing transformation for scale",
   ];
 
-  
-const whyDifferent = [
-                  {
-                    text: "We **systematize** what others guess",
-                    boldWord: "systematize"
-                  },
-                  {
-                    text: "We **embed**, not just advise",
-                    boldWord: "embed"
-                  },
-                  {
-                    text: "We **think in loops**, not silos",
-                    boldWord: "think in loops"
-                  },
-                  {
-                    text: "We **design** for humans and scale",
-                    boldWord: "design"
-                  }
-                ];
+  const whyDifferent = [
+    "We systematize what others guess",
+    "We embed, not just advise",
+    "We think in loops, not silos",
+    "We design for humans and scale"
+  ];
 
   return (
     <div className={`min-h-screen font-sans overflow-x-hidden transition-colors duration-500 ${
@@ -496,41 +483,6 @@ const whyDifferent = [
         </motion.div>
       </section>
 
-      {/* CTA Section  */}
-      <section id="mission" className={`py-20 md:py-32 ${
-        darkMode ? "bg-gray-900" : "bg-white"
-      }`}>
-        <div className="container mx-auto px-4">    
-              {/* Beautifully aligned text above button */}
-              <motion.div 
-                variants={fadeUp}
-                className="mt-16 text-center"
-              >
-                <p className={`text-xl md:text-2xl font-medium mb-8 ${
-                  darkMode ? "text-gray-300" : "text-gray-700"
-                }`}>
-                  Is your organization healthy? Let's check
-                </p>
-                
-                {/* Centered button with animation */}
-                <div className="flex justify-center">
-                  <motion.button
-                    whileHover={buttonHover}
-                    whileTap={buttonTap}
-                    onClick={ () => { 
-                      setShowToolModal(true);
-                    }}
-                    className={`px-16 py-8 bg-yellow-500 text-white font-bold hover:bg-yellow-600 rounded-lg shadow-lg transition-all ${
-                      darkMode ? "hover:bg-yellow-600" : "hover:bg-yellow-600"
-                    }`}
-                  >
-                    Take Your Assessment Now
-                  </motion.button>
-                </div>
-              </motion.div>
-          </div>
-      </section>
-
       {/* Vision Section */}
       <section id="vision" className={`py-20 md:py-32 ${
         darkMode 
@@ -586,7 +538,7 @@ const whyDifferent = [
                     Who We Are
                   </h3>
                   <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                    ConseQ-X, a systems-first, transformation-driven consultancy, turns complex organizational challenges into structured, productized solutions for lasting impact.
+                    ConseQ-X is a systems-first, transformation-focused consulting firm. We are a next-generation management consulting firm that productizes transformation.
                   </p>
                 </div>
                 
@@ -604,7 +556,7 @@ const whyDifferent = [
                     The Problem We Solve
                   </h3>
                   <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
-                    As organizations grow, they often face misalignment, inefficiencies, and reactive approaches, leading to fragmented cultures, siloed operations, inconsistent execution, and revenue loss.
+                    As organizations grow, they often face challenges such as misalignment, inefficiency, and a reactive approach, leading to broken cultures and siloed functions that ultimately result in lost revenue.
                   </p>
                 </div>
               </motion.div>
@@ -657,6 +609,34 @@ const whyDifferent = [
                       style={{ marginRight: "7rem" }}
                     />
                   </div>
+                </div>
+              </motion.div>
+              
+              {/* Beautifully aligned text above button */}
+              <motion.div 
+                variants={fadeUp}
+                className="mt-16 text-center"
+              >
+                <p className={`text-xl md:text-2xl font-medium mb-8 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}>
+                  Is your organization healthy? Let's check
+                </p>
+                
+                {/* Centered button with animation */}
+                <div className="flex justify-center">
+                  <motion.button
+                    whileHover={buttonHover}
+                    whileTap={buttonTap}
+                    onClick={ () => { 
+                      setShowToolModal(true);
+                    }}
+                    className={`px-8 py-3 bg-yellow-500 text-white font-semibold hover:bg-yellow-600 rounded-lg shadow-lg transition-all ${
+                      darkMode ? "hover:bg-yellow-600" : "hover:bg-yellow-600"
+                    }`}
+                  >
+                    Start Transformation
+                  </motion.button>
                 </div>
               </motion.div>
             </motion.div>
@@ -955,35 +935,30 @@ const whyDifferent = [
             </motion.h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {whyDifferent.map((point, index) => {
-                const parts = point.text.split(`**${point.boldWord}**`);
-                return (
-                  <motion.div 
-                    key={index}
-                    variants={fadeUp}
-                    className={`p-6 rounded-xl ${
-                      darkMode ? "bg-gray-800/50" : "bg-white"
-                    } shadow-md`}
-                    whileHover={{ 
-                      scale: 1.03,
-                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)"
-                    }}
-                  >
-                    <div className={`w-12 h-12 rounded-lg ${
-                      darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
-                    } flex items-center justify-center mb-4`}>
-                      <span className="text-yellow-500 font-bold text-lg">{index + 1}</span>
-                    </div>
-                    <p className={`text-lg ${
-                      darkMode ? "text-gray-200" : "text-gray-800"
-                    }`}>
-                      {parts[0]}
-                      <span className="font-bold text-yellow-500">{point.boldWord}</span>
-                      {parts[1]}
-                    </p>
-                  </motion.div>
-                );
-              })}
+              {whyDifferent.map((point, index) => (
+                <motion.div 
+                  key={index}
+                  variants={fadeUp}
+                  className={`p-6 rounded-xl ${
+                    darkMode ? "bg-gray-800/50" : "bg-white"
+                  } shadow-md`}
+                  whileHover={{ 
+                    scale: 1.03,
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)"
+                  }}
+                >
+                  <div className={`w-12 h-12 rounded-lg ${
+                    darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
+                  } flex items-center justify-center mb-4`}>
+                    <span className="text-yellow-500 font-bold text-lg">{index + 1}</span>
+                  </div>
+                  <p className={`text-lg ${
+                    darkMode ? "text-gray-200" : "text-gray-800"
+                  }`}>
+                    {point}
+                  </p>
+                </motion.div>
+              ))}
             </div>
           </motion.div>
         </div>
@@ -1016,27 +991,35 @@ const whyDifferent = [
           
           <div className="max-w-5xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                  {/* What We See */}
-                  <motion.div 
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    variants={fadeUp}
-                    className={`p-8 rounded-xl flex justify-center items-center shadow-lg ${
-                      darkMode ? "bg-gray-800/50" : "bg-gray-50"
-                    }`}
-                  >
-                    <p  className={`text-2xl md:text-3xl font-light pl-4 max-w-4xl ${
-                        darkMode ? "text-gray-300" : "text-gray-800"
-                      }`}>
-                      <span className="text-yellow-500 font-semibold">Design </span>
-                       influences <span className="text-yellow-500 font-semibold ">
-                      behaviour </span> and behaviour determines organizational   
-                      <span className="text-yellow-500 font-semibold"> performance! </span>
-                        
-                    </p>
-                  </motion.div>
-
+              {/* What We See */}
+              <motion.div 
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                variants={fadeUp}
+                className={`p-8 rounded-xl shadow-lg ${
+                  darkMode ? "bg-gray-800/50" : "bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center mb-6">
+                  <div className={`w-12 h-12 rounded-lg ${
+                    darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
+                  } flex items-center justify-center mr-4`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </div>
+                  <h3 className={`text-2xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-900"
+                  }`}>
+                    What We See
+                  </h3>
+                </div>
+                <p className={`text-lg ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                  Design influences behaviour and behaviour determines organizational performance!
+                </p>
+              </motion.div>
               
               {/* Our DNA */}
               <motion.div 
@@ -1065,24 +1048,24 @@ const whyDifferent = [
                 <ul className={`space-y-3 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                   <li className="flex items-start">
                     <span className="text-yellow-500 mr-2 mt-1">•</span>
-                    <span>Systems Driven  Transformation</span>
+                    <span>TORIL Framework (Systems-Based Transformation)</span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-yellow-500 mr-2 mt-1">•</span>
-                    <span> Relational and Cognitive Precision</span>
+                    <span>Proprietary Maturity Models</span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-yellow-500 mr-2 mt-1">•</span>
-                    <span> Industry Agnostic Adaptability</span>
+                    <span>Feedback Loop Architecture</span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-yellow-500 mr-2 mt-1">•</span>
-                    <span>Collaborative Partnership Model</span>
+                    <span>Scalable Consulting Toolkits</span>
                   </li>
-                  {/* <li className="flex items-start">
+                  <li className="flex items-start">
                     <span className="text-yellow-500 mr-2 mt-1">•</span>
                     <span>Human-Centric Change Programs</span>
-                  </li>  */}
+                  </li>
                 </ul>
               </motion.div>
             </div>

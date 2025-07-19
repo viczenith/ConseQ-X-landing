@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Routes, Route } from "react-router-dom";
 import HomePage from "./HomePage";
 import Assessment from "./Assessment";
+import AssessmentResults from './AssessmentResults';
 import InterdependencySystem from './pages/Systems/InterdependencySystem';
 import SystemOfInlignment from './pages/Systems/SystemOfInlignment';
 import SystemOfInvestigation from './pages/Systems/SystemOfInvestigation';
@@ -15,6 +16,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/assessment" element={<Assessment />} />
+        <Route path="/results" element={<AssessmentResults />} />
         <Route path="/interdependency" element={<InterdependencySystem />} />
         
         <Route path="/system/inlignment" element={<SystemOfInlignment />} />
