@@ -1,4 +1,3 @@
-// src/Layout.jsx
 import React from 'react';
 import { motion } from 'framer-motion';
 import Logo3D from './assets/ConseQ-X-3d.png';
