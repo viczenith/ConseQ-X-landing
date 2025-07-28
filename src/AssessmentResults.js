@@ -1,154 +1,133 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import ResultAnalysis from './components/ResultAnalysis';
-import ReportGenerator from './components/ReportGenerator';
-import { systems } from './data/systems';
-import { 
-  calculateSubAssessmentScore,
-  getSubAssessmentInterpretation,
-  getSystemInterpretation
-} from './utils/scoringUtils';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaDownload, FaTimes } from 'react-icons/fa';
+import { generateSystemReport } from './utils/aiPromptGenerator';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
-import { generateAIAnalysis } from './utils/aiPromptGenerator';
-
-export default function AssessmentResults() {
-  const location = useLocation();
-  const { userInfo, answers } = location.state || {};
-  const [completedSystems, setCompletedSystems] = useState([]);
-  const [reportType, setReportType] = useState('full');
-  const [selectedSystems, setSelectedSystems] = useState([]);
-  const [analysis, setAnalysis] = useState(null);
+export default function AssessmentResults({
+  isOpen,
+  onClose,
+  scores,
+  userInfo,
+  selectedSystems,
+  darkMode
+}) {
+  const [analysisContent, setAnalysisContent] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pdfReady, setPdfReady] = useState(false);
+  const analysisRef = useRef(null);
 
-  // Calculate completed systems
   useEffect(() => {
-    const completed = systems.filter(system => {
-      return system.subAssessments.every(sub => 
-        answers[sub.id] && 
-        Object.keys(answers[sub.id]).length === sub.questions.length
-      );
-    });
-    setCompletedSystems(completed);
-    setSelectedSystems(completed.map(sys => sys.id));
-  }, [answers]);
-
-  // Calculate scores
-  const calculateScores = () => {
-    const scores = {};
-    
-    completedSystems.forEach(system => {
-      const systemScores = {
-        systemScore: 0,
-        maxSystemScore: 0,
-        subAssessments: {}
-      };
-      
-      system.subAssessments.forEach(sub => {
-        const scoreData = calculateSubAssessmentScore(sub.id, answers[sub.id]);
-        const interpretation = getSubAssessmentInterpretation(sub.id, scoreData.score);
-        
-        systemScores.subAssessments[sub.id] = {
-          ...scoreData,
-          interpretation
-        };
-        
-        systemScores.systemScore += scoreData.score;
-        systemScores.maxSystemScore += scoreData.maxScore;
-      });
-      
-      systemScores.interpretation = getSystemInterpretation(
-        system.id, 
-        systemScores.systemScore
-      );
-      
-      scores[system.id] = systemScores;
-    });
-    
-    return scores;
-  };
-
-  const handleGenerateReport = async () => {
-    setLoading(true);
-    try {
-      const scores = calculateScores();
-      const response = await generateAIAnalysis(scores);
-      setAnalysis(response);
-    } catch (error) {
-      console.error("Error generating analysis:", error);
-    } finally {
+    if (isOpen) {
+      setLoading(true);
+      (async () => {
+        try {
+          const report = await generateSystemReport({ scores, userInfo, selectedSystems });
+          setAnalysisContent(report);
+        } catch (err) {
+          setAnalysisContent('Error generating report. Please try again.');
+        } finally {
+          setLoading(false);
+          setPdfReady(true);
+        }
+      })();
+    } else {
+      // cleanup
+      setAnalysisContent('');
       setLoading(false);
+      setPdfReady(false);
     }
+  }, [isOpen, scores, userInfo, selectedSystems]);
+
+  const downloadPDF = () => {
+    if (!analysisRef.current) return;
+    html2canvas(analysisRef.current, {
+      scale: 2,
+      backgroundColor: darkMode ? '#1f2937' : '#ffffff'
+    }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`${userInfo.organization || 'assessment'}_report.pdf`);
+    });
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Assessment Results</h1>
-      
-      {/* Report Type Selection */}
-      <div className="mb-8 p-4 bg-white rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Report Options</h2>
-        <div className="flex space-x-4">
-          <button 
-            className={`px-4 py-2 rounded ${reportType === 'full' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            onClick={() => setReportType('full')}
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0.9 }}
+            className={`relative w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl flex flex-col ${
+              darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'
+            }`}
+            onClick={e => e.stopPropagation()}
           >
-            Full Report
-          </button>
-          <button 
-            className={`px-4 py-2 rounded ${reportType === 'selected' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            onClick={() => setReportType('selected')}
-          >
-            Selected Systems
-          </button>
-        </div>
-        
-        {reportType === 'selected' && (
-          <div className="mt-4">
-            <h3 className="font-medium mb-2">Select Systems:</h3>
-            {completedSystems.map(system => (
-              <div key={system.id} className="flex items-center mb-2">
-                <input
-                  type="checkbox"
-                  checked={selectedSystems.includes(system.id)}
-                  onChange={() => handleSystemSelect(system.id)}
-                  className="mr-2"
-                />
-                <span>{system.title}</span>
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              <FaTimes />
+            </button>
+
+            <div className="p-6 overflow-y-auto max-h-[80vh]">
+              {loading ? (
+                <p className="text-center text-lg">
+                  Generating AI Analysis...
+                </p>
+              ) : (
+                <div ref={analysisRef} className="prose prose-lg dark:prose-invert max-w-none">
+                  {analysisContent.split('\n').map((line, idx) =>
+                    line.trim() ? <p key={idx}>{line}</p> : <br key={`br-${idx}`} />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {!loading && (
+              <div className="flex justify-end items-center space-x-4 p-4 border-t">
+                <button
+                  onClick={downloadPDF}
+                  className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <FaDownload className="mr-2" /> Download PDF
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  Close
+                </button>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-      
-      {/* AI Analysis Section */}
-      {analysis ? (
-        <ResultAnalysis analysis={analysis} />
-      ) : (
-        <div className="text-center py-12">
-          <button 
-            onClick={handleGenerateReport}
-            disabled={loading}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Generating Report...' : 'Generate AI Analysis'}
-          </button>
-        </div>
+            )}
+          </motion.div>
+        </motion.div>
       )}
-      
-      {/* PDF Download */}
-      {analysis && (
-        <div className="mt-8">
-          <ReportGenerator analysis={analysis} userInfo={userInfo} />
-        </div>
-      )}
-    </div>
+    </AnimatePresence>
   );
-  
-  function handleSystemSelect(systemId) {
-    setSelectedSystems(prev => 
-      prev.includes(systemId)
-        ? prev.filter(id => id !== systemId)
-        : [...prev, systemId]
-    );
-  }
 }
