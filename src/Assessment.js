@@ -42,6 +42,111 @@ export default function AssessmentPlatform() {
   const analysisRef = useRef(null);
 
   // Custom renderers for ReactMarkdown
+  // const MarkdownComponents = {
+  //   h1: ({ node, ...props }) => (
+  //     <h1 className={`text-3xl font-bold mt-6 mb-4 ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`} {...props} />
+  //   ),
+  //   h2: ({ node, ...props }) => (
+  //     <h2 className={`text-2xl font-bold mt-5 mb-3 ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`} {...props} />
+  //   ),
+  //   h3: ({ node, ...props }) => (
+  //     <h3 className={`text-xl font-bold mt-4 mb-2 ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`} {...props} />
+  //   ),
+  //   table: ({ node, ...props }) => (
+  //     <div className="overflow-x-auto">
+  //       <table className="w-full my-4 border-collapse" {...props} />
+  //     </div>
+  //   ),
+  //   thead: ({ node, ...props }) => (
+  //     <thead className={`${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`} {...props} />
+  //   ),
+  //   th: ({ node, ...props }) => (
+  //     <th 
+  //       className={`px-4 py-3 text-left border ${darkMode ? 'border-gray-700' : 'border-gray-300'} ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`} 
+  //       {...props} 
+  //     />
+  //   ),
+  //   td: ({ node, ...props }) => (
+  //     <td 
+  //       className={`px-4 py-2 border ${darkMode ? 'border-gray-700' : 'border-gray-300'}`} 
+  //       {...props} 
+  //     />
+  //   ),
+  //   tr: ({ node, ...props }) => (
+  //     <tr 
+  //       className={`${darkMode ? 'even:bg-gray-800/50' : 'even:bg-gray-50'} hover:${darkMode ? 'bg-gray-700/30' : 'bg-gray-100'}`} 
+  //       {...props} 
+  //     />
+  //   ),
+  //   code({ node, inline, className, children, ...props }) {
+  //     const match = /language-(\w+)/.exec(className || '');
+  //     return !inline && match ? (
+  //       <SyntaxHighlighter
+  //         style={darkMode ? materialDark : materialLight}
+  //         language={match[1]}
+  //         PreTag="div"
+  //         {...props}
+  //         className="rounded-lg mb-4"
+  //       >
+  //         {String(children).replace(/\n$/, '')}
+  //       </SyntaxHighlighter>
+  //     ) : (
+  //       <code 
+  //         className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-yellow-300' : 'bg-yellow-100 text-yellow-800'}`} 
+  //         {...props}
+  //       >
+  //         {children}
+  //       </code>
+  //     );
+  //   },
+  //   a: ({ node, ...props }) => (
+  //     <a 
+  //       className={`font-medium ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} underline`} 
+  //       target="_blank" 
+  //       rel="noopener noreferrer" 
+  //       {...props} 
+  //     />
+  //   ),
+  //   blockquote: ({ node, ...props }) => (
+  //     <blockquote 
+  //       className={`border-l-4 ${darkMode ? 'border-yellow-500' : 'border-yellow-400'} pl-4 italic my-4`} 
+  //       {...props} 
+  //     />
+  //   ),
+  //   ul: ({ node, ...props }) => (
+  //     <ul className={`list-disc pl-8 my-3 space-y-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`} {...props} />
+  //   ),
+  //   ol: ({ node, ...props }) => (
+  //     <ol className={`list-decimal pl-8 my-3 space-y-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`} {...props} />
+  //   ),
+  //   li: ({ node, ...props }) => <li className="py-0.5" {...props} />,
+  //   p: ({ node, ...props }) => (
+  //     <p className={`my-3 leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-700'}`} {...props} />
+  //   ),
+  //   span: ({ node, ...props }) => {
+  //     if (props.className === 'text-justify') {
+  //       return <div className="text-justify my-4" {...props} />;
+  //     }
+  //     return <span {...props} />;
+  //   },
+  //   div: ({ node, ...props }) => {
+  //     if (props.className === 'health-status') {
+  //       return (
+  //         <div className={`relative my-6 p-5 rounded-lg border-l-4 ${darkMode ? 'border-blue-400 bg-gray-800/50' : 'border-blue-500 bg-blue-50'}`} {...props}>
+  //           <div className="absolute top-0 left-0 text-6xl opacity-10 font-bold">"</div>
+  //           {props.children}
+  //         </div>
+  //       );
+  //     }
+  //     if (props.className === 'recommendation-box') {
+  //       return (
+  //         <div className={`my-6 p-5 rounded-xl border ${darkMode ? 'border-green-500/30 bg-gradient-to-r from-gray-800/50 to-gray-900/50' : 'border-green-400 bg-gradient-to-r from-green-50 to-white'}`} {...props} />
+  //       );
+  //     }
+  //     return <div {...props} />;
+  //   }
+  // };
+
   const MarkdownComponents = {
     h1: ({ node, ...props }) => (
       <h1 className={`text-3xl font-bold mt-6 mb-4 ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`} {...props} />
@@ -53,8 +158,8 @@ export default function AssessmentPlatform() {
       <h3 className={`text-xl font-bold mt-4 mb-2 ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`} {...props} />
     ),
     table: ({ node, ...props }) => (
-      <div className="overflow-x-auto">
-        <table className="w-full my-4 border-collapse" {...props} />
+      <div className="overflow-x-auto my-6">
+        <table className="w-full border-collapse shadow-lg" {...props} />
       </div>
     ),
     thead: ({ node, ...props }) => (
@@ -62,7 +167,7 @@ export default function AssessmentPlatform() {
     ),
     th: ({ node, ...props }) => (
       <th 
-        className={`px-4 py-3 text-left border ${darkMode ? 'border-gray-700' : 'border-gray-300'} ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`} 
+        className={`px-4 py-3 text-left font-bold ${darkMode ? 'border-gray-700 text-yellow-400' : 'border-gray-300 text-yellow-600'}`} 
         {...props} 
       />
     ),
@@ -74,7 +179,7 @@ export default function AssessmentPlatform() {
     ),
     tr: ({ node, ...props }) => (
       <tr 
-        className={`${darkMode ? 'even:bg-gray-800/50' : 'even:bg-gray-50'} hover:${darkMode ? 'bg-gray-700/30' : 'bg-gray-100'}`} 
+        className={`${darkMode ? 'even:bg-gray-800/50 hover:bg-gray-700/30' : 'even:bg-gray-50 hover:bg-gray-100'}`} 
         {...props} 
       />
     ),
@@ -123,29 +228,31 @@ export default function AssessmentPlatform() {
     p: ({ node, ...props }) => (
       <p className={`my-3 leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-700'}`} {...props} />
     ),
-    span: ({ node, ...props }) => {
-      if (props.className === 'text-justify') {
-        return <div className="text-justify my-4" {...props} />;
-      }
-      return <span {...props} />;
-    },
-    div: ({ node, ...props }) => {
-      if (props.className === 'health-status') {
+    // Health status component
+    div: ({ node, className, ...props }) => {
+      if (className === 'health-status') {
         return (
-          <div className={`relative my-6 p-5 rounded-lg border-l-4 ${darkMode ? 'border-blue-400 bg-gray-800/50' : 'border-blue-500 bg-blue-50'}`} {...props}>
+          <div className={`relative my-6 p-5 rounded-lg border-l-4 ${
+            darkMode ? 'border-blue-400 bg-gray-800/50' : 'border-blue-500 bg-blue-50'
+          }`}>
             <div className="absolute top-0 left-0 text-6xl opacity-10 font-bold">"</div>
-            {props.children}
+            <p className={`italic text-lg ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+              {props.children}
+            </p>
           </div>
         );
       }
-      if (props.className === 'recommendation-box') {
-        return (
-          <div className={`my-6 p-5 rounded-xl border ${darkMode ? 'border-green-500/30 bg-gradient-to-r from-gray-800/50 to-gray-900/50' : 'border-green-400 bg-gradient-to-r from-green-50 to-white'}`} {...props} />
-        );
-      }
       return <div {...props} />;
-    }
+    },
+    // Custom components for specific report sections
+    em: ({ node, ...props }) => (
+      <span className="italic text-yellow-500" {...props} />
+    ),
+    strong: ({ node, ...props }) => (
+      <strong className={`font-bold ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`} {...props} />
+    ),
   };
+
 
   // Navbar scroll effect
   const handleScroll = () => {
@@ -1302,7 +1409,127 @@ export default function AssessmentPlatform() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: ${darkMode ? 'rgba(209, 213, 219, 0.7)' : 'rgba(107, 114, 128, 0.7)'};
         }
-        
+
+        .report-content {
+          font-family: 'Inter', sans-serif;
+          line-height: 1.6;
+        }
+
+        .report-content h1, 
+        .report-content h2, 
+        .report-content h3 {
+          font-weight: 700;
+          margin-top: 1.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .report-content h1 {
+          font-size: 2rem;
+          border-bottom: 2px solid;
+          padding-bottom: 0.5rem;
+          ${({ darkMode }) => darkMode 
+            ? 'border-color: #f59e0b; color: #f59e0b;' 
+            : 'border-color: #d97706; color: #d97706;'
+          }
+        }
+
+        .report-content h2 {
+          font-size: 1.75rem;
+          ${({ darkMode }) => darkMode 
+            ? 'color: #fbbf24;' 
+            : 'color: #ca8a04;'
+          }
+        }
+
+        .report-content h3 {
+          font-size: 1.5rem;
+          ${({ darkMode }) => darkMode 
+            ? 'color: #fcd34d;' 
+            : 'color: #a16207;'
+          }
+        }
+
+        .report-content table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 1.5rem 0;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .report-content th {
+          background: ${({ darkMode }) => darkMode ? '#1f2937' : '#f3f4f6'};
+          text-align: left;
+          padding: 14px;
+          font-weight: 600;
+          border-bottom: 2px solid ${({ darkMode }) => darkMode ? '#374151' : '#d1d5db'};
+          color: ${({ darkMode }) => darkMode ? '#f59e0b' : '#d97706'};
+        }
+
+        .report-content td {
+          padding: 12px 14px;
+          border-bottom: 1px solid ${({ darkMode }) => darkMode ? '#374151' : '#e5e7eb'};
+        }
+
+        .report-content tr:last-child td {
+          border-bottom: none;
+        }
+
+        .report-content .rating-emoji {
+          font-size: 1.4em;
+          text-align: center;
+          display: block;
+        }
+
+        .recommendation-box {
+          background: ${({ darkMode }) => darkMode 
+            ? 'linear-gradient(to right, #1e3c72, #2a5298)' 
+            : 'linear-gradient(to right, #e6f7ff, #ffffff)'
+          };
+          border: 1px solid ${({ darkMode }) => darkMode ? '#4ade80' : '#86efac'};
+          border-radius: 8px;
+          padding: 1.8rem;
+          margin: 2.5rem 0;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .recommendation-box::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: ${({ darkMode }) => darkMode 
+            ? 'linear-gradient(to right, #4ade80, #3b82f6)' 
+            : 'linear-gradient(to right, #10b981, #3b82f6)'
+          };
+        }
+
+        .health-status {
+          background: ${({ darkMode }) => darkMode ? '#2d3748' : '#f0f9ff'};
+          border-left: 4px solid #3B82F6;
+          padding: 1.5rem;
+          margin: 2rem 0;
+          font-style: italic;
+          font-size: 1.2em;
+          border-radius: 0 8px 8px 0;
+          position: relative;
+        }
+
+        .health-status::before {
+          content: """;
+          position: absolute;
+          top: -20px;
+          left: 10px;
+          font-size: 4em;
+          color: ${({ darkMode }) => darkMode ? '#4a5568' : '#dbeafe'};
+          font-family: Georgia, serif;
+          z-index: 0;
+        }
+        `}</style>
+{/*         
         .header-center {
           text-align: center;
           margin-bottom: 2rem;
@@ -1391,8 +1618,7 @@ export default function AssessmentPlatform() {
           font-size: 1.4em;
           text-align: center;
           display: block;
-        }
-      `}</style>
+        } */}
     </div>
   );
 }
