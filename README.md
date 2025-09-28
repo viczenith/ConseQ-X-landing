@@ -17,7 +17,7 @@ src/
 │   ├── ReportGenerator.js
 │   └── ReportPDF.js
 └── utils/
-    └── aiPromptGenerator.js
+    └── scoringUtils.js
 
 MODELS
 | Model Name          | Model ID for OpenRouter           | Notes                            |
