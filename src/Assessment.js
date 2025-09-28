@@ -605,21 +605,73 @@ export default function AssessmentPlatform() {
   const GuestRegisterBanner = () => {
     if (auth && auth.user) return null;
     if (!showRegisterCTA) return null;
+
+    // prefer explicit darkMode boolean from parent; fallback to document class
+    const isDark =
+      typeof darkMode !== "undefined"
+        ? darkMode
+        : typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+
+    // Theme-aware classes
+    const bg = isDark ? "bg-gray-900/85 text-gray-100" : "bg-white/95 text-gray-900";
+    const borderColor = isDark ? "border-gray-700" : "border-gray-200";
+    const descCls = isDark ? "text-xs text-gray-300" : "text-xs text-gray-500";
+
+    const primaryBtn =
+      "px-3 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-1 transition";
+    const primaryTheme = isDark
+      ? "bg-amber-400 text-gray-900 hover:bg-amber-500 focus:ring-amber-400"
+      : "bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-300";
+
+    const ghostBtn =
+      "px-3 py-2 rounded-md text-sm border focus:outline-none focus:ring-2 focus:ring-offset-1 transition";
+    const ghostTheme = isDark
+      ? "border-gray-700 text-gray-300 hover:bg-gray-800/40 focus:ring-gray-600"
+      : "border-gray-200 text-gray-700 hover:bg-gray-50 focus:ring-gray-300";
+
     return (
-      <div className="fixed bottom-6 right-6 z-50">
-        <div className="bg-white dark:bg-gray-800 border rounded-xl p-3 shadow-lg flex items-center gap-3">
-          <div>
-            <div className="text-sm font-semibold">Save your assessment</div>
-            <div className="text-xs text-gray-500">Register to save progress, invite team & unlock CEO dashboard</div>
+      <div className="fixed bottom-5 right-4 z-50">
+        <div
+          role="region"
+          aria-live="polite"
+          aria-label="Save your assessment"
+          className={`max-w-xs sm:max-w-sm w-full ${bg} rounded-lg p-3 sm:p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 shadow-lg border-2 border-dotted ${borderColor}`}
+        >
+          {/* Left content */}
+          <div className="flex-1 min-w-0">
+            <div className={`text-sm font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Save your assessment</div>
+            <div className={descCls}>Register to save progress, invite team & unlock CEO dashboard</div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => openAuthModal("register")} className="px-3 py-2 rounded-md bg-yellow-500 text-white">Register</button>
-            <button onClick={() => setShowRegisterCTA(false)} className="px-3 py-2 rounded-md border">Dismiss</button>
+
+          {/* Buttons */}
+          <div className="flex gap-2 items-center w-full sm:w-auto">
+            <button
+              onClick={() => openAuthModal("register")}
+              className={`${primaryBtn} ${primaryTheme} w-full sm:w-auto`}
+              aria-label="Register to save assessment"
+              title="Register to save your assessment"
+            >
+              Register
+            </button>
+
+            
           </div>
+
+          {/* small close for quick dismiss (keeps layout slim) */}
+          <button
+            onClick={() => setShowRegisterCTA(false)}
+            aria-label="Close"
+            title="Close"
+            className={`ml-auto sm:ml-2 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-1 transition ${isDark ? "text-gray-400 hover:text-gray-200 focus:ring-gray-600" : "text-gray-500 hover:text-gray-700 focus:ring-gray-300"}`}
+          >
+            ✕
+          </button>
         </div>
       </div>
     );
   };
+
+
 
   // CEODashboard CTA button
   function CEODashboardButton() {
@@ -669,26 +721,137 @@ export default function AssessmentPlatform() {
     const smallBtnClass = `px-3 py-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-gray-200" : "bg-white border-gray-200 text-gray-700"}`;
     const primaryBtnClass = `px-4 py-2 rounded ${darkMode ? "bg-indigo-500 hover:bg-indigo-600 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`;
 
+    // async function submitRegister(e) {
+    //   e && e.preventDefault && e.preventDefault();
+    //   setLocalError(null);
+    //   if (!localPhone) return setLocalError("Phone required");
+    //   if (!localPassword || localPassword.length < 4) return setLocalError("Password must be at least 4 characters");
+    //   if (localPassword !== localConfirmPassword) return setLocalError("Passwords must match");
+    //   setLocalProcessing(true);
+    //   await handleRegisterSubmitForCEO({ email: localEmail, phone: localPhone, password: localPassword, orgName, ceoName: userInfo.role || authForm.name });
+    //   setLocalProcessing(false);
+    // }
+
+    // async function submitLogin(e) {
+    //   e && e.preventDefault && e.preventDefault();
+    //   setLocalError(null);
+    //   if (!localEmail) return setLocalError("Email required");
+    //   if (!localLoginPassword) return setLocalError("Password required");
+    //   setLocalProcessing(true);
+    //   await handleLoginSubmitForCEO({ email: localEmail, password: localLoginPassword, orgName, ceoName: userInfo.role || authForm.name, phone: localPhone });
+    //   setLocalProcessing(false);
+    // }
+
+    // inside CEOPrompt component
     async function submitRegister(e) {
-      e && e.preventDefault && e.preventDefault();
-      setLocalError(null);
-      if (!localPhone) return setLocalError("Phone required");
-      if (!localPassword || localPassword.length < 4) return setLocalError("Password must be at least 4 characters");
-      if (localPassword !== localConfirmPassword) return setLocalError("Passwords must match");
+      e.preventDefault();
       setLocalProcessing(true);
-      await handleRegisterSubmitForCEO({ email: localEmail, phone: localPhone, password: localPassword, orgName, ceoName: userInfo.role || authForm.name });
-      setLocalProcessing(false);
+      setLocalError(null);
+
+      // basic client-side checks
+      if (!localEmail) {
+        setLocalError("Please provide an email.");
+        setLocalProcessing(false);
+        return;
+      }
+      if (!localPassword || localPassword !== localConfirmPassword) {
+        setLocalError("Passwords are required and must match.");
+        setLocalProcessing(false);
+        return;
+      }
+
+      try {
+        // call AuthContext.register (this mock registers and sets current in your context)
+        const res = await auth.register({
+          orgName: typeof orgName !== "undefined" ? orgName : "Org",
+          ceoName: "",
+          email: localEmail,
+          phone: localPhone || "",
+          password: localPassword,
+        });
+
+        // registration succeeded. For demo, we DO NOT keep the user signed in.
+        // Force sign-out so we end up on the Login view instead.
+        try {
+          if (typeof auth.logout === "function") {
+            auth.logout();
+          }
+        } catch (logoutErr) {
+          console.warn("Logout after register failed (demo):", logoutErr);
+        }
+
+        // Switch the modal to the Login form and prefill the email (and optionally password)
+        setLocalIsLogin(true);
+        // prefill the login email, and optionally the password for convenience
+        if (typeof setLocalEmail === "function") setLocalEmail(localEmail);
+        if (typeof setLocalLoginPassword === "function") setLocalLoginPassword(localPassword);
+
+        // Give the user a small success message
+        setLocalError(null);
+        // optionally show a short success toast/banner here (not required)
+
+      } catch (err) {
+        console.error("Register error", err);
+        setLocalError(err?.message || "Registration failed. Try again.");
+      } finally {
+        setLocalProcessing(false);
+      }
     }
 
+
+    // inside CEOPrompt component
     async function submitLogin(e) {
-      e && e.preventDefault && e.preventDefault();
-      setLocalError(null);
-      if (!localEmail) return setLocalError("Email required");
-      if (!localLoginPassword) return setLocalError("Password required");
+      e.preventDefault();
       setLocalProcessing(true);
-      await handleLoginSubmitForCEO({ email: localEmail, password: localLoginPassword, orgName, ceoName: userInfo.role || authForm.name, phone: localPhone });
-      setLocalProcessing(false);
+      setLocalError(null);
+
+      if (!localEmail || !localLoginPassword) {
+        setLocalError("Email and password are required.");
+        setLocalProcessing(false);
+        return;
+      }
+
+      try {
+        const res = await auth.login({ email: localEmail, password: localLoginPassword });
+        if (!res) {
+          setLocalError("Invalid credentials or user not found. Try registering.");
+          setLocalProcessing(false);
+          return;
+        }
+
+        // Close the prompt
+        try { setShowCEOPrompt(false); } catch (e) { /* ignore if not defined */ }
+
+        // Wait briefly / poll the auth context to ensure AuthProvider has persisted state
+        const start = Date.now();
+        const timeout = 3000;
+        let confirmed = false;
+        while (Date.now() - start < timeout) {
+          try {
+            const cur = auth.getCurrent ? auth.getCurrent() : null;
+            if (cur && cur.user && cur.user.email === res.user.email) {
+              confirmed = true;
+              break;
+            }
+          } catch (e) {
+            // ignore
+          }
+          // short sleep
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, 120));
+        }
+
+        // Navigate once confirmed (or anyway after short delay)
+        setTimeout(() => navigate("/ceo-dashboard", { replace: true }), 100);
+
+      } catch (err) {
+        console.error("Login error", err);
+        setLocalError(err?.message || "Login failed. Try again.");
+      } finally {
+        setLocalProcessing(false);
+      }
     }
+
 
     return (
       <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
@@ -715,7 +878,7 @@ export default function AssessmentPlatform() {
                 <div className={`font-semibold ${strongText}`}>{initialEmail || <span className="text-gray-400">Not provided</span>}</div>
               </div>
 
-              <div className={`mt-4 text-xs ${subtleText}`}>By continuing you agree to receive onboarding emails. This is a mock signup (no payment or DB).</div>
+              <div className={`mt-4 text-xs ${subtleText}`}>By continuing you agree to receive onboarding emails. Your data is secured with our end to end security.</div>
             </div>
 
             {/* right auth panel */}
@@ -998,43 +1161,112 @@ export default function AssessmentPlatform() {
         darkMode={darkMode}
       />
 
-      {/* Auth Modal (Register / Login) */}
+      {/* Guest Auth Modal (Register / Login) */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">{authMode === "register" ? "Register Organization" : "Sign in"}</h3>
-              <button onClick={() => setShowAuthModal(false)} className="text-gray-500"><FaTimes /></button>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={authMode === "register" ? "Register Organization" : "Sign in"}
+          onClick={() => setShowAuthModal(false)}
+        >
+          <div
+            className={`w-full max-w-md mx-auto rounded-xl overflow-hidden shadow-2xl transform transition-all duration-200
+              ${darkMode ? "bg-gray-900 border border-gray-800" : "bg-white border border-gray-200"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className={`px-6 py-4 flex items-center justify-between ${darkMode ? "bg-gradient-to-r from-gray-800 to-gray-900" : "bg-white"}`}>
+              <h3 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                {authMode === "register" ? "Register Organization" : "Sign in"}
+              </h3>
+              <button
+                onClick={() => setShowAuthModal(false)}
+                aria-label="Close auth modal"
+                className={`p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition ${
+                  darkMode ? "text-gray-300 hover:text-white focus:ring-gray-600" : "text-gray-500 hover:text-gray-700 focus:ring-gray-300"
+                }`}
+              >
+                <FaTimes />
+              </button>
             </div>
 
-            <form onSubmit={handleAuthSubmit} className="mt-4 space-y-3">
+            {/* Body / Form */}
+            <form onSubmit={handleAuthSubmit} className={`px-6 py-5 space-y-4 ${darkMode ? "text-gray-200" : "text-gray-800"}`} autoComplete="off" spellCheck="false">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Organization</label>
-                <input value={authForm.orgName} onChange={(e) => setAuthForm((f) => ({ ...f, orgName: e.target.value }))} placeholder="Organization name" className="mt-1 w-full px-3 py-2 rounded-md border placeholder-black dark:placeholder-gray-300" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Your name / Role</label>
-                <input value={authForm.name} onChange={(e) => setAuthForm((f) => ({ ...f, name: e.target.value }))} placeholder="Your name or role" className="mt-1 w-full px-3 py-2 rounded-md border placeholder-black dark:placeholder-gray-300" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                <input value={authForm.email} onChange={(e) => setAuthForm((f) => ({ ...f, email: e.target.value }))} placeholder="you@company.com" className="mt-1 w-full px-3 py-2 rounded-md border placeholder-black dark:placeholder-gray-300" />
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Organization</label>
+                <input
+                  value={authForm.orgName}
+                  onChange={(e) => setAuthForm((f) => ({ ...f, orgName: e.target.value }))}
+                  placeholder="Organization name"
+                  className={`mt-1 w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1 transition
+                    ${darkMode ? "bg-gray-800 border-gray-700 placeholder-gray-400 text-gray-100 focus:ring-indigo-600" : "bg-white border-gray-200 placeholder-gray-500 text-gray-900 focus:ring-indigo-500"}`}
+                  aria-label="Organization name"
+                />
               </div>
 
-              <div className="flex items-center justify-between mt-4">
+              <div>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Your name / Role</label>
+                <input
+                  value={authForm.name}
+                  onChange={(e) => setAuthForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Your name or role"
+                  className={`mt-1 w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1 transition
+                    ${darkMode ? "bg-gray-800 border-gray-700 placeholder-gray-400 text-gray-100 focus:ring-indigo-600" : "bg-white border-gray-200 placeholder-gray-500 text-gray-900 focus:ring-indigo-500"}`}
+                  aria-label="Your name or role"
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Email</label>
+                <input
+                  value={authForm.email}
+                  onChange={(e) => setAuthForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="you@company.com"
+                  className={`mt-1 w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1 transition
+                    ${darkMode ? "bg-gray-800 border-gray-700 placeholder-gray-400 text-gray-100 focus:ring-indigo-600" : "bg-white border-gray-200 placeholder-gray-500 text-gray-900 focus:ring-indigo-500"}`}
+                  aria-label="Email address"
+                  type="email"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <input id="mode" type="checkbox" checked={authMode === "login"} onChange={() => setAuthMode((m) => (m === "login" ? "register" : "login"))} />
-                  <label className="text-sm text-gray-500">Already have an account? Toggle to sign in</label>
+                  <input
+                    id="mode"
+                    type="checkbox"
+                    checked={authMode === "login"}
+                    onChange={() => setAuthMode((m) => (m === "login" ? "register" : "login"))}
+                    className={`h-4 w-4 rounded focus:ring-2 focus:outline-none ${darkMode ? "accent-indigo-400" : "accent-indigo-600"}`}
+                    aria-label="Toggle sign in"
+                  />
+                  <label className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}>Already have an account?</label>
                 </div>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => { setShowAuthModal(false); }} className="px-3 py-2 rounded-md border">Cancel</button>
-                  <button type="submit" className="px-4 py-2 rounded-md bg-indigo-600 text-white">{authMode === "register" ? "Register" : "Sign in"}</button>
+
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(false)}
+                    className={`px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1 transition ${darkMode ? "border-gray-700 text-gray-300 hover:bg-gray-800/40 focus:ring-gray-600" : "border-gray-200 text-gray-700 hover:bg-gray-50 focus:ring-gray-300"}`}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    className={`px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-offset-1 transition ${
+                      darkMode ? "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500" : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500"
+                    }`}
+                  >
+                    {authMode === "register" ? "Register" : "Sign in"}
+                  </button>
                 </div>
               </div>
             </form>
           </div>
         </div>
       )}
+
 
       {/* CEO prompt modal */}
       {showCEOPrompt && <CEOPromptModal />}
