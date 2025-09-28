@@ -1,11 +1,12 @@
 "use client";
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Logo3D from "../assets/ConseQ-X-3d.png";
 import { FaSun, FaMoon, FaBars, FaTimes, FaPlus, FaPaperPlane, FaPaperclip } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
+import WelcomeCongrats from "../components/WelcomeCongrats";
 
-
+/* -------------------- Mock data -------------------- */
 const MOCK_KPIS = [
   { id: "k1", title: "Revenue (TTM)", value: "₦120M", delta: "+8%", trend: "up" },
   { id: "k2", title: "EBITDA Margin", value: "18%", delta: "-1%", trend: "down" },
@@ -24,16 +25,25 @@ const MOCK_SYSTEMS = [
   { id: "s3", title: "Orchestration", scorePct: 42 },
 ];
 
+/* -------------------- Small UI primitives -------------------- */
 function KPICard({ kpi, darkMode }) {
   return (
-    <div className={`cx-kpi-card rounded-2xl p-4 shadow-sm border min-w-[12rem] flex-shrink-0 ${darkMode ? "bg-gray-800 border-gray-700 text-gray-100" : "bg-white border-gray-100 text-gray-900"}`}>
+    <div
+      className={`cx-kpi-card rounded-2xl p-4 shadow-sm border min-w-[12rem] flex-shrink-0 ${
+        darkMode ? "bg-gray-800 border-gray-700 text-gray-100" : "bg-white border-gray-100 text-gray-900"
+      }`}
+    >
       <div className="flex items-start justify-between">
         <div>
           <div className={`text-xs uppercase ${darkMode ? "text-gray-300" : "text-gray-500"}`}>{kpi.title}</div>
           <div className="mt-1 text-2xl font-semibold">{kpi.value}</div>
         </div>
         {kpi.delta ? (
-          <div className={`px-2 py-1 rounded-full text-sm font-medium ${kpi.trend === "up" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+          <div
+            className={`px-2 py-1 rounded-full text-sm font-medium ${
+              kpi.trend === "up" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+            }`}
+          >
             {kpi.delta}
           </div>
         ) : null}
@@ -59,7 +69,8 @@ function TypingIndicator() {
 function MessageRow({ m, darkMode }) {
   const isUser = m.role === "user";
   const userClasses = "bg-blue-600 text-white rounded-xl max-w-[90%] px-4 py-2 shadow-md break-words";
-  const assistantLight = "bg-gradient-to-r from-gray-50 to-white border border-gray-100 text-gray-900 rounded-xl max-w-[90%] px-4 py-2 shadow-sm break-words";
+  const assistantLight =
+    "bg-gradient-to-r from-gray-50 to-white border border-gray-100 text-gray-900 rounded-xl max-w-[90%] px-4 py-2 shadow-sm break-words";
   const assistantDark = "bg-gray-700 text-gray-100 rounded-xl max-w-[90%] px-4 py-2 shadow-sm border border-gray-700 break-words";
 
   return (
@@ -69,25 +80,29 @@ function MessageRow({ m, darkMode }) {
           <div className="text-sm whitespace-pre-wrap">{m.text}</div>
           {m.file ? (
             <div className="mt-2 text-xs">
-              <a href={m.file.url} target="_blank" rel="noreferrer" className="underline">{m.file.name}</a>
+              <a href={m.file.url} target="_blank" rel="noreferrer" className="underline">
+                {m.file.name}
+              </a>
             </div>
           ) : null}
         </div>
-        <div className={`text-[11px] mt-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        <div className={`text-[11px] mt-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+          {new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </div>
       </div>
     </div>
   );
 }
 
+/* -------------------- Composer -------------------- */
 function ChatComposer({ onSend, darkMode, onAttachClick, textareaRef, textValue, setTextValue, uploadedFile, setUploadedFile }) {
   // Enter=send, Shift+Enter=newline
   function handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (textValue && textValue.trim()) {
         onSend(textValue.trim());
-        setTextValue('');
-        // if there is an uploadedFile, include it via onSend handler logic
+        setTextValue("");
       }
     }
   }
@@ -95,36 +110,44 @@ function ChatComposer({ onSend, darkMode, onAttachClick, textareaRef, textValue,
   useEffect(() => {
     if (!textareaRef.current) return;
     const ta = textareaRef.current;
-    ta.style.height = 'auto';
+    ta.style.height = "auto";
     const newHeight = Math.min(ta.scrollHeight, 220); // cap growth
     ta.style.height = `${newHeight}px`;
-  }, [textValue]);
+  }, [textValue, textareaRef]);
 
   return (
-    <div className={`p-3 border-t ${darkMode ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"}`} style={{ boxShadow: darkMode ? "0 -2px 8px rgba(0,0,0,0.6)" : "0 -2px 8px rgba(0,0,0,0.04)" }}>
+    <div
+      className={`p-3 border-t ${darkMode ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"}`}
+      style={{ boxShadow: darkMode ? "0 -2px 8px rgba(0,0,0,0.6)" : "0 -2px 8px rgba(0,0,0,0.04)" }}
+    >
       {/* Preview block for uploaded file (appears above input, not posted until send) */}
       {uploadedFile && (
-        <div className={`mb-3 p-3 rounded-md border ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-gray-50 border-gray-100 text-gray-900'}`}>
+        <div className={`mb-3 p-3 rounded-md border ${darkMode ? "bg-gray-900 border-gray-700 text-gray-100" : "bg-gray-50 border-gray-100 text-gray-900"}`}>
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <div className="font-medium truncate">{uploadedFile.name}</div>
               <div className="text-xs text-gray-400">{(uploadedFile.size / 1024).toFixed(1)} KB</div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="px-3 py-1 rounded-md border" onClick={() => { setUploadedFile(null); }} aria-label="Remove file">x</button>
+              <button className="px-3 py-1 rounded-md border" onClick={() => setUploadedFile(null)} aria-label="Remove file">
+                x
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="flex items-end gap-2 min-w-0">{/* items-end aligns send button to baseline */}
+      <div className="flex items-end gap-2 min-w-0">
+        {/* items-end aligns send button to baseline */}
         <textarea
           ref={textareaRef}
           value={textValue}
           onChange={(e) => setTextValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask your executive analyst"
-          className={`flex-1 min-w-0 resize-none rounded-lg px-4 py-3 border hide-scrollbar ${darkMode ? "border-gray-700 bg-gray-900 text-gray-100" : "border-gray-200 bg-gray-50 text-gray-900"} outline-none focus:ring-2 focus:ring-indigo-200`}
+          className={`flex-1 min-w-0 resize-none rounded-lg px-4 py-3 border hide-scrollbar ${
+            darkMode ? "border-gray-700 bg-gray-900 text-gray-100" : "border-gray-200 bg-gray-50 text-gray-900"
+          } outline-none focus:ring-2 focus:ring-indigo-200`}
           rows={1}
           aria-label="Chat input"
           style={{ maxHeight: 220 }}
@@ -135,11 +158,11 @@ function ChatComposer({ onSend, darkMode, onAttachClick, textareaRef, textValue,
             onClick={() => {
               if (textValue && textValue.trim()) {
                 onSend(textValue.trim());
-                setTextValue('');
+                setTextValue("");
               }
             }}
             aria-label="Send"
-            className={`p-2 rounded-md ${textValue.trim() ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'}`}
+            className={`p-2 rounded-md ${textValue.trim() ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"}`}
             style={{ width: 36, height: 36 }}
           >
             <FaPaperPlane size={14} />
@@ -149,7 +172,11 @@ function ChatComposer({ onSend, darkMode, onAttachClick, textareaRef, textValue,
 
       {/* Attach row below the textarea */}
       <div className="mt-3 flex items-center gap-3">
-        <button onClick={onAttachClick} aria-label="Attach file" className={`flex items-center gap-2 px-3 py-2 rounded-md border ${darkMode ? 'border-gray-700 text-gray-100 bg-gray-800' : 'border-gray-200 text-gray-800 bg-white'}`}>
+        <button
+          onClick={onAttachClick}
+          aria-label="Attach file"
+          className={`flex items-center gap-2 px-3 py-2 rounded-md border ${darkMode ? "border-gray-700 text-gray-100 bg-gray-800" : "border-gray-200 text-gray-800 bg-white"}`}
+        >
           <FaPaperclip />
           <span className="text-sm">Upload Document</span>
         </button>
@@ -159,15 +186,20 @@ function ChatComposer({ onSend, darkMode, onAttachClick, textareaRef, textValue,
   );
 }
 
+/* -------------------- Main page -------------------- */
 export default function ConseqXCEODashboard() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [navScrolled, setNavScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tab, setTab] = useState("dashboard");
   const [showConversationListMobile, setShowConversationListMobile] = useState(false);
+
+  // congrats banner
+  const [showCongrats, setShowCongrats] = useState(false);
 
   const kpis = useMemo(() => MOCK_KPIS, []);
   const meetings = useMemo(() => MOCK_MEETINGS, []);
@@ -187,14 +219,46 @@ export default function ConseqXCEODashboard() {
   const fileInputRef = useRef(null);
   const messagesRef = useRef(null);
   const textareaRef = useRef(null);
-  const [textValue, setTextValue] = useState('');
+  const [textValue, setTextValue] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
   const convListRef = useRef(null);
+
+  /* -------------------- Congrat banner effect --------------------
+     Triggers when either:
+     - location.state.justLoggedIn === true (navigate(..., { state: { justLoggedIn: true } }))
+     - localStorage flag "show_congrats_next" === "true"
+     Once shown it clears the flag and clears navigation state by replacing location (so it won't repeat)
+  -----------------------------------------------------------------*/
+  useEffect(() => {
+    const justLoggedIn = Boolean(location?.state?.justLoggedIn);
+    const showFlag = typeof window !== "undefined" && localStorage.getItem("show_congrats_next") === "true";
+
+    if (justLoggedIn || showFlag) {
+      setShowCongrats(true);
+
+      // clear stored flag
+      try {
+        localStorage.removeItem("show_congrats_next");
+      } catch (e) {
+        // ignore
+      }
+
+      // clear navigation state so back/refresh doesn't retrigger
+      // Only replace if location has state (avoid unnecessary navigation)
+      if (location && location.state && Object.keys(location.state).length > 0) {
+        // replace with same pathname but empty state
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    }
+    // run on mount and when location changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location?.pathname, location?.state]);
 
   useEffect(() => {
     const saved = localStorage.getItem("darkMode") === "true";
     setDarkMode(saved);
     document.documentElement.classList.toggle("dark", saved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -219,12 +283,12 @@ export default function ConseqXCEODashboard() {
   useEffect(() => {
     function handleConvClick(e) {
       if (!convListRef.current) return;
-      if (!convListRef.current.contains(e.target) && e.target.closest('#explorer-toggle') == null) {
+      if (!convListRef.current.contains(e.target) && e.target.closest("#explorer-toggle") == null) {
         setShowConversationListMobile(false);
       }
     }
-    if (showConversationListMobile) document.addEventListener('click', handleConvClick);
-    return () => document.removeEventListener('click', handleConvClick);
+    if (showConversationListMobile) document.addEventListener("click", handleConvClick);
+    return () => document.removeEventListener("click", handleConvClick);
   }, [showConversationListMobile]);
 
   const toggleDarkMode = () => {
@@ -260,7 +324,7 @@ Would you like me to create an action plan?`;
     setMessages((prev) => [...prev, userMsg]);
     // clear preview after send
     setUploadedFile(null);
-    simulateAssistantReply(text + (uploadedFile ? ` (attached ${uploadedFile.name})` : ''));
+    simulateAssistantReply(text + (uploadedFile ? ` (attached ${uploadedFile.name})` : ""));
   }
 
   function handleUploadFile(file) {
@@ -274,8 +338,16 @@ Would you like me to create an action plan?`;
   const drawerBg = darkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-900";
   const drawerBorder = darkMode ? "border-gray-700" : "border-gray-100";
 
+  // extract first name for congrats (safe guard)
+  const firstName = auth?.user?.name ? String(auth.user.name).split(" ")[0] : "";
+
   return (
-    <div className={`${darkMode ? "bg-gradient-to-b from-gray-900 to-gray-800 text-gray-100" : "bg-gradient-to-b from-gray-50 to-gray-100 text-gray-900"} min-h-screen transition-colors duration-300`}>
+    <div
+      className={`${darkMode ? "bg-gradient-to-b from-gray-900 to-gray-800 text-gray-100" : "bg-gradient-to-b from-gray-50 to-gray-100 text-gray-900"} min-h-screen transition-colors duration-300`}
+    >
+      {/* WelcomeCongrats overlay: controlled by showCongrats */}
+      <WelcomeCongrats open={showCongrats} onDone={() => setShowCongrats(false)} name={firstName} durationMs={1500} />
+
       <style>{`
         /* hide native scrollbars for cleaner UI */
         .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
@@ -307,11 +379,10 @@ Would you like me to create an action plan?`;
 
       {/* Mobile drawer */}
       <div className={`fixed inset-0 z-40 ${mobileMenuOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!mobileMenuOpen}>
-        <div className={`fixed inset-0 transition-opacity ${mobileMenuOpen ? "opacity-70" : "opacity-0"}`} style={{ backgroundColor: darkMode ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.45)' }} onClick={() => setMobileMenuOpen(false)} />
+        <div className={`fixed inset-0 transition-opacity ${mobileMenuOpen ? "opacity-70" : "opacity-0"}`} style={{ backgroundColor: darkMode ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.45)" }} onClick={() => setMobileMenuOpen(false)} />
         <aside className={`fixed top-0 left-0 h-full w-80 max-w-[92%] transform transition-transform ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"} p-4 ${drawerBg} border-r ${drawerBorder} shadow-xl`}>
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-            </div>
+            <div className="flex items-center gap-3"></div>
             <button onClick={() => setMobileMenuOpen(false)} aria-label="Close menu" className={`p-2 rounded-md ${darkMode ? "text-gray-200" : "text-gray-600"}`}>
               <FaTimes />
             </button>
@@ -415,11 +486,6 @@ Would you like me to create an action plan?`;
                   <h1 className={`${darkMode ? "text-gray-100" : "text-gray-900"} text-xl md:text-2xl font-bold`}>Welcome back, CEO</h1>
                   <p className={`${darkMode ? "text-gray-300" : "text-gray-500"} text-xs md:text-sm mt-1`}>Latest executive summary & actions for your organization</p>
                 </div>
-
-                {/* <div className="flex items-center gap-2">
-                  <button onClick={() => navigate("/assessment")} className={`hidden sm:inline-block px-3 py-2 rounded-md border ${darkMode ? "border-gray-700 text-gray-100" : "border-gray-200 text-gray-800"}`}>Open Assessment</button>
-                  <button className="hidden sm:inline-block px-4 py-2 rounded-md bg-indigo-600 text-white">Create Assessment</button>
-                </div> */}
               </div>
 
               <div className="mt-4">
@@ -495,31 +561,58 @@ Would you like me to create an action plan?`;
                 ) : (
                   /* Chat */
                   <section>
+                    <div className="mb-3 flex items-center justify-end">
+                      <div className="flex items-center gap-2">
+                        <button
+                          id="explorer-toggle"
+                          className="px-3 py-2 rounded-md border md:hidden"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowConversationListMobile((s) => !s);
+                          }}
+                          aria-expanded={showConversationListMobile}
+                        >
+                          Explorer
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div ref={convListRef} className={`${showConversationListMobile ? 'block' : 'hidden'} md:block md:col-span-1 rounded-2xl p-4 transition-colors ${darkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-100'} shadow-sm h-auto md:h-[62vh] overflow-auto min-w-0 hide-scrollbar`}>
-                        <SectionTitle darkMode={darkMode}><div className="text-xs text-gray-400">{conversations.length} chats</div></SectionTitle>
+                      <div
+                        ref={convListRef}
+                        className={`${showConversationListMobile ? "block" : "hidden"} md:block md:col-span-1 rounded-2xl p-4 transition-colors ${darkMode ? "bg-gray-900 border border-gray-700" : "bg-white border border-gray-100"} shadow-sm h-auto md:h-[62vh] overflow-auto min-w-0 hide-scrollbar`}
+                      >
+                        <SectionTitle darkMode={darkMode}>
+                          <div className="text-xs text-gray-400">{conversations.length} chats</div>
+                        </SectionTitle>
                         <ul className="mt-3 space-y-2">
                           {conversations.map((c) => (
-                            <li key={c.id} onClick={() => { setSelectedConversationId(c.id); setShowConversationListMobile(false); }} className={`p-2 rounded-md hover:bg-blue-900/20 dark:hover:bg-blue-900/20' cursor-pointer ${selectedConversationId === c.id ? (darkMode ? 'bg-blue-900/20' : 'bg-blue-50') : ''}`}>
-                              <div className={`${darkMode ? 'text-gray-100' : 'text-gray-900'} font-medium`}>{c.title}</div>
+                            <li
+                              key={c.id}
+                              onClick={() => {
+                                setSelectedConversationId(c.id);
+                                setShowConversationListMobile(false);
+                              }}
+                              className={`p-2 rounded-md cursor-pointer ${selectedConversationId === c.id ? (darkMode ? "bg-blue-900/20" : "bg-blue-50") : "hover:bg-blue-900/20"}`}
+                            >
+                              <div className={`${darkMode ? "text-gray-100" : "text-gray-900"} font-medium`}>{c.title}</div>
                               <div className="text-xs text-gray-400">{c.lastMessage}</div>
                             </li>
                           ))}
                         </ul>
                       </div>
 
-                      <div className={`md:col-span-2 rounded-2xl p-0 md:p-4 transition-colors ${darkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-100'} shadow-sm h-[60vh] flex flex-col min-w-0`}>
-                        <div className="flex items-center justify-between p-3 border-b" style={{ borderColor: darkMode ? 'rgba(255,255,255,0.04)' : '' }}>
+                      <div className={`md:col-span-2 rounded-2xl p-0 md:p-4 transition-colors ${darkMode ? "bg-gray-900 border border-gray-700" : "bg-white border border-gray-100"} shadow-sm h-[60vh] flex flex-col min-w-0`}>
+                        <div className="flex items-center justify-between p-3 border-b" style={{ borderColor: darkMode ? "rgba(255,255,255,0.04)" : "" }}>
                           <div>
-                            <div className={`font-semibold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Executive Analyst</div>
-                            <div className="text-xs text-gray-400">{isGenerating ? 'Assistant is typing...' : 'All caught up'}</div>
+                            <div className={`font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>Executive Analyst</div>
+                            <div className="text-xs text-gray-400">{isGenerating ? "Assistant is typing..." : "All caught up"}</div>
                           </div>
-
                         </div>
 
-                        <div className="flex-1 overflow-auto px-4 py-3 hide-scrollbar" ref={messagesRef} style={{ WebkitOverflowScrolling: 'touch' }}>
+                        <div className="flex-1 overflow-auto px-4 py-3 hide-scrollbar" ref={messagesRef} style={{ WebkitOverflowScrolling: "touch" }}>
                           {messages.length === 0 && (
-                            <div className={`p-6 rounded-xl text-center ${darkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-50 text-gray-700'}`}>
+                            <div className={`p-6 rounded-xl text-center ${darkMode ? "bg-gray-800 text-gray-200" : "bg-gray-50 text-gray-700"}`}>
                               <div className="text-lg font-semibold">No messages yet</div>
                               <div className="mt-2 text-sm text-gray-400">Start by asking your Executive Analyst a question - try: "What are the top 3 priorities this quarter?"</div>
                             </div>
@@ -531,7 +624,7 @@ Would you like me to create an action plan?`;
 
                           {isGenerating && (
                             <div className="mt-2">
-                              <div className={`inline-block rounded-xl px-4 py-3 ${darkMode ? 'bg-gray-700 text-gray-100' : 'bg-gray-100 text-gray-900'}`}>
+                              <div className={`inline-block rounded-xl px-4 py-3 ${darkMode ? "bg-gray-700 text-gray-100" : "bg-gray-100 text-gray-900"}`}>
                                 <TypingIndicator />
                               </div>
                             </div>
@@ -559,21 +652,13 @@ Would you like me to create an action plan?`;
       </div>
 
       {/* hidden file input */}
-      <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadFile(f); e.target.value = ''; }} />
-
-      {/* Floating action on mobile */}
-      <div className="fixed right-4 bottom-20 sm:bottom-8 z-50">
-        <button onClick={() => fileInputRef.current && fileInputRef.current.click()} aria-label="Upload doc" className="md:hidden flex items-center justify-center w-14 h-14 rounded-full shadow-lg bg-indigo-600 text-white">
-          <FaPlus />
-        </button>
-      </div>
+      <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadFile(f); e.target.value = ""; }} />
 
       {/* Footer */}
       <footer className={`w-full py-6 border-t transition-colors ${darkMode ? "border-gray-700 bg-gray-900 text-gray-300" : "border-gray-200 bg-white text-gray-700"}`}>
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
-
           <div className="text-sm">
-            <span className="mr-4">© {new Date().getFullYear()} ConseQ-X</span>
+            <span className="mr-4">© {new Date().getFullYear()} Conseq-X</span>
             <a href="/terms" className="underline mr-3">Terms</a>
             <a href="/privacy" className="underline">Privacy</a>
           </div>

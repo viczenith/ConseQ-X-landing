@@ -917,10 +917,10 @@ export default function AssessmentPlatform() {
               ) : (
                 <form onSubmit={submitLogin} className="space-y-3" autoComplete="off" spellCheck={false}>
                   <label className="text-xs">Email</label>
-                  <input name="email" value={localEmail} onChange={(e) => setLocalEmail(e.target.value)} placeholder="you@company.com" className={inputClass} autoFocus />
+                  <input name="email" value={localEmail} onChange={(e) => setLocalEmail(e.target.value)} placeholder="you@company.com" className={inputClass} readOnly />
 
                   <label className="text-xs">Password</label>
-                  <input type="password" name="loginPassword" value={localLoginPassword} onChange={(e) => setLocalLoginPassword(e.target.value)} placeholder="Your password" className={inputClass} />
+                  <input type="password" name="loginPassword" value={localLoginPassword} onChange={(e) => setLocalLoginPassword(e.target.value)} placeholder="Your password" autoFocus className={inputClass} />
 
                   <div className="flex items-center justify-between">
                     <button type="submit" disabled={localProcessing} className={primaryBtnClass}>
@@ -1148,7 +1148,7 @@ export default function AssessmentPlatform() {
       </div>
 
       {/* Guest register CTA */}
-      <GuestRegisterBanner />
+      {/* <GuestRegisterBanner /> */}
 
       {/* Upsell Modal (Premium) */}
       <UpsellModal
