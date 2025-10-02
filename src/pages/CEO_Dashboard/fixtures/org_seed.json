@@ -1,0 +1,39 @@
+{
+  "org_id": "org-1",
+  "org_name": "Demo Org",
+  "north_star": "Increase on-time delivery by 15%",
+  "insights": [
+    { "id": "ins-001", "text": "Reduce handoff delays between product and engineering", "critical": true },
+    { "id": "ins-002", "text": "Standardize sprint rituals across teams" },
+    { "id": "ins-003", "text": "Adopt code review SLAs" },
+    { "id": "ins-004", "text": "Consolidate meeting schedules to 2 focus days" },
+    { "id": "ins-005", "text": "Invest in observability for faster MTTR" },
+    { "id": "ins-006", "text": "Clarify ownership for cross-functional work" }
+  ],
+  "systems": [
+    { "key": "interdependency", "runs": [
+      { "id": "A-6w-1", "timestamp": "2025-08-24T10:00:00.000Z", "score": 62, "meta": { "simulated": true } },
+      { "id": "A-3w-1", "timestamp": "2025-09-14T10:00:00.000Z", "score": 65, "meta": { "simulated": true } }
+    ]},
+    { "key": "iteration", "runs": [
+      { "id": "A-6w-2", "timestamp": "2025-08-24T11:00:00.000Z", "score": 58, "meta": { "simulated": true } },
+      { "id": "A-3w-2", "timestamp": "2025-09-14T11:00:00.000Z", "score": 60, "meta": { "simulated": true } }
+    ]},
+    { "key": "investigation", "runs": [
+      { "id": "A-6w-3", "timestamp": "2025-08-24T12:00:00.000Z", "score": 70, "meta": { "simulated": true } },
+      { "id": "A-3w-3", "timestamp": "2025-09-14T12:00:00.000Z", "score": 72, "meta": { "simulated": true } }
+    ]},
+    { "key": "interpretation", "runs": [
+      { "id": "A-6w-4", "timestamp": "2025-08-24T13:00:00.000Z", "score": 66, "meta": { "simulated": true } },
+      { "id": "A-3w-4", "timestamp": "2025-09-14T13:00:00.000Z", "score": 68, "meta": { "simulated": true } }
+    ]},
+    { "key": "illustration", "runs": [
+      { "id": "A-6w-5", "timestamp": "2025-08-24T14:00:00.000Z", "score": 63, "meta": { "simulated": true } },
+      { "id": "A-3w-5", "timestamp": "2025-09-14T14:00:00.000Z", "score": 67, "meta": { "simulated": true } }
+    ]},
+    { "key": "alignment", "runs": [
+      { "id": "A-6w-6", "timestamp": "2025-08-24T15:00:00.000Z", "score": 55, "meta": { "simulated": true } },
+      { "id": "A-3w-6", "timestamp": "2025-09-14T15:00:00.000Z", "score": 59, "meta": { "simulated": true } }
+    ]}
+  ]
+}

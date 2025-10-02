@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Logo3D from "./assets/ConseQ-X-3d.png";
@@ -28,7 +28,9 @@ import UpsellModal from "./components/UpsellModal";
 import { useAuth } from "./contexts/AuthContext";
 import ChatSection from "./AssessmentChatMessages";
 
-export default function AssessmentPlatform() {
+// export default function AssessmentPlatform() {
+export default function AssessmentPlatform(props) {
+  const { showClientInfo = true } = props || {};
   // NAV, DARK MODE, STEPS, ETC.
   const [navScrolled, setNavScrolled] = useState(false);
   const [step, setStep] = useState(0);
@@ -567,7 +569,7 @@ export default function AssessmentPlatform() {
       const realEmail = email || userInfo.email || authForm.email || `ceo@${(realOrg || "org").replace(/\s+/g, "").toLowerCase()}.local`;
       await auth.register?.({ orgName: realOrg, ceoName: realCeoName, email: realEmail, phone, password });
       setShowCEOPrompt(false);
-      navigate("/ceo-dashboard");
+      navigate("/ceo");
     } catch (err) {
       console.error(err);
       setCeoAuthError(err.message || "Registration failed");
@@ -584,7 +586,7 @@ export default function AssessmentPlatform() {
     try {
       await auth.login?.({ email, password, prefillOrgName: orgName || userInfo.organization || authForm.orgName, prefillName: ceoName || userInfo.role || authForm.name });
       setShowCEOPrompt(false);
-      navigate("/ceo-dashboard");
+      navigate("/ceo");
     } catch (err) {
       console.error(err);
       try {
@@ -592,7 +594,7 @@ export default function AssessmentPlatform() {
         const realCeoName = ceoName || userInfo.role || authForm.name || email.split("@")[0];
         await auth.register?.({ orgName: realOrg, ceoName: realCeoName, email, phone, password });
         setShowCEOPrompt(false);
-        navigate("/ceo-dashboard");
+        navigate("/ceo");
       } catch (e) {
         setCeoAuthError(e.message || "Login failed");
       }
@@ -677,7 +679,7 @@ export default function AssessmentPlatform() {
   function CEODashboardButton() {
     return (
       <button onClick={() => setShowCEOPrompt(true)} className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow hover:opacity-95">
-        Access CEO Dashboard
+        C-Suite Dashboard
       </button>
     );
   }
@@ -842,7 +844,7 @@ export default function AssessmentPlatform() {
         }
 
         // Navigate once confirmed (or anyway after short delay)
-        setTimeout(() => navigate("/ceo-dashboard", { replace: true }), 100);
+        setTimeout(() => navigate("/ceo", { replace: true }), 100);
 
       } catch (err) {
         console.error("Login error", err);
@@ -1007,11 +1009,19 @@ export default function AssessmentPlatform() {
     }
   }, [auth]);
 
+  // showClientInfo skip step
+  useEffect(() => {
+    if (showClientInfo === false) {
+      setStep((s) => (s === 0 ? 1 : s));
+    }
+  }, [showClientInfo, setStep]);
+
+
   // ---------- Render ----------
   return (
     <div className={`min-h-screen font-sans overflow-x-hidden transition-colors duration-500 ${darkMode ? "bg-gradient-to-b from-gray-900 to-gray-800 text-gray-200" : "bg-gradient-to-b from-gray-50 to-gray-100 text-gray-800"}`}>
       {/* Navigation */}
-      <nav className={`fixed w-full z-50 transition-all duration-500 ${navScrolled ? (darkMode ? "bg-gray-900/90 backdrop-blur-sm py-2 shadow-sm" : "bg-white/90 backdrop-blur-sm py-2 shadow-sm") : "bg-transparent py-4"}`}>
+      <nav className={`${!showClientInfo ? "hidden " : ""}fixed w-full z-50 transition-all duration-500 ${navScrolled ? (darkMode ? "bg-gray-900/90 backdrop-blur-sm py-2 shadow-sm" : "bg-white/90 backdrop-blur-sm py-2 shadow-sm") : "bg-transparent py-4"}`}>
         <div className="container mx-auto px-4 flex justify-between items-center">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }} className="flex items-center">
             <motion.img src={Logo3D} alt="ConseQ-X Logo" className="h-16 w-auto mr-3 transition-all duration-500" />
@@ -1029,7 +1039,8 @@ export default function AssessmentPlatform() {
       <div className={`container mx-auto px-4 ${navScrolled ? "pt-24" : "pt-32"} pb-24`}>
         <AnimatePresence mode="wait">
           {/* Step 0 */}
-          {step === 0 && (
+          {/* {step === 0 && ( */}
+          {showClientInfo !== false && step === 0 && (
             <motion.div key="user-info" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-3xl mx-auto">
               <div className="text-3xl font-bold text-center mb-4">
                 <span className={darkMode ? "text-white" : "text-gray-600"}>Conse<span className="text-yellow-500">Q</span>-Ultra</span>
@@ -1080,9 +1091,9 @@ export default function AssessmentPlatform() {
                 </motion.div>
 
                 {/* CEO button inserted immediately after the "About" section for visibility */}
-                <div className="mb-8 flex justify-center">
+                {/* <div className="mb-8 flex justify-center">
                   <CEODashboardButton />
-                </div>
+                </div> */}
 
                 <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {systems.map((system) => {
@@ -1107,9 +1118,9 @@ export default function AssessmentPlatform() {
                     );
                   })}
                 </motion.div>
-
+{/* {showClientInfo !== false && step === 0 && ( */}
                 {Object.keys(answers).length > 0 && (
-                  <motion.div className="mt-16">
+                  <motion.div className={`${!showClientInfo ? "hidden " : ""}mt-16`}>
                     <div className={`p-6 rounded-xl ${darkMode ? "bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700" : "bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200"}`}>
                       <div className="flex flex-col md:flex-row justify-between items-center">
                         <div>

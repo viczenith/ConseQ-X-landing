@@ -74,7 +74,7 @@ export default function RequirePremium({ children }) {
             setShowUpsell(false);
           }
         }}
-        redirectTo="/ceo-dashboard"
+        redirectTo="/ceo"
       />
     </>
   );

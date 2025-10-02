@@ -1,0 +1,19 @@
+{
+  "survey": {
+    "responses": [
+      { "q": "Meetings per week", "a": 14 },
+      { "q": "Avg cycle time (days)", "a": 7 },
+      { "q": "On-time delivery %", "a": 62 }
+    ]
+  },
+  "hr": {
+    "headcount": 38,
+    "attrition_pct": 0.12,
+    "open_roles": 3
+  },
+  "erp": {
+    "active_projects": 7,
+    "budget_utilization_pct": 0.81,
+    "late_invoices": 2
+  }
+}

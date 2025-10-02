@@ -8,7 +8,7 @@ export default function UpsellModal({
   onClose = () => {},
   onUpgrade = () => {},
   darkMode: darkModeProp,
-  redirectTo = "/ceo-dashboard",
+  redirectTo = "/ceo",
 }) {
   const navigate = useNavigate();
   const auth = useAuth();

@@ -64,7 +64,7 @@ export default function CEOModal({ open, onClose, prefillEmail = "", prefillOrgN
       }
       onClose && onClose();
       // navigate to CEO dashboard
-      navigate("/ceo-dashboard");
+      navigate("/ceo");
     } catch (err) {
       setError(err?.message || "Login failed");
     } finally {
