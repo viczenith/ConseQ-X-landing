@@ -150,3 +150,46 @@ const weightSum = Object.values(DEFAULT_SYSTEM_WEIGHTS).reduce((sum, w) => sum +
 if (Math.abs(weightSum - 1.0) > 0.001) {
   console.warn(`[systems.js] System weights sum to ${weightSum.toFixed(3)}, should be 1.0`);
 }
+
+// Organizational Health Framework Metadata
+// This positions our tool as an "organizational doctor" that provides
+// automated diagnosis beyond what ERP/BI platforms offer
+export const FRAMEWORK_METADATA = {
+  name: 'ConseQ-X Organizational Health Assessment',
+  version: '1.0',
+  description: 'Automated organizational health analysis across six holistic systems',
+  differentiators: [
+    'Holistic organizational diagnosis beyond operational metrics',
+    'Automated analysis and recommendations vs manual BI configuration', 
+    'Predictive and prescriptive insights vs descriptive reporting',
+    'Cultural and behavioral factors integrated with operational data',
+    'Purpose-built for organizational effectiveness vs generic analytics'
+  ],
+  targetGap: 'Bridges the space between operational ERP/BI data and strategic consulting insights',
+  useCases: [
+    'Post-merger integration assessment',
+    'Organizational transformation tracking',
+    'Performance turnaround monitoring',
+    'Continuous health monitoring for SMEs',
+    'Government agency effectiveness measurement'
+  ]
+};
+
+// Value proposition vs traditional platforms
+export const COMPETITIVE_ADVANTAGES = {
+  vsERP: [
+    'Analyzes intangible dynamics like culture and collaboration',
+    'Provides narrative insights beyond transactional data',
+    'Ready-made organizational health model vs complex customization'
+  ],
+  vsBI: [
+    'Purpose-built framework vs empty canvas requiring expertise',
+    'Automated interpretation and recommendations vs manual analysis',
+    'Integrated organizational model vs piecemeal dashboard building'
+  ],
+  vsConsulting: [
+    'Continuous monitoring vs one-off assessments',
+    'Affordable software vs expensive consulting engagements',
+    'Real-time insights vs periodic reports'
+  ]
+};

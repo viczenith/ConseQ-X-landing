@@ -24,6 +24,17 @@ const CEOFinanceMetrics = React.lazy(() => import("./pages/CEO_Dashboard/CEODash
 const RevenueForecasts = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/RevenueForecasts"));
 const CEODashboardHome = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/DashboardHome"));
 const CEOChat = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/Chat")); 
+const CEODataManagement = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/DataManagement"));
+const PartnerDashboard = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard"));
+const PartnerOverview = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/OverviewView"));
+const PartnerDeepDive = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/SystemDeepDive"));
+const PartnerForecast = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/ForecastScenarios"));
+const PartnerRecommendations = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/RecommendationsActions"));
+const PartnerBenchmarking = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/BenchmarkingTrends"));
+
+const OrgHealthOverview = React.lazy(() => import("./pages/CEO_Dashboard/OrgHealthOverview"));
+const PartnerDashboardManual = React.lazy(() => import("./pages/CEO_Dashboard/PartnerDashboardManual"));
+const PartnerDashboardAuto = React.lazy(() => import("./pages/CEO_Dashboard/PartnerDashboardAuto"));
 
 
 export default function App() {
@@ -56,15 +67,31 @@ export default function App() {
           {/* nested routes inside the CEO workspace */}
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<CEODashboardHome />} />
+          <Route path="partner-dashboard/*" element={<Suspense fallback={<div>Loading Partner Dashboard...</div>}><PartnerDashboard /></Suspense>}>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<Suspense fallback={<div>Loading overview...</div>}><PartnerOverview /></Suspense>} />
+            <Route path="deep-dive" element={<Suspense fallback={<div>Loading deep dive...</div>}><PartnerDeepDive /></Suspense>} />
+            <Route path="forecast" element={<Suspense fallback={<div>Loading forecast...</div>}><PartnerForecast /></Suspense>} />
+            <Route path="recommendations" element={<Suspense fallback={<div>Loading recommendations...</div>}><PartnerRecommendations /></Suspense>} />
+            <Route path="benchmarking" element={<Suspense fallback={<div>Loading benchmarking...</div>}><PartnerBenchmarking /></Suspense>} />
+          </Route>
           <Route path="chat" element={ <Suspense fallback={<div>Loading chat...</div>}><CEOChat /></Suspense> } />
           <Route path="assessments" element={<Suspense fallback={<div>Loading assessment...</div>}><CEOAssessments /></Suspense> } />
+          <Route path="data" element={<Suspense fallback={<div>Loading data management...</div>}><CEODataManagement /></Suspense>} />
           <Route path="reports" element={<CEOReports />} />
           <Route path="team" element={<CEOTeam />} />
           <Route path="billing" element={<CEOBilling />} />
           <Route path="revenue" element={<CEORevenue />} />
           <Route path="revenue/metrics" element={<CEOFinanceMetrics />} />
           <Route path="revenue/forecasts" element={<RevenueForecasts />} />
+
+          <Route path="org-health" element={<Suspense fallback={<div>Loading Org Health...</div>}><OrgHealthOverview /></Suspense>} />
+          <Route path="partner-manual" element={<PartnerDashboardManual />} />
+          <Route path="partner-auto" element={<PartnerDashboardAuto />} />
+
         </Route>
+
+        
 
         <Route path="*" element={<div>Page not found</div>} />
       </Routes>

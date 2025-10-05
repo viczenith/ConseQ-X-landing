@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import Logo3D from "../../assets/ConseQ-X-3d.png";
-import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaChartLine } from "react-icons/fa";
+import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaChartLine, FaBell } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 import WelcomeCongrats from "../../components/WelcomeCongrats";
 
@@ -28,6 +28,15 @@ function readJSON(key, fallback) {
     return fallback;
   }
 }
+function writeJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value || []));
+    // notify other listeners
+    try {
+      window.dispatchEvent(new CustomEvent("conseqx:notifications:updated", { detail: { key } }));
+    } catch {}
+  } catch {}
+}
 
 export default function ConseqXCEODashboardShell() {
   const auth = useAuth();
@@ -42,6 +51,15 @@ export default function ConseqXCEODashboardShell() {
   // sidebar UI
   const [revenueOpen, setRevenueOpen] = useState(false);
 
+  // notifications state
+  const [notifications, setNotifications] = useState(() => readJSON(STORAGE_NOTIFS, []) || []);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
+  const bellRef = useRef(null);
+
+  // compute unread count
+  const unreadCount = (notifications || []).filter((n) => !n.read).length;
+
   // live unread notifications for Reports (read from localStorage)
   const [reportsUnread, setReportsUnread] = useState(() => {
     const notifs = readJSON(STORAGE_NOTIFS, []);
@@ -49,7 +67,9 @@ export default function ConseqXCEODashboardShell() {
   });
 
   const unreadRef = useRef(reportsUnread);
-  useEffect(() => { unreadRef.current = reportsUnread; }, [reportsUnread]);
+  useEffect(() => {
+    unreadRef.current = reportsUnread;
+  }, [reportsUnread]);
 
   useEffect(() => {
     const justLoggedIn = Boolean(location?.state?.justLoggedIn);
@@ -88,10 +108,11 @@ export default function ConseqXCEODashboardShell() {
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Escape" && mobileMenuOpen) setMobileMenuOpen(false);
+      if (e.key === "Escape" && notifOpen) setNotifOpen(false);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [mobileMenuOpen]);
+  }, [mobileMenuOpen, notifOpen]);
 
   // auto-open revenue group when on revenue routes
   useEffect(() => {
@@ -125,19 +146,68 @@ export default function ConseqXCEODashboardShell() {
     }
     window.addEventListener("storage", onStorage);
 
+    // Listen for in-app notification events so the dashboard updates immediately
+    function onNotifUpdate(e) {
+      try {
+        refreshCountFromStorage();
+      } catch {}
+    }
+    window.addEventListener("conseqx:notifications:updated", onNotifUpdate);
+
     const poll = setInterval(refreshCountFromStorage, 1500);
 
     return () => {
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("conseqx:notifications:updated", onNotifUpdate);
       clearInterval(poll);
     };
   }, []);
 
-  const signedInText = auth?.user ? `Signed in as ${auth.user.name || auth.user.email}` : "Not signed in";
-  const drawerBg = darkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-900";
-  const drawerBorder = darkMode ? "border-gray-700" : "border-gray-100";
+  // Keep notifications list live (subscribe to storage & custom events)
+  useEffect(() => {
+    function refreshList() {
+      const list = readJSON(STORAGE_NOTIFS, []) || [];
+      // sort: unread first (newest → older), then read (newest → older)
+      const unread = list.filter((n) => !n.read).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      const read = list.filter((n) => n.read).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      setNotifications([...unread, ...read]);
+      setReportsUnread(unread.length);
+    }
 
-  /* utility for NavLink classes (beautiful active state) */
+    refreshList();
+
+    function onStorage(e) {
+      if (e.key === STORAGE_NOTIFS || e.key === null) refreshList();
+    }
+    window.addEventListener("storage", onStorage);
+
+    function onCustom(e) {
+      refreshList();
+    }
+    window.addEventListener("conseqx:notifications:updated", onCustom);
+
+    const poll = setInterval(refreshList, 2000);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("conseqx:notifications:updated", onCustom);
+      clearInterval(poll);
+    };
+  }, []);
+
+  // Close notif dropdown when clicking outside
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!notifOpen) return;
+      if (notifRef.current && !notifRef.current.contains(e.target) && bellRef.current && !bellRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    }
+    window.addEventListener("mousedown", onDocClick);
+    return () => window.removeEventListener("mousedown", onDocClick);
+  }, [notifOpen]);
+
+  // utility for NavLink classes (beautiful active state)
   const navItemClass = (isActive) =>
     `flex items-center justify-between w-full text-left px-3 py-2 rounded-md transition-colors ${
       isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")
@@ -148,6 +218,51 @@ export default function ConseqXCEODashboardShell() {
     setMobileMenuOpen(false);
     // navigation happens through NavLink; don't call navigate manually here
   }
+
+  /* ---------- NOTIFICATIONS HELPERS ---------- */
+
+  function markNotificationRead(id) {
+    try {
+      const all = readJSON(STORAGE_NOTIFS, []) || [];
+      const changed = all.map((n) => (n.id === id ? { ...n, read: true } : n));
+      writeJSON(STORAGE_NOTIFS, changed);
+      // update local immediately
+      const newList = changed.sort((a, b) => ((a.read === b.read) ? (b.timestamp || 0) - (a.timestamp || 0) : (a.read ? 1 : -1)));
+      setNotifications(newList);
+      setReportsUnread(newList.filter((n) => !n.read).length);
+    } catch {}
+  }
+
+  function markAllRead() {
+    try {
+      const all = readJSON(STORAGE_NOTIFS, []) || [];
+      const changed = all.map((n) => ({ ...n, read: true }));
+      writeJSON(STORAGE_NOTIFS, changed);
+      setNotifications(changed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
+      setReportsUnread(0);
+    } catch {}
+  }
+
+  function addMockNotification() {
+    // for debugging/demo: add a new unread notification
+    try {
+      const all = readJSON(STORAGE_NOTIFS, []) || [];
+      const id = `n_${Date.now()}`;
+      const item = {
+        id,
+        title: "New report ready",
+        message: "Q3 Operations Review is available in Reports.",
+        read: false,
+        timestamp: Date.now(),
+      };
+      const next = [item, ...all];
+      writeJSON(STORAGE_NOTIFS, next);
+    } catch {}
+  }
+
+  const signedInText = auth?.user ? `Signed in as ${auth.user.name || auth.user.email}` : "Not signed in";
+  const drawerBg = darkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-900";
+  const drawerBorder = darkMode ? "border-gray-700" : "border-gray-100";
 
   return (
     <div className={`${darkMode ? "bg-gradient-to-b from-gray-900 to-gray-800 text-gray-100" : "bg-gradient-to-b from-gray-50 to-gray-100 text-gray-900"} min-h-screen transition-colors duration-300`}>
@@ -190,13 +305,13 @@ export default function ConseqXCEODashboardShell() {
       <div className={`fixed inset-0 z-40 ${mobileMenuOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!mobileMenuOpen}>
         {/* overlay */}
         <div
-          className={`fixed inset-0 transition-opacity ${mobileMenuOpen ? "opacity-70" : "opacity-0"}`}
+          className={`fixed inset-0 z-40 transition-opacity ${mobileMenuOpen ? "opacity-70" : "opacity-0"}`}
           style={{ backgroundColor: darkMode ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.45)" }}
           onClick={() => setMobileMenuOpen(false)}
         />
 
         <aside
-          className={`fixed top-0 left-0 h-full w-80 max-w-[92%] transform transition-transform ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"} p-4 ${drawerBg} border-r ${drawerBorder} shadow-xl flex flex-col`}
+          className={`fixed top-0 left-0 z-50 h-full w-80 max-w-[92%] transform transition-transform ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"} p-4 ${drawerBg} border-r ${drawerBorder} shadow-xl flex flex-col`}
           role="dialog"
           aria-modal="true"
           aria-label="Main menu"
@@ -222,6 +337,8 @@ export default function ConseqXCEODashboardShell() {
               <NavLink onClick={handleMobileNavClick} to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
               <NavLink onClick={handleMobileNavClick} to="/ceo/chat" className={({isActive}) => navItemClass(isActive)}>Chat</NavLink>
               <NavLink onClick={handleMobileNavClick} to="/ceo/assessments" className={({isActive}) => navItemClass(isActive)}>Assessments</NavLink>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard" className={({isActive}) => navItemClass(isActive)}>Partner Dashboard</NavLink>
 
               <NavLink
                 onClick={handleMobileNavClick}
@@ -312,7 +429,12 @@ export default function ConseqXCEODashboardShell() {
               <div className="flex flex-col gap-2">
                 <NavLink to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
                 <NavLink to="/ceo/chat" className={({isActive}) => navItemClass(isActive)}>Chat</NavLink>
+                <NavLink to="/ceo/org-health" className={({isActive}) => navItemClass(isActive)}>Org Health</NavLink>
+                <NavLink to="/ceo/partner-manual" className={({isActive}) => navItemClass(isActive)}>Manual Diagnosis</NavLink>
+                <NavLink to="/ceo/partner-auto" className={({isActive}) => navItemClass(isActive)}>Auto Injest</NavLink>
                 <NavLink to="/ceo/assessments" className={({isActive}) => navItemClass(isActive)}>Assessments</NavLink>
+                {/* <NavLink to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink> */}
+                {/* <NavLink to="/ceo/partner-dashboard" className={({isActive}) => navItemClass(isActive)}>Partner Dashboard</NavLink> */}
 
                 <NavLink to="/ceo/reports" className={({isActive}) => `flex items-center justify-between w-full text-left px-3 py-2 rounded-md transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
                   <span>Reports</span>
@@ -347,8 +469,8 @@ export default function ConseqXCEODashboardShell() {
 
                   <div className={`mt-2 ml-2 overflow-hidden transition-all ${revenueOpen ? "max-h-56" : "max-h-0"}`}>
                     <div className="flex flex-col gap-1">
-                      <NavLink to="/ceo/revenue/metrics" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : "hover:bg-gray-50 dark:hover:bg-blue-900/20 text-gray-800"}`}>Financial Metrics</NavLink>
-                      <NavLink to="/ceo/revenue" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : "hover:bg-gray-50 dark:hover:bg-blue-900/20 text-gray-800"}`}>Revenue Dashboard</NavLink>
+                      <NavLink to="/ceo/revenue/metrics" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>Financial Metrics</NavLink>
+                      <NavLink to="/ceo/revenue" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>Revenue Dashboard</NavLink>
                     </div>
                   </div>
                 </div>
@@ -393,11 +515,124 @@ export default function ConseqXCEODashboardShell() {
                   <h1 className={`${darkMode ? "text-gray-100" : "text-gray-900"} text-xl md:text-2xl font-bold`}>Welcome back, <span className="text-yellow-500">{auth.user.name || auth.user.email}</span></h1>
                   <p className={`${darkMode ? "text-gray-300" : "text-gray-500"} text-xs md:text-sm mt-1`}>Executive tools & insights for your organization</p>
                 </div>
+
+                {/* NOTIFICATION BELL */}
+                <div className="relative flex items-center gap-3">
+                  <button
+                    ref={bellRef}
+                    onClick={() => setNotifOpen((s) => !s)}
+                    aria-haspopup="true"
+                    aria-expanded={notifOpen}
+                    aria-label="Notifications"
+                    className={`relative p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-300 ${darkMode ? "bg-gray-700 text-gray-100" : "bg-white text-gray-900"} shadow-sm`}
+                    title={unreadCount ? `${unreadCount} unread notifications` : "No unread notifications"}
+                  >
+                    <FaBell />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-500 text-white">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Dropdown */}
+                  {notifOpen && (
+                    <div ref={notifRef} className={`absolute right-0 top-full mt-2 w-96 max-w-screen-sm z-50 rounded-xl shadow-2xl ${darkMode ? "bg-gray-900 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"}`}>
+                      <div className="p-3 border-b flex items-center justify-between">
+                        <div className="font-semibold">Notifications</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => { markAllRead(); }}
+                            className="text-xs px-2 py-1 rounded-md border"
+                            title="Mark all as read"
+                          >
+                            Mark all read
+                          </button>
+                          <button
+                            onClick={() => { addMockNotification(); }}
+                            className="text-xs px-2 py-1 rounded-md border"
+                            title="Add mock notification (dev)"
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="max-h-64 overflow-auto hide-scrollbar">
+                        {/* Unread heading */}
+                        {notifications.filter(n => !n.read).length > 0 && (
+                          <div className="px-3 py-2 text-xs text-gray-400">Unread</div>
+                        )}
+
+                        {(notifications.filter(n => !n.read)).map((n) => (
+                          <div key={n.id} className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-b last:border-b-0 flex gap-3 items-start">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <div className="font-medium truncate">{n.title}</div>
+                                <div className="text-xs text-gray-400 ml-2">{n.timestamp ? new Date(n.timestamp).toLocaleString() : ""}</div>
+                              </div>
+                              <div className="text-sm text-gray-500 mt-1 truncate">{n.message || n.body || ""}</div>
+                              <div className="mt-2 flex items-center gap-2">
+                                <button
+                                  onClick={() => { markNotificationRead(n.id); }}
+                                  className="text-xs px-2 py-1 rounded-md border"
+                                >
+                                  Mark read
+                                </button>
+                                <button
+                                  onClick={() => { /* open related report if relevant */ navigate("/ceo/reports"); setNotifOpen(false); }}
+                                  className="text-xs px-2 py-1 rounded-md bg-indigo-600 text-white"
+                                >
+                                  Open
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Read heading */}
+                        {notifications.filter(n => n.read).length > 0 && (
+                          <div className="px-3 py-2 text-xs text-gray-400">Read</div>
+                        )}
+
+                        {(notifications.filter(n => n.read)).map((n) => (
+                          <div key={n.id} className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-b last:border-b-0 flex gap-3 items-start">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm truncate">{n.title}</div>
+                                <div className="text-xs text-gray-400 ml-2">{n.timestamp ? new Date(n.timestamp).toLocaleString() : ""}</div>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1 truncate">{n.message || n.body || ""}</div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* empty state */}
+                        {(!notifications || notifications.length === 0) && (
+                          <div className="p-4 text-center text-sm text-gray-400">No notifications</div>
+                        )}
+                      </div>
+
+                      <div className="p-3 border-t text-xs text-gray-500 flex items-center justify-between">
+                        <div>Notifications are stored locally</div>
+                        <div>
+                          <button onClick={() => { setNotifOpen(false); }} className="px-2 py-1 rounded-md border">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+              {/* end header area */}
 
               <div className="mt-4">
-                {/* Provide darkMode & toggleDarkMode through Outlet context so child pages can use them */}
-                <Outlet context={{ darkMode, toggleDarkMode }} />
+                {/* Provide darkMode, toggleDarkMode, user, and org through Outlet context so child pages can use them */}
+                <Outlet context={{
+                  darkMode,
+                  toggleDarkMode,
+                  user: auth.user,
+                  org: auth.org || { id: "anon", name: "Demo Organization" }
+                }} />
               </div>
             </div>
           </main>

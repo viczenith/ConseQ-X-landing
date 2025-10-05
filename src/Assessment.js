@@ -30,14 +30,25 @@ import ChatSection from "./AssessmentChatMessages";
 
 // export default function AssessmentPlatform() {
 export default function AssessmentPlatform(props) {
-  const { showClientInfo = true } = props || {};
+  const { 
+    showClientInfo = true, 
+    onQuestionAnswered,
+    onSystemStart,
+    onAnswersChange,
+    customSystems,
+    ceoPartnerMode = false,
+    orgId,
+    initialAnswers = {},
+    enableRealTimeTracking = false
+  } = props || {};
+  
   // NAV, DARK MODE, STEPS, ETC.
   const [navScrolled, setNavScrolled] = useState(false);
   const [step, setStep] = useState(0);
   const [userInfo, setUserInfo] = useState({ organization: "", role: "", email: "" });
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(props.darkMode !== undefined ? props.darkMode : false);
   const [currentSystem, setCurrentSystem] = useState(null);
-  const [answers, setAnswers] = useState({});
+  const [answers, setAnswers] = useState(initialAnswers);
   const [resultsType, setResultsType] = useState("all");
   const [activeModal, setActiveModal] = useState(null);
 
@@ -235,10 +246,97 @@ export default function AssessmentPlatform(props) {
     localStorage.setItem("darkMode", next ? "true" : "false");
   };
   useEffect(() => {
-    const saved = localStorage.getItem("darkMode") === "true";
-    setDarkMode(saved);
-    document.documentElement.classList.toggle("dark", saved);
-  }, []);
+    // If darkMode is provided via props, use it; otherwise check localStorage
+    if (props.darkMode !== undefined) {
+      setDarkMode(props.darkMode);
+      document.documentElement.classList.toggle("dark", props.darkMode);
+    } else {
+      const saved = localStorage.getItem("darkMode") === "true";
+      setDarkMode(saved);
+      document.documentElement.classList.toggle("dark", saved);
+    }
+  }, [props.darkMode]);
+
+  // Use customSystems if provided, otherwise default systems
+  const activeSystems = useMemo(() => {
+    return customSystems || systems;
+  }, [customSystems]);
+
+  // Wrapped setAnswers for real-time tracking
+  const setAnswersWithTracking = useMemo(() => {
+    return (newAnswersOrUpdater) => {
+      setAnswers((prev) => {
+        const updated = typeof newAnswersOrUpdater === 'function' 
+          ? newAnswersOrUpdater(prev) 
+          : newAnswersOrUpdater;
+
+        // Notify parent of answer state change
+        if (onAnswersChange) {
+          try {
+            onAnswersChange(updated);
+          } catch (err) {
+            console.warn('Failed to call onAnswersChange:', err);
+          }
+        }
+
+        // Emit real-time tracking events if enabled
+        if (enableRealTimeTracking && currentSystem && onQuestionAnswered) {
+          // Calculate total questions and answered count for current system
+          const systemId = currentSystem.id;
+          const systemAnswers = updated;
+          
+          // Count total questions across all sub-assessments
+          const totalQuestions = currentSystem.subAssessments?.reduce((sum, sub) => {
+            return sum + (sub.questions?.length || 0);
+          }, 0) || 0;
+
+          // Count answered questions
+          let answeredCount = 0;
+          currentSystem.subAssessments?.forEach((sub) => {
+            const subAnswers = systemAnswers[sub.id] || {};
+            answeredCount += Object.keys(subAnswers).filter(key => {
+              const answer = subAnswers[key];
+              return answer !== null && answer !== undefined && answer !== '';
+            }).length;
+          });
+
+          // Find the most recently answered question
+          const lastSubAssessment = currentSystem.subAssessments?.find(sub => 
+            systemAnswers[sub.id] && Object.keys(systemAnswers[sub.id]).length > 0
+          );
+          const lastQuestionId = lastSubAssessment ? 
+            Object.keys(systemAnswers[lastSubAssessment.id]).pop() : null;
+
+          // Emit the event
+          try {
+            onQuestionAnswered({
+              systemId,
+              questionId: lastQuestionId || `${systemId}_q_${answeredCount}`,
+              answer: lastQuestionId ? systemAnswers[lastSubAssessment.id][lastQuestionId] : null,
+              totalQuestions,
+              answeredCount,
+              timestamp: Date.now()
+            });
+          } catch (err) {
+            console.warn('Failed to emit question answered event:', err);
+          }
+        }
+
+        return updated;
+      });
+    };
+  }, [enableRealTimeTracking, currentSystem, onQuestionAnswered, onAnswersChange]);
+
+  // Emit system start event when system is selected
+  useEffect(() => {
+    if (currentSystem && onSystemStart && enableRealTimeTracking) {
+      try {
+        onSystemStart(currentSystem.id);
+      } catch (err) {
+        console.warn('Failed to emit system start event:', err);
+      }
+    }
+  }, [currentSystem, onSystemStart, enableRealTimeTracking]);
 
   // Step handlers
   const handleUserInfoSubmit = () => {
@@ -252,15 +350,15 @@ export default function AssessmentPlatform(props) {
   };
   const handleResultsRequest = () => {
     setActiveModal("results");
-    const completed = systems.filter((sys) => sys.subAssessments.every((sub) => answers[sub.id] && Object.keys(answers[sub.id]).length === sub.questions.length)).map((sys) => sys.id);
+    const completed = activeSystems.filter((sys) => sys.subAssessments.every((sub) => answers[sub.id] && Object.keys(answers[sub.id]).length === sub.questions.length)).map((sys) => sys.id);
     setSelectedSystems(completed);
   };
   const handleBookingRequest = () => setActiveModal("booking");
 
   // Progress calculations
   const completionPercentage = () => {
-    const done = systems.filter((sys) => sys.subAssessments.every((sub) => answers[sub.id] && Object.keys(answers[sub.id]).length === sub.questions.length)).length;
-    return Math.round((done / systems.length) * 100);
+    const done = activeSystems.filter((sys) => sys.subAssessments.every((sub) => answers[sub.id] && Object.keys(answers[sub.id]).length === sub.questions.length)).length;
+    return Math.round((done / activeSystems.length) * 100);
   };
   const calculateSystemCompletion = (system) => {
     const done = system.subAssessments.filter((sub) => answers[sub.id] && Object.keys(answers[sub.id]).length === sub.questions.length).length;
@@ -310,7 +408,7 @@ export default function AssessmentPlatform(props) {
     setGeneratingAnalysis(true);
     try {
       const scoresObj = {};
-      const completedSystems = systems.filter((sys) =>
+      const completedSystems = activeSystems.filter((sys) =>
         sys.subAssessments.every((sub) => answers[sub.id] && Object.keys(answers[sub.id]).length === sub.questions.length)
       );
 
@@ -679,7 +777,7 @@ export default function AssessmentPlatform(props) {
   function CEODashboardButton() {
     return (
       <button onClick={() => setShowCEOPrompt(true)} className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow hover:opacity-95">
-        C-Suite Dashboard
+        C-Suite Partner
       </button>
     );
   }
@@ -1096,7 +1194,7 @@ export default function AssessmentPlatform(props) {
                 </div> */}
 
                 <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {systems.map((system) => {
+                  {activeSystems.map((system) => {
                     const completion = calculateSystemCompletion(system);
                     const isCompleted = completion.isCompleted;
                     const isInProgress = !isCompleted && completion.answered > 0;
@@ -1147,12 +1245,12 @@ export default function AssessmentPlatform(props) {
           {/* Step 3: system pages */}
           {step === 3 && currentSystem && (
             <>
-              {currentSystem.id === "interdependency" && <InterdependencySystem system={currentSystem} answers={answers} setAnswers={setAnswers} onBack={() => setStep(1)} darkMode={darkMode} />}
-              {currentSystem.id === "inlignment" && <SystemOfInlignment system={currentSystem} answers={answers} setAnswers={setAnswers} onBack={() => setStep(1)} darkMode={darkMode} />}
-              {currentSystem.id === "investigation" && <SystemOfInvestigation system={currentSystem} answers={answers} setAnswers={setAnswers} onBack={() => setStep(1)} darkMode={darkMode} />}
-              {currentSystem.id === "orchestration" && <SystemOfOrchestration system={currentSystem} answers={answers} setAnswers={setAnswers} onBack={() => setStep(1)} darkMode={darkMode} />}
-              {currentSystem.id === "illustration" && <SystemOfIllustration system={currentSystem} answers={answers} setAnswers={setAnswers} onBack={() => setStep(1)} darkMode={darkMode} />}
-              {currentSystem.id === "interpretation" && <SystemOfInterpretation system={currentSystem} answers={answers} setAnswers={setAnswers} onBack={() => setStep(1)} darkMode={darkMode} />}
+              {currentSystem.id === "interdependency" && <InterdependencySystem system={currentSystem} answers={answers} setAnswers={setAnswersWithTracking} onBack={() => setStep(1)} darkMode={darkMode} />}
+              {currentSystem.id === "inlignment" && <SystemOfInlignment system={currentSystem} answers={answers} setAnswers={setAnswersWithTracking} onBack={() => setStep(1)} darkMode={darkMode} />}
+              {currentSystem.id === "investigation" && <SystemOfInvestigation system={currentSystem} answers={answers} setAnswers={setAnswersWithTracking} onBack={() => setStep(1)} darkMode={darkMode} />}
+              {currentSystem.id === "orchestration" && <SystemOfOrchestration system={currentSystem} answers={answers} setAnswers={setAnswersWithTracking} onBack={() => setStep(1)} darkMode={darkMode} />}
+              {currentSystem.id === "illustration" && <SystemOfIllustration system={currentSystem} answers={answers} setAnswers={setAnswersWithTracking} onBack={() => setStep(1)} darkMode={darkMode} />}
+              {currentSystem.id === "interpretation" && <SystemOfInterpretation system={currentSystem} answers={answers} setAnswers={setAnswersWithTracking} onBack={() => setStep(1)} darkMode={darkMode} />}
             </>
           )}
         </AnimatePresence>

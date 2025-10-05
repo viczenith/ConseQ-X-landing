@@ -3,6 +3,12 @@ import { useOutletContext } from "react-router-dom";
 import { FaPaperPlane, FaPaperclip } from "react-icons/fa";
 import { useAuth } from "../../../contexts/AuthContext";
 import { normalizeSystemKey, CANONICAL_SYSTEMS } from "../constants/systems";
+import { generateSystemReport } from "../../../utils/aiPromptGenerator";
+import { buildIndex, queryIndex } from "../../../lib/rag";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 
 function TypingIndicator({ darkMode }) {
   const dotClass = `h-2 w-2 rounded-full animate-pulse ${darkMode ? "bg-gray-500" : "bg-gray-400"}`;
@@ -43,7 +49,7 @@ function MessageRow({ m, darkMode }) {
   );
 }
 
-function ChatComposer({ onSend, darkMode, onAttachClick, textareaRef, textValue, setTextValue, uploadedFile, setUploadedFile }) {
+function ChatComposer({ onSend, darkMode, onAttachClick, textareaRef, textValue, setTextValue, uploadedFile, setUploadedFile, onTyping }) {
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -87,7 +93,7 @@ function ChatComposer({ onSend, darkMode, onAttachClick, textareaRef, textValue,
         <textarea
           ref={textareaRef}
           value={textValue}
-          onChange={(e) => setTextValue(e.target.value)}
+          onChange={(e) => { setTextValue(e.target.value); onTyping && onTyping(); }}
           onKeyDown={handleKeyDown}
           placeholder="Ask your executive analyst"
           className={`flex-1 min-w-0 resize-none rounded-lg px-4 py-3 border hide-scrollbar ${
@@ -101,11 +107,11 @@ function ChatComposer({ onSend, darkMode, onAttachClick, textareaRef, textValue,
         <div className="flex flex-col items-end">
           <button
             onClick={() => {
-              if (textValue && textValue.trim()) {
-                onSend(textValue.trim());
-                setTextValue("");
-              }
-            }}
+                if (textValue && textValue.trim()) {
+                  onSend(textValue.trim());
+                  setTextValue("");
+                }
+              }}
             aria-label="Send"
             className={`p-2 rounded-md ${textValue.trim() ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"}`}
             style={{ width: 36, height: 36 }}
@@ -143,6 +149,15 @@ export default function CEOChat() {
     { id: "m0", role: "system", text: "Welcome to ConseQ-X Ultra - your Executive Analyst.", timestamp: new Date().toISOString() },
   ]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [userTyping, setUserTyping] = useState(false);
+
+  // debounce typing indicator
+  const typingTimerRef = useRef(null);
+  const handleUserTyping = () => {
+    setUserTyping(true);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => setUserTyping(false), 1200);
+  };
 
   const fileInputRef = useRef(null);
   const messagesRef = useRef(null);
@@ -216,46 +231,178 @@ export default function CEOChat() {
   }, [messages, isGenerating]);
 
   function simulateAssistantReply(prompt) {
+    // fallback simple simulation (kept for offline/dev)
     setIsGenerating(true);
-    // build explainable recommendations from latestBySystem meta
-    const lines = [
-      "Based on the most recent assessments, here are explainable priorities:",
-    ];
+    const lines = ["Based on the most recent assessments, here are explainable priorities:"];
     const systems = Object.keys(latestBySystem);
-    if (systems.length === 0) {
-      lines.push("- No recent system runs found. Start an assessment in the Assessments tab.");
-    } else {
+    if (systems.length === 0) lines.push("- No recent system runs found. Start an assessment in the Assessments tab.");
+    else {
       systems.slice(0, 3).forEach((sid) => {
         const r = latestBySystem[sid];
-        const explain = r?.meta?.explain || [];
-        const top = explain.slice(0, 2).map((d) => `${d.key} (${Math.round(d.weight * 100)}%)`).join(", ");
         const label = titleByKey[sid] || r?.title || sid;
-        lines.push(`- ${label}: score ${r?.score ?? "-"}%. Key drivers: ${top || "n/a"}`);
+        lines.push(`- ${label}: score ${r?.score ?? "-"}%.`);
       });
     }
-    lines.push("\nWould you like me to draft a 4-week action plan with owners and KPIs?");
+    lines.push("\nWould you like a 4-week action plan with owners and KPIs?");
     const replyText = lines.join("\n");
-    let idx = 0;
     const id = `m-assistant-${Date.now()}`;
-    const assistantMessage = { id, role: "assistant", text: "", timestamp: new Date().toISOString() };
-    setMessages((prev) => [...prev, assistantMessage]);
-
+    setMessages((prev) => [...prev, { id, role: "assistant", text: "", timestamp: new Date().toISOString() }]);
+    let idx = 0;
     const interval = setInterval(() => {
-      idx += 20;
+      idx += 30;
       const chunk = replyText.slice(0, idx);
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, text: chunk } : m)));
       if (idx >= replyText.length) {
         clearInterval(interval);
         setIsGenerating(false);
       }
-    }, 60);
+    }, 50);
   }
 
-  function handleSendMessage(text) {
+
+  async function handleSendMessage(text) {
     const userMsg = { id: `m-user-${Date.now()}`, role: "user", text, timestamp: new Date().toISOString(), file: uploadedFile ? { ...uploadedFile } : undefined };
     setMessages((prev) => [...prev, userMsg]);
     setUploadedFile(null);
-    simulateAssistantReply(text + (uploadedFile ? ` (attached ${uploadedFile.name})` : ""));
+
+    // Show immediate assistant typing placeholder for friendliness
+    const placeholderId = `m-assistant-${Date.now()}`;
+    setMessages((prev) => [...prev, { id: placeholderId, role: "assistant", text: "...", timestamp: new Date().toISOString() }]);
+    setIsGenerating(true);
+
+    // Build scores map from latestBySystem
+    const scores = {};
+    Object.keys(latestBySystem).forEach((k) => {
+      scores[k] = latestBySystem[k]?.score ?? null;
+    });
+
+    // helper to detect whether user asked about assessments/org
+    const needsAssessmentContext = (t) => {
+      if (!t) return false;
+      const pattern = /\b(assess|assessment|score|scores|system|systems|results|report|priority|action plan|org|organization|company|revenue|metrics|kpi|kpis|how did we do|what is my score)\b/i;
+      return pattern.test(t);
+    };
+
+    const openRouterKey = process.env.REACT_APP_OPENROUTER_KEY;
+    const modelUrl = "https://openrouter.ai/api/v1/chat/completions";
+
+    try {
+      setIsGenerating(true);
+      const assistantId = placeholderId;
+      // ensure assistant placeholder already added earlier; replace it by updating messages
+
+        // If user requested assessment/org context and we have assessment scores, include the report
+        if (needsAssessmentContext(text) && Object.keys(scores).length > 0 && openRouterKey) {
+          const userInfo = { name: auth?.user?.name || auth?.user?.email || "User", org: auth?.org?.name || "Organization" };
+
+          // Build small docs from assessments: one summary per system plus recent notes
+          const docs = Object.values(latestBySystem || {}).map(r => ({
+            id: r.id || `${r.systemId}-${r.timestamp}`,
+            text: `System: ${r.systemId}\nScore: ${r.score}\nNotes: ${JSON.stringify(r.meta || {})}`,
+            meta: { systemId: r.systemId, score: r.score, timestamp: r.timestamp }
+          }));
+
+          const index = buildIndex(docs);
+          const hits = queryIndex(index, text, 6);
+          const reportChunks = hits.map(h => `- [${h.doc.meta.systemId}] score: ${h.doc.meta.score} — excerpt: ${h.doc.text.slice(0, 200)}`);
+          const report = reportChunks.join('\n');
+
+          const systemPrompt = `You are an executive AI assistant. Use the following assessment report to answer the user's question precisely and with actionable recommendations. Use concise bullet points and suggested owners/KPIs when relevant. Always include African/Nigerian context where possible.`;
+
+          const chatPayload = {
+            model: "mistralai/mistral-7b-instruct",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "system", content: `AssessmentReport:\n${report}` },
+              { role: "user", content: text }
+            ]
+          };
+
+        const res = await fetch(modelUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${openRouterKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(chatPayload)
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, text: `Error generating response: ${txt}` } : m)));
+          setIsGenerating(false);
+          return;
+        }
+
+        const payload = await res.json();
+        const output = payload.choices?.[0]?.message?.content ?? "";
+
+        // Typing animation for the assistant reply
+        let idx = 0;
+        const total = output.length;
+        const tick = setInterval(() => {
+          idx = Math.min(total, idx + Math.max(20, Math.round(total / 30)));
+          const chunk = output.slice(0, idx);
+          setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, text: chunk } : m)));
+          if (idx >= total) {
+            clearInterval(tick);
+            setIsGenerating(false);
+          }
+        }, 40);
+        return;
+      }
+
+      // Otherwise: normal conversational flow — call model with a friendly system prompt (no heavy report)
+      if (!openRouterKey) {
+        // fallback to simulated reply
+        simulateAssistantReply(text);
+        return;
+      }
+
+      const friendlySystemPrompt = `You are a friendly, conversational executive assistant. Be warm and concise. Answer conversational questions naturally. Only provide assessment-specific analysis if the user asks for it.`;
+      const chatPayload = {
+        model: "mistralai/mistral-7b-instruct",
+        messages: [
+          { role: "system", content: friendlySystemPrompt },
+          { role: "user", content: text }
+        ]
+      };
+
+      const res2 = await fetch(modelUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openRouterKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(chatPayload)
+      });
+
+      if (!res2.ok) {
+        const txt = await res2.text();
+        setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, text: `Error generating response: ${txt}` } : m)));
+        setIsGenerating(false);
+        return;
+      }
+
+      const payload2 = await res2.json();
+      const output2 = payload2.choices?.[0]?.message?.content ?? "";
+
+      let idx2 = 0;
+      const total2 = output2.length;
+      const tick2 = setInterval(() => {
+        idx2 = Math.min(total2, idx2 + Math.max(20, Math.round(total2 / 30)));
+        const chunk = output2.slice(0, idx2);
+        setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, text: chunk } : m)));
+        if (idx2 >= total2) {
+          clearInterval(tick2);
+          setIsGenerating(false);
+        }
+      }, 40);
+
+    } catch (err) {
+      console.error(err);
+      simulateAssistantReply(text);
+    }
   }
 
   function handleUploadFile(file) {
@@ -311,7 +458,15 @@ export default function CEOChat() {
 
           <div className="flex-1 overflow-auto px-4 py-3 hide-scrollbar" ref={messagesRef} style={{ WebkitOverflowScrolling: "touch" }}>
             {messages.map((m) => (
-              <MessageRow key={m.id} m={m} darkMode={darkMode} />
+              <div key={m.id} className="my-3">
+                {m.role === 'assistant' ? (
+                  <div className={`inline-block rounded-xl px-4 py-3 ${darkMode ? "bg-gray-700 text-gray-100" : "bg-gray-50 text-gray-900"}` }>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{m.text}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <MessageRow m={m} darkMode={darkMode} />
+                )}
+              </div>
             ))}
 
             {isGenerating && (
@@ -320,6 +475,9 @@ export default function CEOChat() {
                   <TypingIndicator darkMode={darkMode} />
                 </div>
               </div>
+            )}
+            {userTyping && (
+              <div className="mt-2 text-xs italic text-gray-400">You are typing...</div>
             )}
           </div>
 
@@ -332,6 +490,7 @@ export default function CEOChat() {
             setTextValue={setTextValue}
             uploadedFile={uploadedFile}
             setUploadedFile={setUploadedFile}
+            onTyping={handleUserTyping}
           />
         </div>
       </div>

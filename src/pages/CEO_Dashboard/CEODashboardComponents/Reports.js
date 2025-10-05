@@ -163,6 +163,48 @@ export default function CEOReports() {
   const [reminders, setReminders] = useState(() => readJSON(STORAGE_REMINDERS, []));
   const [suggestions, setSuggestions] = useState(() => readJSON(STORAGE_SUGGS, sampleSuggestions()));
 
+  // NEW: Listen for orgHealth recommendations and append to suggestions
+  useEffect(() => {
+    function handleOrgHealthRecommendation(e) {
+      try {
+        const { orgId, recommendations } = e?.detail || {};
+        if (!recommendations || !Array.isArray(recommendations)) return;
+        // map recommendations to your suggestions shape
+        const mapped = recommendations.map((r) => ({
+          id: r.id || genId("s"),
+          severity: (r.severity) || (r.impact && r.impact.toLowerCase().includes("high") ? "warning" : "improvement"),
+          title: r.title || "Org health recommendation",
+          summary: r.summary || r.description || "",
+          impact: r.impact || "Medium",
+          predictions: r.predictions || {},
+          evidence: r.evidence || [],
+          comparables: r.comparables || [],
+          recommendedMeeting: r.recommendedMeeting || null,
+          createdAt: r.createdAt || Date.now(),
+          source: r.source || "OrgHealth",
+          acted: false,
+          dismissed: false,
+        }));
+        setSuggestions((prev) => {
+          const next = [...mapped, ...prev];
+          writeJSON(STORAGE_SUGGS, next);
+          return next;
+        });
+        // also create a notification
+        setNotifications((prev) => {
+          const n = { id: genId("n"), title: `New OrgHealth suggestion: ${mapped[0].title}`, body: mapped[0].summary, ts: Date.now(), read: false, type: "orghealth", suggestionId: mapped[0].id };
+          const next = [n, ...prev];
+          writeJSON(STORAGE_NOTIFS, next);
+          return next;
+        });
+      } catch (err) {
+        console.error("Error handling orghealth recommendation:", err);
+      }
+    }
+    window.addEventListener("conseqx:orghealth:recommendation", handleOrgHealthRecommendation);
+    return () => window.removeEventListener("conseqx:orghealth:recommendation", handleOrgHealthRecommendation);
+  }, []);
+
   // UI
   const [filterSeverity, setFilterSeverity] = useState("all");
   const [suggestionModal, setSuggestionModal] = useState({ open: false, suggestion: null });
