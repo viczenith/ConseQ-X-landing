@@ -524,7 +524,11 @@ export default function ConseqXCEODashboardShell() {
                     aria-haspopup="true"
                     aria-expanded={notifOpen}
                     aria-label="Notifications"
-                    className={`relative p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-300 ${darkMode ? "bg-gray-700 text-gray-100" : "bg-white text-gray-900"} shadow-sm`}
+                    className={`relative p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-300 ${
+                      darkMode
+                        ? "bg-gray-700 text-gray-100 hover:bg-gray-600"
+                        : "bg-white text-gray-900 hover:bg-gray-50"
+                    } shadow-sm`}
                     title={unreadCount ? `${unreadCount} unread notifications` : "No unread notifications"}
                   >
                     <FaBell />
@@ -537,50 +541,41 @@ export default function ConseqXCEODashboardShell() {
 
                   {/* Dropdown */}
                   {notifOpen && (
-                    <div ref={notifRef} className={`absolute right-0 top-full mt-2 w-96 max-w-screen-sm z-50 rounded-xl shadow-2xl ${darkMode ? "bg-gray-900 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"}`}>
+                    <div
+                      ref={notifRef}
+                      className={`absolute right-0 top-full mt-2 w-96 max-w-screen-sm z-50 rounded-xl shadow-2xl ${
+                        darkMode ? "bg-gray-900 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"
+                      }`}
+                    >
                       <div className="p-3 border-b flex items-center justify-between">
                         <div className="font-semibold">Notifications</div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => { markAllRead(); }}
-                            className="text-xs px-2 py-1 rounded-md border"
-                            title="Mark all as read"
-                          >
-                            Mark all read
-                          </button>
-                          <button
-                            onClick={() => { addMockNotification(); }}
-                            className="text-xs px-2 py-1 rounded-md border"
-                            title="Add mock notification (dev)"
-                          >
-                            + Add
-                          </button>
-                        </div>
+                        <div className="flex items-center gap-2">{/* optional controls */}</div>
                       </div>
 
                       <div className="max-h-64 overflow-auto hide-scrollbar">
                         {/* Unread heading */}
-                        {notifications.filter(n => !n.read).length > 0 && (
-                          <div className="px-3 py-2 text-xs text-gray-400">Unread</div>
+                        {notifications.filter((n) => !n.read).length > 0 && (
+                          <div className={`px-3 py-2 text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Unread</div>
                         )}
 
-                        {(notifications.filter(n => !n.read)).map((n) => (
-                          <div key={n.id} className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-b last:border-b-0 flex gap-3 items-start">
+                        {(notifications.filter((n) => !n.read)).map((n) => (
+                          <div
+                            key={n.id}
+                            className={`px-3 py-2 border-b last:border-b-0 flex gap-3 items-start ${
+                              darkMode ? "hover:bg-gray-800" : "hover:bg-gray-50"
+                            }`}
+                          >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
-                                <div className="font-medium truncate">{n.title}</div>
-                                <div className="text-xs text-gray-400 ml-2">{n.timestamp ? new Date(n.timestamp).toLocaleString() : ""}</div>
+                                <div className={`font-medium truncate ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{n.title}</div>
+                                <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-400"} ml-2`}>
+                                  {n.timestamp ? new Date(n.timestamp).toLocaleString() : ""}
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-500 mt-1 truncate">{n.message || n.body || ""}</div>
+                              <div className={`text-sm mt-1 truncate ${darkMode ? "text-gray-300" : "text-gray-500"}`}>{n.message || n.body || ""}</div>
                               <div className="mt-2 flex items-center gap-2">
                                 <button
-                                  onClick={() => { markNotificationRead(n.id); }}
-                                  className="text-xs px-2 py-1 rounded-md border"
-                                >
-                                  Mark read
-                                </button>
-                                <button
-                                  onClick={() => { /* open related report if relevant */ navigate("/ceo/reports"); setNotifOpen(false); }}
+                                  onClick={() => { navigate("/ceo/reports"); setNotifOpen(false); }}
                                   className="text-xs px-2 py-1 rounded-md bg-indigo-600 text-white"
                                 >
                                   Open
@@ -591,37 +586,47 @@ export default function ConseqXCEODashboardShell() {
                         ))}
 
                         {/* Read heading */}
-                        {notifications.filter(n => n.read).length > 0 && (
-                          <div className="px-3 py-2 text-xs text-gray-400">Read</div>
+                        {notifications.filter((n) => n.read).length > 0 && (
+                          <div className={`px-3 py-2 text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Read</div>
                         )}
 
-                        {(notifications.filter(n => n.read)).map((n) => (
-                          <div key={n.id} className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-b last:border-b-0 flex gap-3 items-start">
+                        {(notifications.filter((n) => n.read)).map((n) => (
+                          <div
+                            key={n.id}
+                            className={`px-3 py-2 border-b last:border-b-0 flex gap-3 items-start ${
+                              darkMode ? "hover:bg-gray-800" : "hover:bg-gray-50"
+                            }`}
+                          >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
-                                <div className="text-sm truncate">{n.title}</div>
-                                <div className="text-xs text-gray-400 ml-2">{n.timestamp ? new Date(n.timestamp).toLocaleString() : ""}</div>
+                                <div className={`text-sm truncate ${darkMode ? "text-gray-200" : "text-gray-900"}`}>{n.title}</div>
+                                <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-400"} ml-2`}>
+                                  {n.timestamp ? new Date(n.timestamp).toLocaleString() : ""}
+                                </div>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1 truncate">{n.message || n.body || ""}</div>
+                              <div className={`text-xs mt-1 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{n.message || n.body || ""}</div>
                             </div>
                           </div>
                         ))}
 
                         {/* empty state */}
                         {(!notifications || notifications.length === 0) && (
-                          <div className="p-4 text-center text-sm text-gray-400">No notifications</div>
+                          <div className={`p-4 text-center text-sm ${darkMode ? "text-gray-400" : "text-gray-400"}`}>No notifications</div>
                         )}
                       </div>
 
-                      <div className="p-3 border-t text-xs text-gray-500 flex items-center justify-between">
-                        <div>Notifications are stored locally</div>
+                      <div className="p-3 border-t text-xs flex items-center justify-between">
+                        <div className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>Notifications are stored locally</div>
                         <div>
-                          <button onClick={() => { setNotifOpen(false); }} className="px-2 py-1 rounded-md border">Close</button>
+                          <button onClick={() => { setNotifOpen(false); }} className={`px-2 py-1 rounded-md border ${darkMode ? "bg-transparent text-gray-100 border-gray-700" : ""}`}>
+                            Close
+                          </button>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+
               </div>
               {/* end header area */}
 

@@ -1,9 +1,3 @@
-// Centralized selector to route service calls to mock or API based on env flags.
-// Usage: import * as svc from "./serviceSelector";
-// Flags (CRA-compatible):
-// - REACT_APP_USE_API=true  -> use apiService; if not implemented, fallback to mock with a warning
-// - default: mockService
-
 import * as mockService from "./mockService";
 import * as apiService from "./apiService";
 
