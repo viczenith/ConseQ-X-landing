@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/ConseQ-X-landing/static/css/main.93b049bf.css",
-    "main.js": "/ConseQ-X-landing/static/js/main.674ea04a.js",
+    "main.js": "/ConseQ-X-landing/static/js/main.7f7b304c.js",
     "static/js/376.7bf5c019.chunk.js": "/ConseQ-X-landing/static/js/376.7bf5c019.chunk.js",
     "static/js/119.36e4f4d1.chunk.js": "/ConseQ-X-landing/static/js/119.36e4f4d1.chunk.js",
     "static/js/515.47e21abd.chunk.js": "/ConseQ-X-landing/static/js/515.47e21abd.chunk.js",
@@ -10,7 +10,7 @@
     "static/js/862.942ed665.chunk.js": "/ConseQ-X-landing/static/js/862.942ed665.chunk.js",
     "static/js/240.6ee42e94.chunk.js": "/ConseQ-X-landing/static/js/240.6ee42e94.chunk.js",
     "static/js/295.881fe399.chunk.js": "/ConseQ-X-landing/static/js/295.881fe399.chunk.js",
-    "static/js/234.3fb18317.chunk.js": "/ConseQ-X-landing/static/js/234.3fb18317.chunk.js",
+    "static/js/234.6aeb6648.chunk.js": "/ConseQ-X-landing/static/js/234.6aeb6648.chunk.js",
     "static/js/961.c1257ea9.chunk.js": "/ConseQ-X-landing/static/js/961.c1257ea9.chunk.js",
     "static/js/931.81c83e2d.chunk.js": "/ConseQ-X-landing/static/js/931.81c83e2d.chunk.js",
     "static/js/844.ab57b19a.chunk.js": "/ConseQ-X-landing/static/js/844.ab57b19a.chunk.js",
@@ -27,11 +27,11 @@
     "static/js/238.781f23ec.chunk.js": "/ConseQ-X-landing/static/js/238.781f23ec.chunk.js",
     "static/js/830.44b195ec.chunk.js": "/ConseQ-X-landing/static/js/830.44b195ec.chunk.js",
     "static/js/68.288692b4.chunk.js": "/ConseQ-X-landing/static/js/68.288692b4.chunk.js",
-    "static/js/255.5ae72d5c.chunk.js": "/ConseQ-X-landing/static/js/255.5ae72d5c.chunk.js",
+    "static/js/255.6ca4ef42.chunk.js": "/ConseQ-X-landing/static/js/255.6ca4ef42.chunk.js",
     "static/media/ConseQ-X-3d.png": "/ConseQ-X-landing/static/media/ConseQ-X-3d.884c70e7aaf4d4f1b78f.png",
     "index.html": "/ConseQ-X-landing/index.html",
     "main.93b049bf.css.map": "/ConseQ-X-landing/static/css/main.93b049bf.css.map",
-    "main.674ea04a.js.map": "/ConseQ-X-landing/static/js/main.674ea04a.js.map",
+    "main.7f7b304c.js.map": "/ConseQ-X-landing/static/js/main.7f7b304c.js.map",
     "376.7bf5c019.chunk.js.map": "/ConseQ-X-landing/static/js/376.7bf5c019.chunk.js.map",
     "119.36e4f4d1.chunk.js.map": "/ConseQ-X-landing/static/js/119.36e4f4d1.chunk.js.map",
     "515.47e21abd.chunk.js.map": "/ConseQ-X-landing/static/js/515.47e21abd.chunk.js.map",
@@ -40,7 +40,7 @@
     "862.942ed665.chunk.js.map": "/ConseQ-X-landing/static/js/862.942ed665.chunk.js.map",
     "240.6ee42e94.chunk.js.map": "/ConseQ-X-landing/static/js/240.6ee42e94.chunk.js.map",
     "295.881fe399.chunk.js.map": "/ConseQ-X-landing/static/js/295.881fe399.chunk.js.map",
-    "234.3fb18317.chunk.js.map": "/ConseQ-X-landing/static/js/234.3fb18317.chunk.js.map",
+    "234.6aeb6648.chunk.js.map": "/ConseQ-X-landing/static/js/234.6aeb6648.chunk.js.map",
     "961.c1257ea9.chunk.js.map": "/ConseQ-X-landing/static/js/961.c1257ea9.chunk.js.map",
     "931.81c83e2d.chunk.js.map": "/ConseQ-X-landing/static/js/931.81c83e2d.chunk.js.map",
     "844.ab57b19a.chunk.js.map": "/ConseQ-X-landing/static/js/844.ab57b19a.chunk.js.map",
@@ -57,10 +57,10 @@
     "238.781f23ec.chunk.js.map": "/ConseQ-X-landing/static/js/238.781f23ec.chunk.js.map",
     "830.44b195ec.chunk.js.map": "/ConseQ-X-landing/static/js/830.44b195ec.chunk.js.map",
     "68.288692b4.chunk.js.map": "/ConseQ-X-landing/static/js/68.288692b4.chunk.js.map",
-    "255.5ae72d5c.chunk.js.map": "/ConseQ-X-landing/static/js/255.5ae72d5c.chunk.js.map"
+    "255.6ca4ef42.chunk.js.map": "/ConseQ-X-landing/static/js/255.6ca4ef42.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.93b049bf.css",
-    "static/js/main.674ea04a.js"
+    "static/js/main.7f7b304c.js"
   ]
 }
