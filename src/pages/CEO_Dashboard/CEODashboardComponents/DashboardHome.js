@@ -4,7 +4,7 @@ import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
 import * as svc from "../services/serviceSelector";
 import { normalizeSystemKey, CANONICAL_SYSTEMS } from "../constants/systems";
-import { FaEye, FaCog, FaBrain } from "react-icons/fa";
+import { FaEye, FaBrain } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
 const UPLOADS_KEY = "conseqx_uploads_v1";
@@ -276,69 +276,176 @@ export default function DashboardHome() {
 
       <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className={`md:col-span-2 rounded-2xl p-4 border ${darkMode ? "bg-gray-900 border-gray-700 text-gray-100" : "bg-white border-gray-100 text-gray-900"}`}>
-          <h3 className={`${darkMode ? "text-gray-100" : "text-gray-900"} text-lg font-semibold`}>Executive Insights</h3>
-          <p className={`mt-3 text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-            A short actionable summary based on the latest uploads and assessments. Use OrgHealth for the complete automated diagnosis and per-system recommendations.
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className={`${darkMode ? "text-gray-100" : "text-gray-900"} text-lg font-semibold`}>Executive Reports & Insights</h3>
+              <p className={`mt-1 text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                Real-time organizational intelligence and strategic recommendations
+              </p>
+            </div>
+            <div className={`flex items-center gap-3 rounded-xl px-3 py-2 ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-100"} shadow-sm`}>
+              <div className="flex flex-col">
+                <span className="text-xs text-gray-500">Insights</span>
+                <span className="text-lg font-bold text-blue-400">{Object.values(systemScoresFromUpload).filter(score => score !== null).length}</span>
+              </div>
+              <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+              <div className="flex flex-col text-right">
+                <span className="text-xs text-gray-500">Actions</span>
+                <span className="text-lg font-bold text-amber-400">3</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Assessment Status Overview */}
+          <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 rounded-lg ${
+            darkMode ? "bg-gray-800/50" : "bg-gray-50"
+          }`}>
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}>
+                {Object.values(systemScoresFromUpload).filter(score => score !== null).length}
+              </div>
+              <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Systems Assessed</div>
+            </div>
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${darkMode ? "text-yellow-400" : "text-yellow-600"}`}>
+                {6 - Object.values(systemScoresFromUpload).filter(score => score !== null).length}
+              </div>
+              <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Pending Assessment</div>
+            </div>
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
+                {overallScore > 75 ? "Excellent" : overallScore > 50 ? "Good" : overallScore > 25 ? "Fair" : "Needs Attention"}
+              </div>
+              <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Health Rating</div>
+            </div>
+          </div>
 
-          <div className="mt-6">
+          {/* Executive Insights */}
+          {/* <div className="space-y-4">
             <h4 className={`${darkMode ? "text-gray-100" : "text-gray-900"} font-semibold flex items-center gap-2`}>
-              <FaCog className="text-indigo-500" />
-              Systems snapshot (quick)
+              <FaBrain className="text-blue-500" />
+              Strategic Insights
             </h4>
-            <p className={`mt-2 text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Compact view — click the action to retake or start the system assessment.</p>
-
-            <div className="mt-4 space-y-2">
-              {CANONICAL_SYSTEMS.map((s) => {
-                const score = systemScoresFromUpload[s.key];
-                const has = typeof score === "number" && score !== null;
+            
+            <div className="space-y-3">
+              {Object.entries(systemScoresFromUpload).filter(([_, score]) => score !== null && score < 70).slice(0, 2).map(([systemKey, score]) => {
+                const system = CANONICAL_SYSTEMS.find(s => s.key === systemKey);
                 return (
-                  <div key={s.key} className={`flex items-center justify-between p-3 rounded-md ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-100"}`}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded bg-indigo-600 text-white flex items-center justify-center">{s.icon}</div>
-                      <div className="min-w-0">
-                        <div className={darkMode ? "text-gray-100" : "text-gray-900"}>{s.title}</div>
-                        <div className="text-xs text-gray-400 mt-1 truncate" style={{ maxWidth: 420 }}>{s.description}</div>
-                        <div className="mt-2 w-48">
-                          {has ? (
-                            <>
-                              <div className="text-xs text-gray-400 mb-1">Answered evidence</div>
-                              <BlueProgress pct={score} darkMode={darkMode} />
-                            </>
-                          ) : (
-                            <div className="text-xs text-gray-400">Assessment not taken</div>
-                          )}
+                  <div key={systemKey} className={`p-4 rounded-lg border transition-all hover:shadow-lg cursor-pointer ${
+                    darkMode ? "bg-gray-800 border-gray-700 hover:shadow-xl" : "bg-white border-gray-100 hover:shadow-lg"
+                  }`} onClick={() => handleViewSystem(systemKey)}>
+                    <div className="flex items-start gap-3">
+                      <div className={`rounded-full p-3 text-lg ${
+                        score < 50 ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300" :
+                        score < 70 ? "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300" :
+                        "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300"
+                      }`}>
+                        {system?.icon || "⚠️"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-sm truncate">{system?.title || systemKey} System Alert</h3>
+                            <p className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-xs mt-1`}>
+                              Performance at {score}% - requires strategic attention
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2 items-center">
+                              <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded text-xs font-semibold ${
+                                score < 50 ? "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300" :
+                                "bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300"
+                              }`}>
+                                {score < 50 ? "CRITICAL" : "WARNING"}
+                              </span>
+                              <span className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-xs`}>Impact: High</span>
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <button
+                              onClick={(e) => {e.stopPropagation(); navigate(`/ceo/org-health`);}} 
+                              className={`px-3 py-1 rounded-md text-xs ${darkMode ? "bg-gray-700 text-white" : "bg-white border border-gray-200 text-gray-700"}`}
+                            >
+                              <FaEye />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          <div className={`p-2 rounded-md text-xs ${darkMode ? "bg-gray-900/40 border border-gray-700" : "bg-gray-50 border border-gray-100"}`}>
+                            <div className="font-semibold text-xs">Short-term</div>
+                            <div className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-xs mt-1`}>2-6 weeks: Performance decline likely</div>
+                          </div>
+                          <div className={`p-2 rounded-md text-xs ${darkMode ? "bg-gray-900/40 border border-gray-700" : "bg-gray-50 border border-gray-100"}`}>
+                            <div className="font-semibold text-xs">Mid-term</div>
+                            <div className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-xs mt-1`}>3-6 months: System bottlenecks emerge</div>
+                          </div>
+                          <div className={`p-2 rounded-md text-xs ${darkMode ? "bg-gray-900/40 border border-gray-700" : "bg-gray-50 border border-gray-100"}`}>
+                            <div className="font-semibold text-xs">Long-term</div>
+                            <div className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-xs mt-1`}>12+ months: Strategic impact</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <div className={`px-2 py-1 rounded-full text-xs ${has ? (score >= 80 ? "bg-green-100 text-green-700" : score >= 60 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700") : "bg-gray-100 text-gray-500"}`}>
-                        {has ? `${score}%` : "—"}
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          // if assessed -> retake, else -> start
-                          startOrRetakeAssessment(s.key);
-                        }}
-                        title={RETAKE_TOOLTIP}
-                        className={`px-3 py-1 rounded-md text-xs ${has ? "bg-indigo-600 text-white" : "border"}`}
-                      >
-                        {has ? "Retake assessment" : "Start assessment"}
-                      </button>
-
-                      <button
-                        onClick={() => handleViewSystem(s.key)}
-                        className={`p-1 rounded-md ${darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-700"}`}
-                        title={has ? "Quick view — short report" : "Learn about this system"}
-                      >
-                        <FaEye className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 );
               })}
+              
+              {Object.values(systemScoresFromUpload).filter(score => score !== null && score < 70).length === 0 && (
+                <div className={`text-center py-8 rounded-lg ${darkMode ? "bg-gray-800/50" : "bg-gray-50"}`}>
+                  <div className="text-4xl mb-2">✅</div>
+                  <div className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-700"}`}>All systems performing well</div>
+                  <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"} mt-1`}>No critical insights at this time</div>
+                </div>
+              )}
+            </div>
+          </div> */}
+
+          {/* Recent Activity */}
+          <div className="mt-6">
+            <h4 className={`${darkMode ? "text-gray-100" : "text-gray-900"} font-semibold mb-3`}>Recent Activity</h4>
+            <div className="space-y-2">
+              {Object.entries(systemScoresFromUpload).filter(([_, score]) => score !== null).slice(0, 3).map(([systemKey, score]) => {
+                const system = CANONICAL_SYSTEMS.find(s => s.key === systemKey);
+                return (
+                  <div key={systemKey} className={`flex items-center justify-between p-3 rounded-lg ${
+                    darkMode ? "bg-gray-800/50" : "bg-gray-50"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded bg-indigo-600 text-white flex items-center justify-center text-sm">
+                        {system?.icon || "📋"}
+                      </div>
+                      <div>
+                        <div className={`text-sm font-medium ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
+                          {system?.title || systemKey}
+                        </div>
+                        <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                          Assessment completed
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      score >= 80 
+                        ? "bg-green-100 text-green-700" 
+                        : score >= 60 
+                        ? "bg-yellow-100 text-yellow-700" 
+                        : "bg-red-100 text-red-700"
+                    }`}>
+                      {score}%
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {Object.values(systemScoresFromUpload).filter(score => score !== null).length === 0 && (
+                <div className={`text-center py-8 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                  <div className="text-4xl mb-2">📋</div>
+                  <div className="text-sm">No assessments completed yet</div>
+                  <button
+                    onClick={() => navigate("/ceo/assessments")}
+                    className="mt-2 text-indigo-600 hover:text-indigo-700 text-sm underline"
+                  >
+                    Start your first assessment
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -336,9 +336,12 @@ export default function ConseqXCEODashboardShell() {
             <div className="flex flex-col gap-2">
               <NavLink onClick={handleMobileNavClick} to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
               <NavLink onClick={handleMobileNavClick} to="/ceo/chat" className={({isActive}) => navItemClass(isActive)}>Chat</NavLink>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/org-health" className={({isActive}) => navItemClass(isActive)}>Org Health</NavLink>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/partner-manual" className={({isActive}) => navItemClass(isActive)}>Manual Diagnosis</NavLink>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/partner-auto" className={({isActive}) => navItemClass(isActive)}>Auto Injest</NavLink>
               <NavLink onClick={handleMobileNavClick} to="/ceo/assessments" className={({isActive}) => navItemClass(isActive)}>Assessments</NavLink>
-              <NavLink onClick={handleMobileNavClick} to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
-              <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard" className={({isActive}) => navItemClass(isActive)}>Partner Dashboard</NavLink>
+              {/* <NavLink onClick={handleMobileNavClick} to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard" className={({isActive}) => navItemClass(isActive)}>Partner Dashboard</NavLink> */}
 
               <NavLink
                 onClick={handleMobileNavClick}
