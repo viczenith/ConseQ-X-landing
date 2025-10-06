@@ -2,7 +2,7 @@ import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 
-const SYSTEM_KEYS = ['interdependency','iteration','investigation','interpretation','illustration','inlignment'];
+const SYSTEM_KEYS = ['interdependency','orchestration','investigation','interpretation','illustration','inlignment'];
 
 function SimpleDependencyMap({ systems, scores }) {
   // place nodes in a circle and draw simple links between sequential systems
@@ -131,7 +131,7 @@ export default function SystemDeepDive() {
     causes: [`Low metric in ${k}`, 'Process gap', 'Ownership unclear']
   })).filter(r => r);
 
-  const iterationSeries = (perSystemSeries['iteration'] || []).map(d => ({ date: new Date(d.ts), value: d.value }));
+  const orchestrationSeries = (perSystemSeries['orchestration'] || []).map(d => ({ date: new Date(d.ts), value: d.value }));
 
   return (
     <div>
@@ -146,10 +146,10 @@ export default function SystemDeepDive() {
         </div>
 
         <div className={`rounded-2xl p-4 ${darkMode? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-100'}`}>
-          <div className="font-semibold">Iteration Trend Chart</div>
+          <div className="font-semibold">Orchestration Trend Chart</div>
           <div className="mt-3 h-48 border rounded p-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={iterationSeries} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+              <LineChart data={orchestrationSeries} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
                 <XAxis dataKey="date" tickFormatter={(d)=> new Date(d).toLocaleDateString()} />
                 <YAxis domain={[0,100]} />
                 <Tooltip labelFormatter={(l)=> l ? new Date(l).toLocaleString() : ''} formatter={(v)=> `${v}%`} />
@@ -178,7 +178,7 @@ export default function SystemDeepDive() {
         </div>
 
         <div className={`rounded-2xl p-4 ${darkMode? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-100'}`}>
-          <div className="font-semibold">Alignment Heatmap</div>
+          <div className="font-semibold">Inlignment Heatmap</div>
           <div className="mt-3 h-48 border rounded p-2">
             <div className="grid grid-cols-3 gap-2">
               {Object.keys(scores).map((k) => (

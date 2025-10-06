@@ -1,5 +1,12 @@
 /**
- * Canonical Systems for C-Suite Partner Dashboard
+ * Canonical  {
+    key: 'orchestration',
+    title: 'Orchestration',
+    description: 'Development cycles, sprint planning, and continuous improvement',
+    icon: '🔄',
+    color: '#10B981', // emerald-500
+    order: 2
+  }, for C-Suite Partner Dashboard
  * 
  * Defines the six core systems that form the assessment framework,
  * display metadata, and legacy key mapping for backwards compatibility.
@@ -16,10 +23,10 @@ export const CANONICAL_SYSTEMS = [
     order: 1
   },
   {
-    key: 'iteration',
-    title: 'Iteration',
+    key: 'orchestration',
+    title: 'Orchestration',
     description: 'Development cycles, sprint planning, and continuous improvement',
-    icon: '�',
+    icon: '🔄',
     color: '#10B981', // emerald-500
     order: 2
   },
@@ -27,7 +34,7 @@ export const CANONICAL_SYSTEMS = [
     key: 'investigation',
     title: 'Investigation',
     description: 'Data analysis, research, and discovery processes',
-    icon: '�',
+    icon: '🔎',
     color: '#F59E0B', // amber-500
     order: 3
   },
@@ -43,13 +50,13 @@ export const CANONICAL_SYSTEMS = [
     key: 'illustration',
     title: 'Illustration',
     description: 'Communication, visualization, and knowledge sharing',
-    icon: '�',
+    icon: '🔄',
     color: '#EF4444', // red-500
     order: 5
   },
   {
-    key: 'alignment',
-    title: 'Alignment',
+    key: 'inlignment',
+    title: 'Inlignment',
     description: 'Strategic coordination, goal setting, and organizational coherence',
     icon: '🎯',
     color: '#06B6D4', // cyan-500
@@ -61,16 +68,16 @@ export const CANONICAL_SYSTEMS = [
 // TODO: Remove legacy mappings after migration period (6 months)
 export const LEGACY_TO_CANONICAL = {
   // Legacy keys that need normalization
-  'orchestration': 'alignment',
-  'inlignment': 'alignment', // typo in legacy data
-  'alignment': 'alignment',
+  'orchestration': 'orchestration', // legacy iteration maps to orchestration
+  'inlignment': 'inlignment', // legacy ilignment maps to inlignment
   
   // Ensure canonical keys map to themselves
   'interdependency': 'interdependency',
-  'iteration': 'iteration',
+  'orchestration': 'orchestration',
   'investigation': 'investigation',
   'interpretation': 'interpretation',
   'illustration': 'illustration',
+  'inlignment': 'inlignment',
   
   // Additional legacy variations that might exist
   'dependency': 'interdependency',
@@ -80,8 +87,8 @@ export const LEGACY_TO_CANONICAL = {
   'insights': 'interpretation',
   'reporting': 'illustration',
   'visualization': 'illustration',
-  'coordination': 'alignment',
-  'strategy': 'alignment'
+  'coordination': 'inlignment',
+  'strategy': 'inlignment'
 };
 
 /**
@@ -138,11 +145,11 @@ export function isCanonicalSystem(systemKey) {
 // TODO: Make these configurable per organization
 export const DEFAULT_SYSTEM_WEIGHTS = {
   'interdependency': 0.18,
-  'iteration': 0.20,
+  'orchestration': 0.20,
   'investigation': 0.16,
   'interpretation': 0.18,
   'illustration': 0.14,
-  'alignment': 0.14
+  'inlignment': 0.14
 };
 
 // Ensure weights sum to 1.0

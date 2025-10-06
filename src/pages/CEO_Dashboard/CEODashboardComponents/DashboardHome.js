@@ -55,6 +55,7 @@ export default function DashboardHome() {
   const [systemScoresFromUpload, setSystemScoresFromUpload] = React.useState({});
   const [showQuickModal, setShowQuickModal] = React.useState(false);
   const [quickModalPayload, setQuickModalPayload] = React.useState(null);
+  const [lastRefresh, setLastRefresh] = React.useState(Date.now());
 
   const USE_MOCK = true;
 
@@ -82,63 +83,113 @@ export default function DashboardHome() {
       try {
         const raw = localStorage.getItem(UPLOADS_KEY);
         const all = raw ? JSON.parse(raw) : [];
-        if (!all || !all.length) {
-          setLatestUpload(null);
-          setSystemScoresFromUpload({});
-          return;
-        }
-        const latest = all[0];
+        const latest = all && all.length ? all[0] : null;
         setLatestUpload(latest);
 
-        // prefer assessments if present
+        // Get assessments data - this is the primary source for system scores
         const byAssessRaw = localStorage.getItem("conseqx_assessments_v1");
         const byOrg = byAssessRaw ? JSON.parse(byAssessRaw) : {};
-        const assessments = (byOrg[auth?.org?.id || org?.id] || []).reduce((acc, a) => {
-          const key = normalizeSystemKey(a.systemId || a.system || a.systemKey || "");
-          if (!key) return acc;
-          acc[key] = a.score || acc[key] || 0;
-          return acc;
-        }, {});
+        const orgId = auth?.org?.id || org?.id || "anon";
+        const orgAssessments = byOrg[orgId] || [];
+        
+        console.log(`🏠 DashboardHome: Loading assessments for org ${orgId}:`, orgAssessments);
 
+        // Group assessments by system and get the latest score for each
+        const assessmentsBySystem = {};
+        orgAssessments.forEach((assessment) => {
+          const systemKey = normalizeSystemKey(assessment.systemId || assessment.system || assessment.systemKey || "");
+          if (!systemKey) return;
+          
+          // Keep the most recent assessment for each system
+          if (!assessmentsBySystem[systemKey] || 
+              (assessment.timestamp || 0) > (assessmentsBySystem[systemKey].timestamp || 0)) {
+            assessmentsBySystem[systemKey] = assessment;
+          }
+        });
+
+        console.log(`🏠 DashboardHome: Processed assessments by system:`, assessmentsBySystem);
+
+        // Build scores object for each canonical system
         const scores = {};
         CANONICAL_SYSTEMS.forEach((s) => {
           const key = s.key;
-          if (typeof assessments[key] !== "undefined" && assessments[key] !== null) {
-            scores[key] = Math.max(0, Math.min(100, Math.round(assessments[key])));
+          const assessment = assessmentsBySystem[key];
+          
+          if (assessment && typeof assessment.score === "number" && assessment.score !== null) {
+            scores[key] = Math.max(0, Math.min(100, Math.round(assessment.score)));
+            console.log(`🏠 DashboardHome: System ${key} has assessment score: ${scores[key]}%`);
           } else if (latest && Array.isArray(latest.analyzedSystems) && latest.analyzedSystems.includes(key)) {
-            scores[key] = 70; // heuristic
+            scores[key] = 70; // heuristic from upload
+            console.log(`🏠 DashboardHome: System ${key} has upload heuristic score: 70%`);
           } else {
             scores[key] = null; // not assessed
+            console.log(`🏠 DashboardHome: System ${key} not assessed`);
           }
         });
+        
+        console.log(`🏠 DashboardHome: Final system scores:`, scores);
         setSystemScoresFromUpload(scores);
-      } catch {
+      } catch (error) {
+        console.error('🏠 DashboardHome: Error loading assessment data:', error);
         setLatestUpload(null);
         setSystemScoresFromUpload({});
       }
     }
 
     loadLatest();
+    
+    // Listen for storage changes
     function onStorage(e) {
-      if (!e.key || e.key === UPLOADS_KEY || e.key === "conseqx_assessments_v1") loadLatest();
+      if (!e.key || e.key === UPLOADS_KEY || e.key === "conseqx_assessments_v1") {
+        console.log(`🏠 DashboardHome: Storage change detected for key: ${e.key}`);
+        loadLatest();
+      }
     }
     window.addEventListener("storage", onStorage);
 
+    // Listen for custom events from Assessments.js
+    function onAssessmentCompleted(e) {
+      console.log(`🏠 DashboardHome: Assessment completed event:`, e.detail);
+      setLastRefresh(Date.now()); // Force component refresh
+      setTimeout(loadLatest, 100); // Small delay to ensure localStorage is updated
+    }
+    
+    function onAssessmentUpdate(e) {
+      console.log(`🏠 DashboardHome: Assessment update event:`, e.detail);
+      setLastRefresh(Date.now()); // Force component refresh
+      setTimeout(loadLatest, 100); // Small delay to ensure localStorage is updated
+    }
+
+    window.addEventListener("conseqx:assessment:completed", onAssessmentCompleted);
+    window.addEventListener("conseqx:assessment:update", onAssessmentUpdate);
+
+    // Listen for BroadcastChannel updates
+    let bc;
     try {
       if ("BroadcastChannel" in window) {
-        const bc = new BroadcastChannel("conseqx_assessments");
+        bc = new BroadcastChannel("conseqx_assessments");
         bc.addEventListener("message", (ev) => {
-          if (ev?.data?.type === "assessments:update") loadLatest();
+          console.log(`🏠 DashboardHome: BroadcastChannel message:`, ev.data);
+          if (ev?.data?.type === "assessments:update" || ev?.data?.type === "assessment:completed") {
+            loadLatest();
+          }
         });
       }
-    } catch {}
+    } catch (error) {
+      console.warn('🏠 DashboardHome: BroadcastChannel not available:', error);
+    }
 
-    const poll = setInterval(loadLatest, 4000);
+    // Poll for updates more frequently to catch real-time changes
+    const poll = setInterval(loadLatest, 2000);
+    
     return () => {
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("conseqx:assessment:completed", onAssessmentCompleted);
+      window.removeEventListener("conseqx:assessment:update", onAssessmentUpdate);
+      if (bc) bc.close();
       clearInterval(poll);
     };
-  }, [auth?.org?.id, org?.id]);
+  }, [auth?.org?.id, org?.id, lastRefresh]);
 
   const overallScore = React.useMemo(() => {
     const vals = Object.values(systemScoresFromUpload || {});

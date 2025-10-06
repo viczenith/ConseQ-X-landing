@@ -8,7 +8,7 @@ const STORAGE_ASSESS = "conseqx_assessments_v1";
 
 const CANONICAL = [
   { key: "interdependency", title: "Interdependency" },
-  { key: "iteration", title: "Iteration" },
+  { key: "orchestration", title: "Orchestration" },
   { key: "investigation", title: "Investigation" },
   { key: "interpretation", title: "Interpretation" },
   { key: "illustration", title: "Illustration" },

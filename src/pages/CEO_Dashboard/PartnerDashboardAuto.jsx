@@ -248,7 +248,7 @@ export default function PartnerDashboardAuto({ orgId: propOrgId = null }) {
     }
     return [
       { key: "interdependency", title: "Interdependency", desc: "" },
-      { key: "iteration", title: "Iteration", desc: "" },
+      { key: "orchestration", title: "Orchestration", desc: "" },
       { key: "investigation", title: "Investigation", desc: "" },
       { key: "interpretation", title: "Interpretation", desc: "" },
       { key: "illustration", title: "Illustration", desc: "" },

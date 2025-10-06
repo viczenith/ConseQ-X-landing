@@ -7,7 +7,7 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'welcome', ts: Date.now(), msg: 'mock live stream' }));
 
   const iv = setInterval(() => {
-    const payload = { type: 'metric_update', ts: Date.now(), scores: { interdependency: Math.floor(40+Math.random()*50), iteration: Math.floor(40+Math.random()*50), investigation: Math.floor(40+Math.random()*50), interpretation: Math.floor(40+Math.random()*50), illustration: Math.floor(40+Math.random()*50), inlignment: Math.floor(40+Math.random()*50) } };
+    const payload = { type: 'metric_update', ts: Date.now(), scores: { interdependency: Math.floor(40+Math.random()*50), orchestration: Math.floor(40+Math.random()*50), investigation: Math.floor(40+Math.random()*50), interpretation: Math.floor(40+Math.random()*50), illustration: Math.floor(40+Math.random()*50), inlignment: Math.floor(40+Math.random()*50) } };
     try { ws.send(JSON.stringify(payload)); } catch (e) {}
   }, 5000 + Math.floor(Math.random()*5000));
 

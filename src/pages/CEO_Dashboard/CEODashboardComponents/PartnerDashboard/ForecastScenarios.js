@@ -4,9 +4,9 @@ import { useOutletContext } from 'react-router-dom';
 export default function ForecastScenarios() {
   const outlet = useOutletContext();
   const darkMode = outlet?.darkMode ?? false;
-  const [iterationBoost, setIterationBoost] = React.useState(0);
+  const [orchestrationBoost, setOrchestrationBoost] = React.useState(0);
 
-  const simulated = Math.round(60 + iterationBoost * 0.6 + Math.random()*5);
+  const simulated = Math.round(60 + orchestrationBoost * 0.6 + Math.random()*5);
 
   return (
     <div>
@@ -19,8 +19,8 @@ export default function ForecastScenarios() {
 
         <div className={`rounded-2xl p-4 ${darkMode? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-100'}`}>
           <div className="font-semibold">What-If Simulator</div>
-          <div className="mt-3 text-sm">Increase Iteration effectiveness: {iterationBoost}%</div>
-          <input type="range" min="0" max="30" value={iterationBoost} onChange={(e)=>setIterationBoost(Number(e.target.value))} />
+          <div className="mt-3 text-sm">Increase Orchestration effectiveness: {orchestrationBoost}%</div>
+          <input type="range" min="0" max="30" value={orchestrationBoost} onChange={(e)=>setOrchestrationBoost(Number(e.target.value))} />
           <div className="mt-3">Simulated overall score: <strong>{simulated}%</strong></div>
         </div>
       </div>
