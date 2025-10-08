@@ -15,6 +15,7 @@ export default function HomePage() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showToolModal, setShowToolModal] = useState(false);
+  const [showCEOPrompt, setShowCEOPrompt] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -1542,12 +1543,209 @@ const whyDifferent = [
                   >
                     Learn More First
                   </motion.button>
+                  
+                  <motion.button
+                    whileHover={buttonHover}
+                    whileTap={buttonTap}
+                    onClick={() => {setShowCEOPrompt(true); setShowToolModal(false);}}
+                    className="px-4 py-3 rounded-lg font-semibold bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow hover:opacity-95"
+                  >
+                    C-Suite Partner
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* CEO Prompt Modal */}
+      {showCEOPrompt && <CEOPromptModal />}
     </div>
   );
+
+  // CEOPromptModal component
+  function CEOPromptModal() {
+    const orgName = formData.company || "";
+    const initialEmail = formData.email || "";
+
+    const [localEmail, setLocalEmail] = useState(initialEmail);
+    const [localPhone, setLocalPhone] = useState("");
+    const [localPassword, setLocalPassword] = useState("");
+    const [localConfirmPassword, setLocalConfirmPassword] = useState("");
+    const [localLoginPassword, setLocalLoginPassword] = useState("");
+    const [localIsLogin, setLocalIsLogin] = useState(false);
+    const [localProcessing, setLocalProcessing] = useState(false);
+    const [localError, setLocalError] = useState(null);
+
+    useEffect(() => {
+      if (showCEOPrompt) {
+        setLocalEmail(initialEmail || "");
+        setLocalPhone("");
+        setLocalPassword("");
+        setLocalConfirmPassword("");
+        setLocalLoginPassword("");
+        setLocalIsLogin(false);
+        setLocalError(null);
+      }
+    }, [showCEOPrompt, initialEmail]);
+
+    if (!showCEOPrompt) return null;
+
+    const containerBg = darkMode ? "bg-gray-900" : "bg-white";
+    const panelBg = darkMode ? "bg-gray-800" : "bg-white";
+    const sectionBg = darkMode ? "bg-gray-800" : "bg-white";
+    const subtleText = darkMode ? "text-gray-300" : "text-gray-600";
+    const strongText = darkMode ? "text-white" : "text-gray-900";
+    const cardBorder = darkMode ? "border-gray-700" : "border-gray-200";
+    const inputClass = `w-full px-3 py-2 rounded border ${darkMode ? "bg-gray-700 border-gray-600 placeholder-gray-300 text-white" : "bg-white border-gray-300 placeholder-black text-gray-900"}`;
+    const smallBtnClass = `px-3 py-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-gray-200" : "bg-white border-gray-200 text-gray-700"}`;
+    const primaryBtnClass = `px-4 py-2 rounded ${darkMode ? "bg-indigo-500 hover:bg-indigo-600 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`;
+
+    async function submitRegister(e) {
+      e.preventDefault();
+      setLocalProcessing(true);
+      setLocalError(null);
+
+      // basic client-side checks
+      if (!localEmail) {
+        setLocalError("Please provide an email.");
+        setLocalProcessing(false);
+        return;
+      }
+      if (!localPassword || localPassword !== localConfirmPassword) {
+        setLocalError("Passwords are required and must match.");
+        setLocalProcessing(false);
+        return;
+      }
+
+      try {
+        // For demo purposes, simulate successful registration
+        console.log("Registration successful for:", { email: localEmail, phone: localPhone, orgName });
+        
+        // Switch to login mode after registration
+        setLocalIsLogin(true);
+        setLocalLoginPassword(localPassword);
+        setLocalError(null);
+        
+      } catch (err) {
+        console.error("Register error", err);
+        setLocalError(err?.message || "Registration failed. Try again.");
+      } finally {
+        setLocalProcessing(false);
+      }
+    }
+
+    async function submitLogin(e) {
+      e.preventDefault();
+      setLocalProcessing(true);
+      setLocalError(null);
+
+      if (!localEmail || !localLoginPassword) {
+        setLocalError("Email and password are required.");
+        setLocalProcessing(false);
+        return;
+      }
+
+      try {
+        // For demo purposes, simulate successful login
+        console.log("Login successful for:", { email: localEmail });
+        
+        // Close the modal
+        setShowCEOPrompt(false);
+        
+        // Navigate to CEO dashboard
+        navigate("/ceo");
+        
+      } catch (err) {
+        console.error("Login error", err);
+        setLocalError(err?.message || "Login failed. Try again.");
+      } finally {
+        setLocalProcessing(false);
+      }
+    }
+
+    return (
+      <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
+        <div className={`w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden ${containerBg}`}>
+          {/* header */}
+          <div className={`p-6 ${darkMode ? "bg-gradient-to-r from-indigo-700 to-blue-600 text-white" : "bg-gradient-to-r from-indigo-600 to-blue-500 text-white"}`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-2xl font-semibold">You're about to access <span className="font-extrabold">ConseQ-X Ultra</span></h3>
+                <p className="mt-1 opacity-90 max-w-xl">ConseQ-X Ultra is our premium CEO workspace — AI-guided executive analysis, multi-user dashboards and strategic recommendations. Sign in to continue or create an account.</p>
+              </div>
+              <button onClick={() => { setShowCEOPrompt(false); }} className="ml-4 text-white/80 hover:text-white">✕</button>
+            </div>
+          </div>
+
+          <div className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-6 ${panelBg}`}>
+            {/* left info column */}
+            <div className="space-y-3">
+              <div className={`text-sm ${subtleText}`}>Organization</div>
+              <div className={`font-semibold text-lg ${strongText}`}>{orgName || <span className="text-gray-400">Not provided</span>}</div>
+
+              <div className="mt-3 text-sm">
+                <div className={subtleText}>Email</div>
+                <div className={`font-semibold ${strongText}`}>{initialEmail || <span className="text-gray-400">Not provided</span>}</div>
+              </div>
+
+              <div className={`mt-4 text-xs ${subtleText}`}>By continuing you agree to receive onboarding emails. Your data is secured with our end to end security.</div>
+            </div>
+
+            {/* right auth panel */}
+            <div className={`${sectionBg} p-4 rounded-lg border ${cardBorder}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className={`text-sm font-medium ${strongText}`}>{localIsLogin ? "Sign in" : "Create CEO account"}</div>
+                <button
+                  className="text-xs"
+                  onClick={() => { setLocalIsLogin((m) => !m); setLocalError(null); }}
+                  style={{ color: darkMode ? "#93C5FD" : "#2563EB" }}
+                >
+                  {localIsLogin ? "New? create account" : "Have an account? sign in"}
+                </button>
+              </div>
+
+              {localError && <div className="text-sm text-red-500 mb-2">{localError}</div>}
+
+              {!localIsLogin ? (
+                <form onSubmit={submitRegister} className="space-y-3" autoComplete="off" spellCheck={false}>
+                  <label className="text-xs">Phone</label>
+                  <input name="phone" value={localPhone} onChange={(e) => setLocalPhone(e.target.value)} placeholder="+234..." className={inputClass} autoFocus />
+
+                  <label className="text-xs">Password</label>
+                  <input type="password" name="password" value={localPassword} onChange={(e) => setLocalPassword(e.target.value)} placeholder="Create a password" className={inputClass} />
+
+                  <label className="text-xs">Confirm Password</label>
+                  <input type="password" name="confirm" value={localConfirmPassword} onChange={(e) => setLocalConfirmPassword(e.target.value)} placeholder="Confirm password" className={inputClass} />
+
+                  <div className="flex items-center justify-between">
+                    <button type="submit" disabled={localProcessing} className={primaryBtnClass}>
+                      {localProcessing ? "Registering..." : "Register"}
+                    </button>
+                    <button type="button" onClick={() => setShowCEOPrompt(false)} className={smallBtnClass}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={submitLogin} className="space-y-3" autoComplete="off" spellCheck={false}>
+                  <label className="text-xs">Email</label>
+                  <input name="email" value={localEmail} onChange={(e) => setLocalEmail(e.target.value)} placeholder="you@company.com" className={inputClass} readOnly />
+
+                  <label className="text-xs">Password</label>
+                  <input type="password" name="loginPassword" value={localLoginPassword} onChange={(e) => setLocalLoginPassword(e.target.value)} placeholder="Your password" autoFocus className={inputClass} />
+
+                  <div className="flex items-center justify-between">
+                    <button type="submit" disabled={localProcessing} className={primaryBtnClass}>
+                      {localProcessing ? "Signing in..." : "Login"}
+                    </button>
+                    <button type="button" onClick={() => setShowCEOPrompt(false)} className={smallBtnClass}>Cancel</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }
