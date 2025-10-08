@@ -13,12 +13,14 @@ function fmtLong(d) {
 
 /**
  * OverviewView
- * - Shows an overall health score and per-system mini-sparklines using Recharts.
- * - Replace the mocked data and random generation with real API calls when available.
+ * - Clean system overview with high-level health scores and trends
+ * - Focuses purely on overview metrics without data management functionality
  */
 export default function OverviewView() {
   const outlet = useOutletContext();
   const darkMode = outlet?.darkMode ?? false;
+  const dashboardMode = outlet?.dashboardMode ?? 'manual';
+  const orgId = outlet?.orgId || "anon";
 
   // Fetch overview data from mock API
   const [scores, setScores] = React.useState({});

@@ -15,6 +15,7 @@ export default function HomePage() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showToolModal, setShowToolModal] = useState(false);
+  const [showCEOPrompt, setShowCEOPrompt] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -401,14 +402,6 @@ const whyDifferent = [
               variants={fadeUp}
               className="flex flex-wrap gap-4"
             >
-              {/* <motion.button
-                whileHover={buttonHover}
-                whileTap={buttonTap}
-                className="px-8 py-3 bg-yellow-500 text-gray-900 font-semibold rounded-lg shadow-lg hover:bg-yellow-600 transition-colors"
-              >
-                Start Transformation
-              </motion.button> */}
-              
               {/* Tooltip for Our Approach button */}
               <div className="relative">
                 <motion.button
@@ -460,6 +453,16 @@ const whyDifferent = [
                   </motion.div>
                 )}
               </div>
+              
+              {/* C-Suite Partner Button */}
+              <motion.button
+                whileHover={buttonHover}
+                whileTap={buttonTap}
+                onClick={() => setShowCEOPrompt(true)}
+                className="px-8 py-3 font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow-lg hover:opacity-95 transition-all"
+              >
+                C-Suite Partner
+              </motion.button>
             </motion.div>
           </motion.div>
         </div>
@@ -1326,17 +1329,17 @@ const whyDifferent = [
                 <div>
                   <h3 className="text-white font-medium mb-4">Connect</h3>
                   <ul className="space-y-2">
-                    <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors">LinkedIn</a></li>
-                    <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors">Twitter</a></li>
-                    <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors">Instagram</a></li>
+                    <li><button className="text-gray-400 hover:text-yellow-500 transition-colors text-left">LinkedIn</button></li>
+                    <li><button className="text-gray-400 hover:text-yellow-500 transition-colors text-left">Twitter</button></li>
+                    <li><button className="text-gray-400 hover:text-yellow-500 transition-colors text-left">Instagram</button></li>
                   </ul>
                 </div>
                 
                 <div>
                   <h3 className="text-white font-medium mb-4">Legal</h3>
                   <ul className="space-y-2">
-                    <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors">Privacy Policy</a></li>
-                    <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors">Terms of Service</a></li>
+                    <li><button className="text-gray-400 hover:text-yellow-500 transition-colors text-left">Privacy Policy</button></li>
+                    <li><button className="text-gray-400 hover:text-yellow-500 transition-colors text-left">Terms of Service</button></li>
                   </ul>
                 </div>
               </div>
@@ -1347,7 +1350,7 @@ const whyDifferent = [
             }`}>
               © {new Date().getFullYear()} ConseQ-X. All rights reserved.
               <div className="mt-2 text-gray-600">
-                Designed and Developed by <a className="text-yellow-500" href="https://www.fescode.com" target="_blank"> <em>FesCode Limited</em></a>
+                Designed and Developed by <a className="text-yellow-500" href="https://www.fescode.com" target="_blank" rel="noreferrer"> <em>FesCode Limited</em></a>
               </div>
             </div>
           </div>
@@ -1542,12 +1545,316 @@ const whyDifferent = [
                   >
                     Learn More First
                   </motion.button>
+                  
+                  <motion.button
+                    whileHover={buttonHover}
+                    whileTap={buttonTap}
+                    onClick={() => {setShowCEOPrompt(true); setShowToolModal(false);}}
+                    className="px-4 py-3 rounded-lg font-semibold bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow hover:opacity-95"
+                  >
+                    C-Suite Partner
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* CEO Prompt Modal */}
+      <AnimatePresence>
+        {showCEOPrompt && <CEOPromptModal />}
+      </AnimatePresence>
     </div>
   );
+
+  // CEOPromptModal component
+  function CEOPromptModal() {
+    const [localOrgName, setLocalOrgName] = useState(formData.company || "");
+    const [localEmail, setLocalEmail] = useState(formData.email || "");
+    const [localRole, setLocalRole] = useState(formData.name || "");
+    const [localPhone, setLocalPhone] = useState("");
+    const [localPassword, setLocalPassword] = useState("");
+    const [localConfirmPassword, setLocalConfirmPassword] = useState("");
+    const [localLoginPassword, setLocalLoginPassword] = useState("");
+    const [localIsLogin, setLocalIsLogin] = useState(true); // Start with Sign In tab
+    const [localProcessing, setLocalProcessing] = useState(false);
+    const [localError, setLocalError] = useState(null);
+
+    // Debug state changes
+    useEffect(() => {
+      console.log("CEO Modal state changed - localIsLogin:", localIsLogin);
+    }, [localIsLogin]);
+
+    useEffect(() => {
+      if (showCEOPrompt) {
+        setLocalOrgName(formData.company || "");
+        setLocalEmail(formData.email || "");
+        setLocalRole(formData.name || "");
+        setLocalPhone("");
+        setLocalPassword("");
+        setLocalConfirmPassword("");
+        setLocalLoginPassword("");
+        setLocalIsLogin(true); // Default to Sign In tab
+        setLocalError(null);
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+      } else {
+        // Restore body scroll when modal is closed
+        document.body.style.overflow = 'unset';
+      }
+      
+      return () => {
+        document.body.style.overflow = 'unset';
+      };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    if (!showCEOPrompt) return null;
+
+    const containerBg = darkMode ? "bg-gray-900" : "bg-white";
+    const panelBg = darkMode ? "bg-gray-800" : "bg-white";
+    const sectionBg = darkMode ? "bg-gray-800" : "bg-white";
+    const subtleText = darkMode ? "text-gray-300" : "text-gray-600";
+    const strongText = darkMode ? "text-white" : "text-gray-900";
+    const cardBorder = darkMode ? "border-gray-700" : "border-gray-200";
+    const inputClass = `w-full px-3 py-2 rounded border ${darkMode ? "bg-gray-700 border-gray-600 placeholder-gray-300 text-white" : "bg-white border-gray-300 placeholder-black text-gray-900"}`;
+    const smallBtnClass = `px-3 py-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-gray-200" : "bg-white border-gray-200 text-gray-700"}`;
+    const primaryBtnClass = `px-4 py-2 rounded ${darkMode ? "bg-indigo-500 hover:bg-indigo-600 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`;
+
+    const handleRegisterSubmit = (e) => {
+      // Prevent any potential form submission or event bubbling
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      console.log("🚀 Registration attempt started:", {
+        orgName: localOrgName,
+        email: localEmail,
+        role: localRole,
+        phone: localPhone,
+        password: localPassword ? "***" : "empty",
+        confirmPassword: localConfirmPassword ? "***" : "empty"
+      });
+      
+      setLocalProcessing(true);
+      setLocalError(null);
+
+      // Comprehensive client-side validation
+      if (!localOrgName.trim()) {
+        setLocalError("Please provide a company name.");
+        setLocalProcessing(false);
+        return;
+      }
+      if (!localEmail.trim()) {
+        setLocalError("Please provide an email.");
+        setLocalProcessing(false);
+        return;
+      }
+      if (!localRole.trim()) {
+        setLocalError("Please provide your role.");
+        setLocalProcessing(false);
+        return;
+      }
+      if (!localPhone.trim()) {
+        setLocalError("Please provide a phone number.");
+        setLocalProcessing(false);
+        return;
+      }
+      if (!localPassword || localPassword.length < 6) {
+        setLocalError("Password must be at least 6 characters long.");
+        setLocalProcessing(false);
+        return;
+      }
+      if (localPassword !== localConfirmPassword) {
+        setLocalError("Passwords do not match.");
+        setLocalProcessing(false);
+        return;
+      }
+
+      // All validation passed - process registration and switch tabs
+      console.log("✅ Validation passed, processing registration...");
+      
+      // Update global form data
+      setFormData(prev => ({
+        ...prev,
+        company: localOrgName,
+        email: localEmail,
+        name: localRole
+      }));
+      
+      // Simulate processing with success animation
+      setTimeout(() => {
+        console.log("✅ Registration successful! Switching to login tab...");
+        console.log("📊 Current state - localIsLogin before switch:", localIsLogin);
+        
+        // Reset form state and switch to login
+        setLocalError(null);
+        setLocalProcessing(false);
+        setLocalLoginPassword("");
+        
+        console.log("🔄 Switching to login tab now...");
+        setLocalIsLogin(true); // SWITCH TO LOGIN TAB
+        
+        console.log("🎯 Successfully switched to login tab! New state should be true");
+      }, 800);
+    };
+
+    const handleLoginSubmit = async () => {
+      setLocalProcessing(true);
+      setLocalError(null);
+
+      if (!localEmail || !localLoginPassword) {
+        setLocalError("Email and password are required.");
+        setLocalProcessing(false);
+        return;
+      }
+
+      try {
+        // Update formData with local values for future use
+        setFormData(prev => ({
+          ...prev,
+          company: localOrgName,
+          email: localEmail,
+          name: localRole
+        }));
+        
+        // For demo purposes, simulate successful login
+        console.log("Login successful for:", { email: localEmail, orgName: localOrgName, role: localRole });
+        
+        // Close the modal
+        setShowCEOPrompt(false);
+        
+        // Navigate to CEO dashboard
+        navigate("/ceo");
+        
+      } catch (err) {
+        console.error("Login error", err);
+        setLocalError(err?.message || "Login failed. Try again.");
+      } finally {
+        setLocalProcessing(false);
+      }
+    };
+
+    return (
+      <motion.div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        variants={backdropVariants}
+        initial="hidden"
+        animate="visible"
+        exit="hidden"
+      >
+        <div 
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowCEOPrompt(false)}
+        />
+        <motion.div 
+          className={`relative w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden z-10 ${containerBg} max-h-[90vh] overflow-y-auto`}
+          variants={modalVariants}
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          }}
+          onWheel={(e) => e.stopPropagation()}
+        >
+          <style jsx>{`
+            .ceo-modal-scroll::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+          {/* header */}
+          <div className={`p-6 ${darkMode ? "bg-gradient-to-r from-indigo-700 to-blue-600 text-white" : "bg-gradient-to-r from-indigo-600 to-blue-500 text-white"}`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-2xl font-semibold">You're about to access <span className="font-extrabold">ConseQ-X Ultra</span></h3>
+                <p className="mt-1 opacity-90 max-w-xl">ConseQ-X Ultra is our premium CEO workspace — AI-guided executive analysis, multi-user dashboards and strategic recommendations. Sign in to continue or create an account.</p>
+              </div>
+              <button onClick={() => { setShowCEOPrompt(false); }} className="ml-4 text-white/80 hover:text-white">✕</button>
+            </div>
+          </div>
+
+          <div className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-6 ${panelBg}`}>
+            {/* left info column */}
+            <div className="space-y-3">
+              <div className={`text-sm ${subtleText}`}>Organization</div>
+              <div className={`font-semibold text-lg ${strongText}`}>{localOrgName || <span className="text-gray-400">Not provided</span>}</div>
+
+              <div className="mt-3 text-sm">
+                <div className={subtleText}>Email</div>
+                <div className={`font-semibold ${strongText}`}>{localEmail || <span className="text-gray-400">Not provided</span>}</div>
+              </div>
+
+              <div className="mt-3 text-sm">
+                <div className={subtleText}>Role</div>
+                <div className={`font-semibold ${strongText}`}>{localRole || <span className="text-gray-400">Not provided</span>}</div>
+              </div>
+
+              <div className={`mt-4 text-xs ${subtleText}`}>By continuing you agree to receive onboarding emails. Your data is secured with our end to end security.</div>
+            </div>
+
+            {/* right auth panel */}
+            <div className={`${sectionBg} p-4 rounded-lg border ${cardBorder}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className={`text-sm font-medium ${strongText}`}>{localIsLogin ? "Sign in" : "Create CEO account"}</div>
+                <button
+                  className="text-xs"
+                  onClick={() => { setLocalIsLogin((m) => !m); setLocalError(null); }}
+                  style={{ color: darkMode ? "#93C5FD" : "#2563EB" }}
+                >
+                  {localIsLogin ? "New? create account" : "Have an account? sign in"}
+                </button>
+              </div>
+
+              {localError && <div className="text-sm text-red-500 mb-2">{localError}</div>}
+
+              {!localIsLogin ? (
+                <div className="space-y-3">
+                  <label className="text-xs">Company</label>
+                  <input name="company" value={localOrgName} onChange={(e) => setLocalOrgName(e.target.value)} placeholder="Your company name" className={inputClass} autoFocus onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
+
+                  <label className="text-xs">Email</label>
+                  <input name="email" type="email" value={localEmail} onChange={(e) => setLocalEmail(e.target.value)} placeholder="you@company.com" className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
+
+                  <label className="text-xs">Role</label>
+                  <input name="role" value={localRole} onChange={(e) => setLocalRole(e.target.value)} placeholder="Your role (e.g., CEO, Manager)" className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
+
+                  <label className="text-xs">Phone</label>
+                  <input name="phone" value={localPhone} onChange={(e) => setLocalPhone(e.target.value)} placeholder="+234..." className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
+
+                  <label className="text-xs">Password</label>
+                  <input type="password" name="password" value={localPassword} onChange={(e) => setLocalPassword(e.target.value)} placeholder="Create a password" className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
+
+                  <label className="text-xs">Confirm Password</label>
+                  <input type="password" name="confirm" value={localConfirmPassword} onChange={(e) => setLocalConfirmPassword(e.target.value)} placeholder="Confirm password" className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleRegisterSubmit(e); } }} />
+
+                  <div className="flex items-center justify-between">
+                    <button type="button" onClick={handleRegisterSubmit} disabled={localProcessing} className={primaryBtnClass}>
+                      {localProcessing ? "Registering..." : "Register"}
+                    </button>
+                    <button type="button" onClick={() => setShowCEOPrompt(false)} className={smallBtnClass}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="text-xs">Email</label>
+                  <input name="email" value={localEmail} onChange={(e) => setLocalEmail(e.target.value)} placeholder="you@company.com" className={inputClass} readOnly />
+
+                  <label className="text-xs">Password</label>
+                  <input type="password" name="loginPassword" value={localLoginPassword} onChange={(e) => setLocalLoginPassword(e.target.value)} placeholder="Your password" autoFocus className={inputClass} />
+
+                  <div className="flex items-center justify-between">
+                    <button type="button" onClick={handleLoginSubmit} disabled={localProcessing} className={primaryBtnClass}>
+                      {localProcessing ? "Signing in..." : "Login"}
+                    </button>
+                    <button type="button" onClick={() => setShowCEOPrompt(false)} className={smallBtnClass}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
 }

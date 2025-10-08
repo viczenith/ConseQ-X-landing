@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Print CEO Report</title>
+  <style>
+    body { font-family: sans-serif; padding: 40px; }
+    .section { margin-bottom: 30px; }
+    h2 { color: #1d4ed8; }
+    img { max-width: 100%; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>CEO Insight Report</h1>
+  <div id="report-content"></div>
+  <script>
+    const data = JSON.parse(localStorage.getItem("ceo_report"));
+    if (data) {
+      document.getElementById("report-content").innerHTML = `
+        <div class="section"><h2>Insight</h2><p>${data.insight}</p></div>
+        <div class="section"><h2>Side Effects</h2><p>${data.side_effects}</p></div>
+        <div class="section"><h2>Recommendations</h2><p>${data.recommendations}</p></div>
+        <div class="section">${data.illustration ? `<img src="${data.illustration}" />` : ''}</div>
+      `;
+    }
+  </script>
+</body>
+</html>

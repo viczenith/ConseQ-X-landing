@@ -114,14 +114,22 @@ function writeAssessmentProgress(orgId, progress) {
 // Assessment.js stores answers as: answers[subAssessmentId][questionId]
 // NOT as: answers[systemId][questionId]
 function calculateAnsweredCount(allAnswers, systemId) {
-  if (!allAnswers) return 0;
+  console.log(`calculateAnsweredCount called for ${systemId}:`, allAnswers);
+  
+  if (!allAnswers || typeof allAnswers !== 'object') {
+    console.log(`calculateAnsweredCount: No valid answers for ${systemId}`);
+    return 0;
+  }
   
   // Count across all sub-assessments for this system
   let totalAnswered = 0;
   
   // Find the system definition to get all its sub-assessments
   const system = assessmentSystems.find(s => s.id === systemId);
-  if (!system || !system.subAssessments) return 0;
+  if (!system || !system.subAssessments) {
+    console.log(`calculateAnsweredCount: No system found for ${systemId}`);
+    return 0;
+  }
   
   // Count answered questions in each sub-assessment
   // The answers are stored with subAssessment.id as the key, NOT systemId
@@ -129,11 +137,15 @@ function calculateAnsweredCount(allAnswers, systemId) {
     const subAnswers = allAnswers[subAssessment.id] || {};
     const answered = Object.keys(subAnswers).filter(key => {
       const answer = subAnswers[key];
-      return answer !== null && answer !== undefined && answer !== '';
+      const isAnswered = answer !== null && answer !== undefined && answer !== '' && answer !== 'null';
+      return isAnswered;
     }).length;
+    
+    console.log(`calculateAnsweredCount: ${systemId} -> ${subAssessment.id}: ${answered} answers out of ${Object.keys(subAnswers).length} total`, subAnswers);
     totalAnswered += answered;
   });
   
+  console.log(`calculateAnsweredCount: ${systemId} FINAL TOTAL = ${totalAnswered}`);
   return totalAnswered;
 }
 
@@ -148,13 +160,117 @@ function ProgressBar({ pct = 0, darkMode = false }) {
   );
 }
 
+function AnalysisLoadingIndicator({ progress = 0, darkMode = false, systemTitle = "System" }) {
+  return (
+    <div className={`mt-3 p-4 rounded-lg border-2 border-dashed ${
+      darkMode 
+        ? "bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-blue-500/30" 
+        : "bg-gradient-to-br from-blue-50 to-purple-50 border-blue-300/50"
+    } relative overflow-hidden`}>
+      {/* Animated background pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className={`h-full w-full ${
+          darkMode ? "bg-blue-400" : "bg-blue-600"
+        } animate-pulse`} 
+        style={{
+          background: `linear-gradient(45deg, transparent 40%, ${darkMode ? '#3b82f6' : '#2563eb'} 50%, transparent 60%)`,
+          backgroundSize: '20px 20px',
+          animation: 'slide 2s linear infinite'
+        }} />
+      </div>
+      
+      <div className="relative z-10">
+        {/* Header with spinning icon */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            darkMode 
+              ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
+              : "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
+          } animate-spin`}>
+            🧠
+          </div>
+          <div>
+            <div className={`font-semibold ${darkMode ? "text-blue-200" : "text-blue-800"}`}>
+              AI Analysis in Progress
+            </div>
+            <div className={`text-sm ${darkMode ? "text-blue-300" : "text-blue-600"}`}>
+              Analyzing {systemTitle}...
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced progress bar with glow effect */}
+        <div className={`relative h-3 rounded-full overflow-hidden ${
+          darkMode ? "bg-gray-800" : "bg-white/50"
+        }`}>
+          <div 
+            className={`h-full transition-all duration-500 ease-out relative ${
+              progress === 100 
+                ? "bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg shadow-green-500/30" 
+                : "bg-gradient-to-r from-blue-400 to-purple-500 shadow-lg shadow-blue-500/30"
+            }`}
+            style={{ width: `${progress}%` }}
+          >
+            {/* Animated shine effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+          </div>
+        </div>
+
+        {/* Progress percentage with animated counter */}
+        <div className="flex items-center justify-between mt-2">
+          <div className={`text-sm font-medium ${darkMode ? "text-blue-200" : "text-blue-700"}`}>
+            {progress}% Complete
+          </div>
+          <div className="flex gap-1">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className={`w-1.5 h-1.5 rounded-full ${
+                  darkMode ? "bg-blue-400" : "bg-blue-500"
+                } animate-bounce`}
+                style={{ animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Status messages based on progress */}
+        <div className={`mt-2 text-xs ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+          {progress < 20 && "🔍 Initializing analysis engine..."}
+          {progress >= 20 && progress < 40 && "📊 Processing assessment data..."}
+          {progress >= 40 && progress < 60 && "🧮 Running AI algorithms..."}
+          {progress >= 60 && progress < 80 && "📈 Generating insights..."}
+          {progress >= 80 && progress < 100 && "✨ Finalizing recommendations..."}
+          {progress === 100 && "🎉 Analysis complete! Preparing results..."}
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes slide {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
-  // state = { status: "not-started"|"in-progress"|"completed", progress, latestResult, answeredCount }
+  // state = { status: "not-started"|"ready-to-run"|"in-progress"|"completed", progress, latestResult, answeredCount }
   const hasAnswers = (state.answeredCount || 0) > 0;
   const muted = !hasAnswers; // Only mute if no answers at all
   const score = state.latestResult?.score ?? null;
   const isAssessmentCompleted = state.status === "completed" && state.latestResult;
   const hasRunCompleted = state.status === "completed" && score !== null;
+  
+  // Debug logging to track state changes - DETAILED
+  console.log(`🔄 SystemRow RENDER ${s.id}:`, {
+    status: state.status,
+    answeredCount: state.answeredCount,
+    hasAnswers,
+    progress: state.progress,
+    timestamp: Date.now()
+  });
 
   const rowBgHover = darkMode ? "hover:bg-gray-800" : "hover:bg-gray-50";
   const titleColor = darkMode ? "text-gray-100" : "text-gray-900";
@@ -162,16 +278,22 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
 
   // Run button logic: Lock (no answers) → Run (has answers, not running) → Running (in progress)
   const isRunning = state.status === "in-progress" && state.progress < 100;
-  const runDisabled = isRunning || !hasAnswers;
+  const isReadyToRun = state.status === "ready-to-run" || (hasAnswers && state.status === "not-started");
+  const canRun = hasAnswers && !isRunning; // SIMPLE: Can run if has answers and not currently running
+  const runDisabled = !canRun;
+  
+  console.log(`🔘 Button Logic ${s.id}: hasAnswers=${hasAnswers}, isRunning=${isRunning}, canRun=${canRun}, runDisabled=${runDisabled}`);
+  
+  // More explicit button styling
   const runBtnBase = runDisabled
-    ? `${darkMode ? "bg-gray-800 text-gray-400 cursor-not-allowed" : "bg-gray-200 text-gray-500 cursor-not-allowed"}`
-    : `${darkMode ? "bg-blue-800 text-blue-200 hover:bg-blue-700" : "bg-blue-600 text-white hover:bg-blue-700"}`;
+    ? `${darkMode ? "bg-gray-800 text-gray-400 cursor-not-allowed border-gray-700" : "bg-gray-200 text-gray-500 cursor-not-allowed border-gray-300"}`
+    : `${darkMode ? "bg-blue-600 text-white hover:bg-blue-700 border-blue-500" : "bg-blue-600 text-white hover:bg-blue-700 border-blue-500"}`;
 
   // View button logic: Only enabled after run is completed with results
   const viewDisabled = !hasRunCompleted;
   const viewBtnBase = viewDisabled
-    ? `${darkMode ? "bg-gray-900/20 text-gray-500 cursor-not-allowed" : "bg-gray-50 text-gray-400 cursor-not-allowed"}`
-    : `${darkMode ? "bg-green-800 text-green-200 hover:bg-green-700" : "bg-green-600 text-white hover:bg-green-700"}`;
+    ? `${darkMode ? "bg-gray-900/20 text-gray-500 cursor-not-allowed border-gray-700" : "bg-gray-50 text-gray-400 cursor-not-allowed border-gray-300"}`
+    : `${darkMode ? "bg-green-600 text-white hover:bg-green-700 border-green-500" : "bg-green-600 text-white hover:bg-green-700 border-green-500"}`;
 
   // Progress bar logic: show during analysis OR while answering questions
   let progressPct = 0;
@@ -207,7 +329,7 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
 
           <div className={`text-xs ${metaColor} mt-1`}>
             {!hasAnswers && "Complete assessment questions first"}
-            {hasAnswers && (state.status === "not-started" || state.status === "ready-to-run") && "Ready to run analysis"}
+            {hasAnswers && (state.status === "not-started" || state.status === "ready-to-run") && "Ready to run analysis"} 
             {hasAnswers && state.status === "in-progress" && state.progress < 100 && `Analyzing... ${state.progress}%`}
             {hasAnswers && state.status === "in-progress" && state.progress >= 100 && "Analysis complete"}
             {isAssessmentCompleted && `Analysis completed ${new Date(state.latestResult.timestamp).toLocaleString()}`}
@@ -220,9 +342,11 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
             </div>
           )}
           {state.status === "in-progress" && (
-            <div className="mt-2">
-              <ProgressBar pct={state.progress} darkMode={darkMode} />
-            </div>
+            <AnalysisLoadingIndicator 
+              progress={state.progress} 
+              darkMode={darkMode} 
+              systemTitle={s.title}
+            />
           )}
         </div>
       </div>
@@ -231,11 +355,27 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
         <button
           onClick={() => onStart(s.id)}
           disabled={runDisabled}
-          title={!hasAnswers ? "Complete assessment questions first to unlock analysis" : isRunning ? "Analysis in progress..." : "Run AI analysis on assessment data"}
-          className={`px-2 py-1.5 rounded-md border text-xs font-medium transition-all duration-200 ${runBtnBase}`}
+          title={`${s.id}: ${state.status} (${state.answeredCount} answers) - ${!hasAnswers ? "Answer at least one question to unlock analysis" : isRunning ? "AI analysis in progress..." : "Run comprehensive AI analysis"}`}
+          className={`px-2 py-1.5 rounded-md border text-xs font-medium transition-all duration-200 ${runBtnBase} ${
+            isRunning ? 'animate-pulse shadow-lg' : ''
+          }`}
         >
-          <FaPlay className="inline-block mr-1" size={10} />
-          {isRunning ? "Analyzing..." : !hasAnswers ? "🔒 Locked" : "▶ Run"}
+          {isRunning ? (
+            <>
+              <div className="inline-block mr-1 animate-spin">🧠</div>
+              AI Analyzing...
+            </>
+          ) : !hasAnswers ? (
+            <>
+              <div className="inline-block mr-1">🔒</div>
+              Locked
+            </>
+          ) : (
+            <>
+              <FaPlay className="inline-block mr-1" size={10} />
+              {state.status === "ready-to-run" ? "🚀 Run X-ULTRA" : "▶ Run Analysis"}
+            </>
+          )}
         </button>
 
         <button
@@ -344,6 +484,39 @@ export default function CEOAssessments() {
       : assessmentAnswers;
   };
 
+  // Force re-evaluation of system states when assessmentAnswers change
+  useEffect(() => {
+    console.log('🔄 useEffect triggered by assessmentAnswers change');
+    const currentAnswers = getCurrentAnswers();
+    
+    // Always update, even if empty (to reset states)
+    setSystemStates((prev) => {
+      console.log('⚡ Force updating systemStates from useEffect');
+      const next = {}; // Create completely new object
+      
+      SYSTEMS.forEach((s) => {
+        const answeredCount = calculateAnsweredCount(currentAnswers, s.id);
+        const currentState = prev[s.id] || { status: "not-started", progress: 0, latestResult: null, answeredCount: 0 };
+        const hasExistingResult = currentState.latestResult;
+        
+        const newStatus = hasExistingResult ? "completed" : 
+                        answeredCount > 0 ? "ready-to-run" : "not-started";
+        
+        console.log(`🔧 Force update ${s.id}: ${currentState.answeredCount} -> ${answeredCount}, ${currentState.status} -> ${newStatus}`);
+        
+        next[s.id] = {
+          status: newStatus,
+          progress: currentState.progress || 0,
+          latestResult: currentState.latestResult || null,
+          answeredCount: answeredCount,
+          lastUpdate: Date.now() // Force re-render trigger
+        };
+      });
+      
+      return next; // Always return new object to force re-render
+    });
+  }, [assessmentAnswers, assessmentAnswersRef.current]); // Trigger on any answer changes
+
   // Broadcast update helper (persist + set state + broadcast event)
   function persistAndBroadcast(newList) {
     const all = readAll();
@@ -379,16 +552,18 @@ export default function CEOAssessments() {
       return next;
     });
 
-    // emit update event
+    // emit update event for DashboardHome and other components
     try {
-      window.dispatchEvent(new CustomEvent("conseqx:assessments:updated", { detail: { orgId, list: newList } }));
+      window.dispatchEvent(new CustomEvent("conseqx:assessment:update", { detail: { orgId, assessments: newList } }));
+      console.log(`📡 Assessments: Dispatched update event for ${newList.length} assessments`);
     } catch {}
     // BroadcastChannel for cross-tab (optional)
     try {
       if ("BroadcastChannel" in window) {
         const bc = new BroadcastChannel("conseqx_assessments");
-        bc.postMessage({ type: "assessments:update", orgId, payload: newList });
+        bc.postMessage({ type: "assessments:update", orgId, assessments: newList });
         bc.close();
+        console.log(`📡 Assessments: Broadcast update for ${newList.length} assessments`);
       }
     } catch {}
   }
@@ -409,6 +584,19 @@ export default function CEOAssessments() {
 
     const newList = addAssessmentForOrg(orgId, normalized, 200);
     persistAndBroadcast(newList);
+
+    // Dispatch specific completion event for DashboardHome
+    try {
+      window.dispatchEvent(new CustomEvent("conseqx:assessment:completed", { 
+        detail: { 
+          orgId, 
+          assessment: normalized, 
+          systemId: normalized.systemId,
+          score: normalized.score 
+        } 
+      }));
+      console.log(`🎉 Assessments: Assessment completed for system ${normalized.systemId} with score ${normalized.score}%`);
+    } catch {}
 
     // NEW: feed normalized assessment into the OrgHealth service
     try {
@@ -476,17 +664,23 @@ export default function CEOAssessments() {
       });
       
       // Update system state with real progress and answeredCount from the event
-      setSystemStates((prev) => ({
-        ...prev,
-        [systemId]: {
-          ...(prev[systemId] || {}),
-          // While answering questions, status should indicate readiness, not analysis state.
-          status: realAnsweredCount > 0 ? "ready-to-run" : "not-started",
-          // Keep analysis progress separate; answering questions doesn't change analysis progress.
-          progress: prev[systemId]?.progress || 0,
-          answeredCount: realAnsweredCount,
-        },
-      }));
+      setSystemStates((prev) => {
+        const currentState = prev[systemId] || {};
+        const hasExistingResult = currentState.latestResult;
+        
+        return {
+          ...prev,
+          [systemId]: {
+            ...currentState,
+            // IMMEDIATELY unlock Run button when ANY question is answered
+            status: hasExistingResult ? "completed" : 
+                    realAnsweredCount > 0 ? "ready-to-run" : "not-started",
+            // Keep analysis progress separate from question answering progress
+            progress: currentState.progress || 0,
+            answeredCount: realAnsweredCount,
+          },
+        };
+      });
       
       // Emit progress event for other components
       events.emitAssessmentProgress({ orgId, systemId, progress, answeredCount: realAnsweredCount });
@@ -623,9 +817,24 @@ export default function CEOAssessments() {
     // if in-progress and <100 do nothing
     if (cur && cur.status === "in-progress" && cur.progress < 100) return;
 
-    // if already completed, allow new run; otherwise start run
-    // Ideally you should navigate to the system-specific assessment UI here:
-    // navigate(`/system/${systemId}`) or open slide-over; for now emit an event
+    // Check if user has answered questions - this should always be true if button is enabled
+    const hasAnswers = (cur?.answeredCount || 0) > 0;
+    if (!hasAnswers) {
+      console.warn('Run button clicked but no answers found. This should not happen.');
+      return;
+    }
+
+    // Mark as in-progress IMMEDIATELY when Run is clicked
+    setSystemStates((prev) => ({
+      ...prev,
+      [systemId]: {
+        ...prev[systemId],
+        status: "in-progress",
+        progress: 1 // Start at 1% to show analysis has begun
+      }
+    }));
+
+    // Emit start event
     events.emitAssessmentStart({ systemId, orgId });
 
     // if no other component will handle start, we simulate progress here and complete a deterministic result
@@ -683,24 +892,49 @@ export default function CEOAssessments() {
 
   // Simulation: if nobody handles start event within a short time, run an internal simulated run
   function simulateRunIfNoHandler(systemId) {
-    // mark in-progress
-    setSystemStates((prev) => ({ ...prev, [systemId]: { ...(prev[systemId] || {}), status: "in-progress", progress: 1 } }));
-
+    // Already marked as in-progress in onStart function
+    
     // simulate progress increments until 100
     let pct = 1;
     const ticker = setInterval(() => {
-      pct = Math.min(100, pct + Math.round(5 + Math.random() * 12));
+      pct = Math.min(100, pct + Math.round(5 + Math.random() * 15));
+      
+      // Update progress in real-time
+      setSystemStates((prev) => ({
+        ...prev,
+        [systemId]: {
+          ...prev[systemId],
+          status: pct >= 100 ? "completed" : "in-progress",
+          progress: pct
+        }
+      }));
+      
       // dispatch progress event (so all listeners get updated)
       events.emitAssessmentProgress({ orgId, systemId, progress: pct });
+      
       if (pct >= 100) {
         clearInterval(ticker);
         // produce a deterministic result via service selector (mock or API)
         (async () => {
-          const result = await svc.runAssessment(orgId, systemId);
-          events.emitAssessmentCompleted(result);
+          try {
+            const result = await svc.runAssessment(orgId, systemId);
+            // This will trigger handleAssessmentComplete and unlock the View button
+            events.emitAssessmentCompleted(result);
+          } catch (error) {
+            console.error('Assessment run failed:', error);
+            // Reset state on error
+            setSystemStates((prev) => ({
+              ...prev,
+              [systemId]: {
+                ...prev[systemId],
+                status: "ready-to-run",
+                progress: 0
+              }
+            }));
+          }
         })();
       }
-    }, 800);
+    }, 600); // Slightly faster updates for better UX
   }
 
   // derived KPIs
@@ -918,37 +1152,70 @@ export default function CEOAssessments() {
               darkMode={darkMode}
               onComplete={(res) => handleAssessmentComplete(res)}
               onAnswersChange={(answers) => {
+                console.log('🚀 onAnswersChange called with:', answers);
+                
                 // Track the actual answer state from Assessment.js
                 assessmentAnswersRef.current = answers;
                 setAssessmentAnswers(answers);
                 
-                // Immediately update system states with new answered counts
+                // FORCE IMMEDIATE update of system states with new answered counts
                 setSystemStates((prev) => {
-                  const next = { ...prev };
+                  console.log('⚡ Updating systemStates from onAnswersChange');
+                  const next = {}; // Create completely new object to force re-render
+                  
                   SYSTEMS.forEach((s) => {
                     const answeredCount = calculateAnsweredCount(answers, s.id);
-                    if (next[s.id]) {
-                      next[s.id] = {
-                        ...next[s.id],
-                        answeredCount,
-                        // Update status based on current answers
-                        status: next[s.id].latestResult ? "completed" : 
-                                answeredCount > 0 ? "ready-to-run" : "not-started"
-                      };
-                    } else {
-                      // Initialize if doesn't exist
-                      next[s.id] = {
-                        status: answeredCount > 0 ? "ready-to-run" : "not-started",
-                        progress: 0,
-                        latestResult: null,
-                        answeredCount
-                      };
-                    }
+                    const currentState = prev[s.id] || { status: "not-started", progress: 0, latestResult: null, answeredCount: 0 };
+                    const hasExistingResult = currentState.latestResult;
+                    
+                    // Determine new status based on answers and existing results
+                    const newStatus = hasExistingResult ? "completed" : 
+                                    answeredCount > 0 ? "ready-to-run" : "not-started";
+                    
+                    console.log(`📊 System ${s.id}: ${currentState.answeredCount} -> ${answeredCount} answers, ${currentState.status} -> ${newStatus}`);
+                    
+                    next[s.id] = {
+                      status: newStatus,
+                      progress: currentState.progress || 0,
+                      latestResult: currentState.latestResult || null,
+                      answeredCount: answeredCount,
+                      // Add timestamp to force re-renders
+                      lastUpdate: Date.now()
+                    };
                   });
-                  return next;
+                  
+                  console.log('✅ New systemStates:', next);
+                  return next; // Always return new object
                 });
+                
+                // Persist answers for cross-tab sync
+                writeAssessmentAnswers(orgId, answers);
               }}
               onQuestionAnswered={(data) => {
+                console.log('📝 onQuestionAnswered called:', data);
+                
+                // IMMEDIATE state update - don't wait for events
+                if (data.systemId && data.answeredCount !== undefined) {
+                  setSystemStates((prev) => {
+                    const currentState = prev[data.systemId] || { status: "not-started", progress: 0, latestResult: null, answeredCount: 0 };
+                    const hasExistingResult = currentState.latestResult;
+                    const newStatus = hasExistingResult ? "completed" : 
+                                    data.answeredCount > 0 ? "ready-to-run" : "not-started";
+                    
+                    console.log(`🚀 IMMEDIATE update ${data.systemId}: ${currentState.answeredCount} -> ${data.answeredCount}`);
+                    
+                    return {
+                      ...prev,
+                      [data.systemId]: {
+                        ...currentState,
+                        answeredCount: data.answeredCount,
+                        status: newStatus,
+                        lastUpdate: Date.now()
+                      }
+                    };
+                  });
+                }
+                
                 // Emit real-time progress event with enhanced data
                 window.dispatchEvent(new CustomEvent("conseqx:assessment:question-answered", { 
                   detail: {
@@ -990,6 +1257,10 @@ export default function CEOAssessments() {
 
           <div className="space-y-2">
             {SYSTEMS.map((s) => {
+              // Get current answers for real-time calculation
+              const currentAnswers = getCurrentAnswers();
+              const realTimeAnsweredCount = calculateAnsweredCount(currentAnswers, s.id);
+              
               const currentState = systemStates[s.id] || { 
                 status: "not-started", 
                 progress: 0, 
@@ -997,11 +1268,19 @@ export default function CEOAssessments() {
                 answeredCount: 0 
               };
               
+              // Force state consistency with real-time data
+              const consistentState = {
+                ...currentState,
+                answeredCount: Math.max(currentState.answeredCount || 0, realTimeAnsweredCount),
+                status: currentState.latestResult ? "completed" :
+                        realTimeAnsweredCount > 0 ? "ready-to-run" : "not-started"
+              };
+              
               return (
                 <SystemRow
-                  key={s.id}
+                  key={`${s.id}-${consistentState.answeredCount}-${consistentState.lastUpdate || 0}`} // Force re-render on any state change
                   s={s}
-                  state={currentState}
+                  state={consistentState}
                   onStart={onStart}
                   onView={onView}
                   onRemove={onRemove}

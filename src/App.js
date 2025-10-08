@@ -27,6 +27,7 @@ const CEOChat = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardCompo
 const CEODataManagement = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/DataManagement"));
 const PartnerDashboard = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard"));
 const PartnerOverview = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/OverviewView"));
+const PartnerDataManagement = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/DataManagementView"));
 const PartnerDeepDive = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/SystemDeepDive"));
 const PartnerForecast = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/ForecastScenarios"));
 const PartnerRecommendations = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/RecommendationsActions"));
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="partner-dashboard/*" element={<Suspense fallback={<div>Loading Partner Dashboard...</div>}><PartnerDashboard /></Suspense>}>
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="overview" element={<Suspense fallback={<div>Loading overview...</div>}><PartnerOverview /></Suspense>} />
+            <Route path="data-management" element={<Suspense fallback={<div>Loading data management...</div>}><PartnerDataManagement /></Suspense>} />
             <Route path="deep-dive" element={<Suspense fallback={<div>Loading deep dive...</div>}><PartnerDeepDive /></Suspense>} />
             <Route path="forecast" element={<Suspense fallback={<div>Loading forecast...</div>}><PartnerForecast /></Suspense>} />
             <Route path="recommendations" element={<Suspense fallback={<div>Loading recommendations...</div>}><PartnerRecommendations /></Suspense>} />

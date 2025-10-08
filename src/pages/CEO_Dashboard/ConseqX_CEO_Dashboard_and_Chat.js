@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import Logo3D from "../../assets/ConseQ-X-3d.png";
-import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaChartLine, FaBell } from "react-icons/fa";
+import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaChartLine, FaBell, FaChartPie } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 import WelcomeCongrats from "../../components/WelcomeCongrats";
 
@@ -50,6 +50,7 @@ export default function ConseqXCEODashboardShell() {
 
   // sidebar UI
   const [revenueOpen, setRevenueOpen] = useState(false);
+  const [partnerDashboardOpen, setPartnerDashboardOpen] = useState(false);
 
   // notifications state
   const [notifications, setNotifications] = useState(() => readJSON(STORAGE_NOTIFS, []) || []);
@@ -117,6 +118,11 @@ export default function ConseqXCEODashboardShell() {
   // auto-open revenue group when on revenue routes
   useEffect(() => {
     if (location?.pathname?.startsWith?.("/ceo/revenue")) setRevenueOpen(true);
+  }, [location?.pathname]);
+
+  // auto-open partner dashboard group when on partner-dashboard routes
+  useEffect(() => {
+    if (location?.pathname?.startsWith?.("/ceo/partner-dashboard")) setPartnerDashboardOpen(true);
   }, [location?.pathname]);
 
   const toggleDarkMode = () => {
@@ -336,25 +342,59 @@ export default function ConseqXCEODashboardShell() {
             <div className="flex flex-col gap-2">
               <NavLink onClick={handleMobileNavClick} to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
               <NavLink onClick={handleMobileNavClick} to="/ceo/chat" className={({isActive}) => navItemClass(isActive)}>Chat</NavLink>
-              <NavLink onClick={handleMobileNavClick} to="/ceo/assessments" className={({isActive}) => navItemClass(isActive)}>Assessments</NavLink>
-              <NavLink onClick={handleMobileNavClick} to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
-              <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard" className={({isActive}) => navItemClass(isActive)}>Partner Dashboard</NavLink>
+              
+              {/* Partner Dashboard (mobile: expand) */}
+              <div className="mt-2">
+                <button
+                  onClick={() => setPartnerDashboardOpen((s) => !s)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md ${darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800"}`}
+                  aria-expanded={partnerDashboardOpen}
+                >
+                  <div className="flex items-center gap-2">
+                    <FaChartPie />
+                    <span>Partner Dashboard</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">6 sections</span>
+                    {partnerDashboardOpen ? <FaChevronUp/> : <FaChevronDown/>}
+                  </div>
+                </button>
 
-              <NavLink
-                onClick={handleMobileNavClick}
-                to="/ceo/reports"
-                className={({isActive}) => `flex items-center justify-between w-full text-left px-3 py-2 rounded-md transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}
-              >
-                <span>Reports</span>
-                <span className="flex items-center gap-2">
-                  {reportsUnread > 0 && <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500 text-white">{reportsUnread}</span>}
-                </span>
-              </NavLink>
-
-              <NavLink onClick={handleMobileNavClick} to="/ceo/team" className={({isActive}) => navItemClass(isActive)}>Team</NavLink>
-              <NavLink onClick={handleMobileNavClick} to="/ceo/billing" className={({isActive}) => navItemClass(isActive)}>Billing</NavLink>
-
+                {partnerDashboardOpen && (
+                  <div className="mt-2 ml-3 flex flex-col gap-1">
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/overview" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
+                      <span>System Overview</span>
+                    </NavLink>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/data-management" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      <span className="w-5 h-5 rounded bg-green-500 flex items-center justify-center text-white text-xs">💾</span>
+                      <span>Data Management</span>
+                    </NavLink>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/deep-dive" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      <span className="w-5 h-5 rounded bg-purple-500 flex items-center justify-center text-white text-xs">🔍</span>
+                      <span>Deep Dive Analysis</span>
+                    </NavLink>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/forecast" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      <span className="w-5 h-5 rounded bg-orange-500 flex items-center justify-center text-white text-xs">📈</span>
+                      <span>Forecast & Scenarios</span>
+                    </NavLink>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/recommendations" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      <span className="w-5 h-5 rounded bg-red-500 flex items-center justify-center text-white text-xs">⚡</span>
+                      <span>Action Items</span>
+                    </NavLink>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/benchmarking" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      <span className="w-5 h-5 rounded bg-indigo-500 flex items-center justify-center text-white text-xs">🏆</span>
+                      <span>Industry Benchmarks</span>
+                    </NavLink>
+                  </div>
+                )}
+              </div>
+              
+              {/* <NavLink onClick={handleMobileNavClick} to="/ceo/org-health" className={({isActive}) => navItemClass(isActive)}>Org Health</NavLink> */}
+              
+              {/* <NavLink onClick={handleMobileNavClick} to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink> */}
               {/* Revenue (mobile: expand) */}
+
               <div className="mt-2">
                 <button
                   onClick={() => setRevenueOpen((s) => !s)}
@@ -370,11 +410,36 @@ export default function ConseqXCEODashboardShell() {
 
                 {revenueOpen && (
                   <div className="mt-2 ml-2 flex flex-col gap-2">
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/revenue" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>Revenue Dashboard</NavLink>
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/revenue/metrics" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>Financial Metrics</NavLink>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/revenue" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
+                    <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
+                    Revenue View
+                    </NavLink>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/revenue/metrics" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
+                    <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
+                    Financial Metrics
+                    </NavLink>
                   </div>
                 )}
               </div>
+
+              <NavLink onClick={handleMobileNavClick} to="/ceo/assessments" className={({isActive}) => navItemClass(isActive)}>Assessments</NavLink>
+
+              {/* REPORT */}
+              <NavLink
+                onClick={handleMobileNavClick}
+                to="/ceo/reports"
+                className={({isActive}) => `flex items-center justify-between w-full text-left px-3 py-2 rounded-md transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}
+              >
+                <span>Reports</span>
+                <span className="flex items-center gap-2">
+                  {reportsUnread > 0 && <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500 text-white">{reportsUnread}</span>}
+                </span>
+              </NavLink>
+
+              <NavLink onClick={handleMobileNavClick} to="/ceo/team" className={({isActive}) => navItemClass(isActive)}>Team</NavLink>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/billing" className={({isActive}) => navItemClass(isActive)}>Billing</NavLink>
+
+              
             </div>
           </nav>
 
@@ -429,26 +494,10 @@ export default function ConseqXCEODashboardShell() {
               <div className="flex flex-col gap-2">
                 <NavLink to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
                 <NavLink to="/ceo/chat" className={({isActive}) => navItemClass(isActive)}>Chat</NavLink>
-                <NavLink to="/ceo/org-health" className={({isActive}) => navItemClass(isActive)}>Org Health</NavLink>
-                <NavLink to="/ceo/partner-manual" className={({isActive}) => navItemClass(isActive)}>Manual Diagnosis</NavLink>
-                <NavLink to="/ceo/partner-auto" className={({isActive}) => navItemClass(isActive)}>Auto Injest</NavLink>
-                <NavLink to="/ceo/assessments" className={({isActive}) => navItemClass(isActive)}>Assessments</NavLink>
+                <NavLink to="/ceo/partner-dashboard" className={({isActive}) => navItemClass(isActive)}>Partner Dashboard</NavLink>
+                {/* <NavLink to="/ceo/org-health" className={({isActive}) => navItemClass(isActive)}>System Overview</NavLink> */}
+                
                 {/* <NavLink to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink> */}
-                {/* <NavLink to="/ceo/partner-dashboard" className={({isActive}) => navItemClass(isActive)}>Partner Dashboard</NavLink> */}
-
-                <NavLink to="/ceo/reports" className={({isActive}) => `flex items-center justify-between w-full text-left px-3 py-2 rounded-md transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
-                  <span>Reports</span>
-                  <span className="flex items-center gap-2">
-                    {reportsUnread > 0 ? (
-                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500 text-white">{reportsUnread}</span>
-                    ) : (
-                      <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-400"}`}> </span>
-                    )}
-                  </span>
-                </NavLink>
-
-                <NavLink to="/ceo/team" className={({isActive}) => navItemClass(isActive)}>Team</NavLink>
-                <NavLink to="/ceo/billing" className={({isActive}) => navItemClass(isActive)}>Billing</NavLink>
 
                 {/* Revenue collapsible */}
                 <div className="relative">
@@ -469,11 +518,35 @@ export default function ConseqXCEODashboardShell() {
 
                   <div className={`mt-2 ml-2 overflow-hidden transition-all ${revenueOpen ? "max-h-56" : "max-h-0"}`}>
                     <div className="flex flex-col gap-1">
-                      <NavLink to="/ceo/revenue/metrics" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>Financial Metrics</NavLink>
-                      <NavLink to="/ceo/revenue" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>Revenue Dashboard</NavLink>
+                      <NavLink to="/ceo/revenue/metrics" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
+                      <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
+                      Financial Metrics
+                      </NavLink>
+                      <NavLink to="/ceo/revenue" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
+                      <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
+                      Revenue Dashboard
+                      </NavLink>
                     </div>
                   </div>
                 </div>
+
+                <NavLink to="/ceo/assessments" className={({isActive}) => navItemClass(isActive)}>Assessments</NavLink>
+
+                <NavLink to="/ceo/reports" className={({isActive}) => `flex items-center justify-between w-full text-left px-3 py-2 rounded-md transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
+                  <span>Reports</span>
+                  <span className="flex items-center gap-2">
+                    {reportsUnread > 0 ? (
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500 text-white">{reportsUnread}</span>
+                    ) : (
+                      <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-400"}`}> </span>
+                    )}
+                  </span>
+                </NavLink>
+
+                <NavLink to="/ceo/team" className={({isActive}) => navItemClass(isActive)}>Team</NavLink>
+                <NavLink to="/ceo/billing" className={({isActive}) => navItemClass(isActive)}>Billing</NavLink>
+
+                
               </div>
             </nav>
 

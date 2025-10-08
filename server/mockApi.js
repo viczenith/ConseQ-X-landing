@@ -35,7 +35,7 @@ function makeSeries(base) {
 
 async function handleOverview(req, res) {
   // simple mock: generate per system series and scores
-  const systems = ['interdependency','iteration','investigation','interpretation','illustration','inlignment'];
+  const systems = ['interdependency','orchestration','investigation','interpretation','illustration','inlignment'];
   const perSystem = {};
   const scores = {};
   systems.forEach((s, i) => {

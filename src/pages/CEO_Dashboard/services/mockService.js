@@ -52,8 +52,8 @@ function generateOrganizationalHealthInsights(latestBySys, orgHealth, confidence
   
   // Cultural and behavioral insights (not available in ERP/BI)
   const cultural_factors = {
-    collaboration_index: Math.round((latestBySys.interdependency?.score || 50) * 0.8 + (latestBySys.alignment?.score || 50) * 0.2),
-    innovation_velocity: Math.round((latestBySys.iteration?.score || 50) * 0.7 + (latestBySys.investigation?.score || 50) * 0.3),
+    collaboration_index: Math.round((latestBySys.interdependency?.score || 50) * 0.8 + (latestBySys.inlignment?.score || 50) * 0.2),
+    innovation_velocity: Math.round((latestBySys.orchestration?.score || 50) * 0.7 + (latestBySys.investigation?.score || 50) * 0.3),
     communication_effectiveness: latestBySys.illustration?.score || 50,
     decision_quality: latestBySys.interpretation?.score || 50,
     overall_culture_health: Math.round(avgScore * 0.9 + confidence * 100 * 0.1)
@@ -74,7 +74,7 @@ function generateOrganizationalHealthInsights(latestBySys, orgHealth, confidence
   const recommendations = [
     {
       insight_id: "rec-001",
-      action: orgHealth < 60 ? "Focus on foundational systems: Investigation and Alignment need immediate attention" : "Optimize high-performing areas for maximum impact",
+      action: orgHealth < 60 ? "Focus on foundational systems: Investigation and Inlignment need immediate attention" : "Optimize high-performing areas for maximum impact",
       owner: orgHealth < 60 ? "Chief Operating Officer" : "Strategic Planning Team",
       priority: orgHealth < 60 ? "critical" : "normal",
       expected_impact: "+8-12% org health",
@@ -150,7 +150,7 @@ function generateHealthIndicators(systemKey, latest) {
       if (score > 70) indicators.push('strong_collaboration');
       if (score < 50) indicators.push('siloed_operations');
       break;
-    case 'iteration':
+    case 'orchestration':
       if (score > 70) indicators.push('agile_culture');
       if (score < 50) indicators.push('slow_adaptation');
       break;
@@ -166,7 +166,7 @@ function generateHealthIndicators(systemKey, latest) {
       if (score > 70) indicators.push('clear_communication');
       if (score < 50) indicators.push('information_bottlenecks');
       break;
-    case 'alignment':
+    case 'inlignment':
       if (score > 70) indicators.push('unified_direction');
       if (score < 50) indicators.push('misaligned_goals');
       break;

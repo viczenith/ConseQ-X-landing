@@ -196,8 +196,8 @@ export default function DataManagement() {
           ["interpretation", ["finance", "revenue", "profit", "financial", "balance", "income", "expenses"]],
           ["investigation", ["survey", "feedback", "csat", "comments", "responses", "sentiment", "log", "logs", "data"]],
           ["interdependency", ["orgchart", "org chart", "organization chart", "hierarchy", "reporting"]],
-          ["iteration", ["cycle", "sprint", "iteration", "lead time", "throughput"]],
-          ["alignment", ["goal", "kpi", "objective", "okr", "alignment"]],
+          ["orchestration", ["cycle", "sprint", "iteration", "lead time", "throughput"]],
+          ["inlignment", ["goal", "kpi", "objective", "okr", "alignment"]],
           ["illustration", ["process", "flow", "diagram", "procedure", "manual", "presentation", "ppt"]]
         ];
         const hits = [];

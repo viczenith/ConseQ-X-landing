@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
-import { FaBolt, FaPlay, FaPause, FaTimes, FaDownload, FaChartLine } from "react-icons/fa";
+import { FaBolt, FaPlay, FaPause, FaTimes, FaDownload, FaChartLine, FaSignal, FaBell, FaVolumeUp } from "react-icons/fa";
 import { CANONICAL_SYSTEMS, normalizeSystemKey } from "./constants/systems";
 
 /* ---------------- helpers ---------------- */
@@ -21,6 +21,85 @@ function formatTime(ts) { try { return new Date(ts).toLocaleTimeString(); } catc
 const STORAGE_UPLOADS = "conseqx_uploads_v1";
 const STORAGE_ASSESS = "conseqx_assessments_v1";
 const STORAGE_SCENARIOS = "conseqx_saved_scenarios_v1";
+const STORAGE_MOBILE_PREFS = "conseqx_mobile_preferences_v1";
+const STORAGE_AI_SETTINGS = "conseqx_ai_settings_v1";
+
+// Mobile detection utility
+function isMobileDevice() {
+  return typeof window !== 'undefined' && (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    window.innerWidth < 768
+  );
+}
+
+// Enhanced AI narration system
+class AdvancedAINarrator {
+  constructor() {
+    this.isSupported = 'speechSynthesis' in window;
+    this.voices = [];
+    this.currentUtterance = null;
+    this.isPlaying = false;
+    
+    if (this.isSupported) {
+      this.loadVoices();
+      window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
+    }
+  }
+  
+  loadVoices() {
+    this.voices = window.speechSynthesis.getVoices();
+  }
+  
+  speak(text, options = {}) {
+    if (!this.isSupported || !text) return;
+    
+    this.stop(); // Stop any current speech
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = options.rate || 0.9;
+    utterance.pitch = options.pitch || 1;
+    utterance.volume = options.volume || 0.8;
+    
+    // Try to use a professional voice
+    const preferredVoice = this.voices.find(voice => 
+      voice.name.includes('Google') || 
+      voice.name.includes('Microsoft') ||
+      voice.lang.includes('en-US')
+    );
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+    
+    utterance.onstart = () => this.isPlaying = true;
+    utterance.onend = () => this.isPlaying = false;
+    utterance.onerror = () => this.isPlaying = false;
+    
+    this.currentUtterance = utterance;
+    window.speechSynthesis.speak(utterance);
+  }
+  
+  stop() {
+    if (this.isSupported && this.isPlaying) {
+      window.speechSynthesis.cancel();
+      this.isPlaying = false;
+    }
+  }
+  
+  pause() {
+    if (this.isSupported && this.isPlaying) {
+      window.speechSynthesis.pause();
+    }
+  }
+  
+  resume() {
+    if (this.isSupported) {
+      window.speechSynthesis.resume();
+    }
+  }
+}
+
+const aiNarrator = new AdvancedAINarrator();
 
 function readUploads() { try { const raw = localStorage.getItem(STORAGE_UPLOADS); return raw ? JSON.parse(raw) : []; } catch { return []; } }
 function readAssessmentsForOrg(orgId = "anon") { try { const raw = localStorage.getItem(STORAGE_ASSESS); const byOrg = raw ? JSON.parse(raw) : {}; return byOrg[orgId] || []; } catch { return []; } }
@@ -248,7 +327,7 @@ export default function PartnerDashboardAuto({ orgId: propOrgId = null }) {
     }
     return [
       { key: "interdependency", title: "Interdependency", desc: "" },
-      { key: "iteration", title: "Iteration", desc: "" },
+      { key: "orchestration", title: "Orchestration", desc: "" },
       { key: "investigation", title: "Investigation", desc: "" },
       { key: "interpretation", title: "Interpretation", desc: "" },
       { key: "illustration", title: "Illustration", desc: "" },
@@ -337,14 +416,62 @@ export default function PartnerDashboardAuto({ orgId: propOrgId = null }) {
     return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
   }, [previewScores, canonical, assessedKeys]);
 
-  // alerts
+  // Enhanced alert and mobile state management
   const [alerts, setAlerts] = useState([]);
   const [autoOn, setAutoOn] = useState(true);
+  const [isMobile, setIsMobile] = useState(() => isMobileDevice());
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [connectionQuality, setConnectionQuality] = useState('excellent');
+  const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const intervalRef = useRef(null);
   const [externalSignals, setExternalSignals] = useState(() => generateSignals(canonical));
   const [deepModal, setDeepModal] = useState({ open: false, systemKey: null });
   const [palette, setPalette] = useState("crypto");
   const tooltipControl = useRef(null);
+  
+  // Mobile responsiveness detector
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(isMobileDevice());
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Enhanced notification system
+  const addEnhancedAlert = useCallback((title, message, type = 'info', options = {}) => {
+    const alert = {
+      id: Date.now().toString() + Math.random(),
+      title,
+      message,
+      type,
+      timestamp: Date.now(),
+      priority: options.priority || 'medium',
+      persistent: options.persistent || false,
+      actionable: options.actionable || false,
+      systemKey: options.systemKey || null
+    };
+    
+    setAlerts(prev => [alert, ...prev.slice(0, 19)]); // Keep last 20
+    
+    // Voice narration for critical alerts
+    if (voiceEnabled && type === 'critical') {
+      aiNarrator.speak(`Critical alert: ${title}. ${message}`);
+    }
+    
+    // Browser notification for mobile
+    if (isMobile && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body: message,
+        icon: '/logo192.png',
+        badge: '/logo192.png'
+      });
+    }
+    
+    return alert.id;
+  }, [voiceEnabled, isMobile]);
 
   // scenario panel state
   const [scenarioOpen, setScenarioOpen] = useState(false);
@@ -668,10 +795,97 @@ export default function PartnerDashboardAuto({ orgId: propOrgId = null }) {
     setWhatIfOpen({});
   }
 
+  // Connection quality monitoring
+  useEffect(() => {
+    const checkConnection = () => {
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (connection) {
+        const effectiveType = connection.effectiveType;
+        setConnectionQuality(
+          effectiveType === '4g' ? 'excellent' :
+          effectiveType === '3g' ? 'good' :
+          effectiveType === '2g' ? 'poor' : 'unknown'
+        );
+      }
+    };
+    
+    checkConnection();
+    const interval = setInterval(checkConnection, 30000); // Check every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Enhanced AI insights generator
+  const generateAIInsight = useCallback((systemKey, score, trend) => {
+    const insights = {
+      interdependency: [
+        `Your interdependency score of ${score}% suggests ${score > 75 ? 'strong' : score > 60 ? 'moderate' : 'weak'} team collaboration.`,
+        `${trend > 0 ? 'Improving' : 'Declining'} interdependency may ${trend > 0 ? 'boost' : 'hinder'} cross-functional project success.`
+      ],
+      investigation: [
+        `Investigation capabilities at ${score}% indicate ${score > 80 ? 'excellent' : score > 65 ? 'good' : 'limited'} problem-solving capacity.`,
+        `Consider ${score < 70 ? 'investing in analytical tools and training' : 'maintaining current investigative processes'}.`
+      ],
+      // Add more system-specific insights...
+    };
+    
+    const systemInsights = insights[systemKey] || [`System ${systemKey} is performing at ${score}%`];
+    return systemInsights[Math.floor(Math.random() * systemInsights.length)];
+  }, []);
+  
+  /* ---------------- Enhanced Mobile UI Components ---------------- */
+  const MobileStatusBar = () => (
+    <div className={`${isMobile ? 'block' : 'hidden'} sticky top-0 z-30 p-2 ${darkMode ? 'bg-gray-900 border-b border-gray-700' : 'bg-white border-b border-gray-200'}`}>
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            {autoOn ? <FaSignal className="text-green-500" /> : <FaSignal className="text-red-500 opacity-50" />}
+            <span className="text-xs">{autoOn ? 'Live' : 'Offline'}</span>
+          </div>
+          
+          <div className={`flex items-center gap-1 ${
+            connectionQuality === 'excellent' ? 'text-green-500' :
+            connectionQuality === 'good' ? 'text-yellow-500' : 'text-red-500'
+          }`}>
+            <div className="w-2 h-2 rounded-full bg-current"></div>
+            <span className="text-xs capitalize">{connectionQuality}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setVoiceEnabled(!voiceEnabled)}
+            className={`p-1 rounded ${voiceEnabled ? 'text-blue-500' : 'text-gray-400'}`}
+          >
+            <FaVolumeUp size={14} />
+          </button>
+          
+          {alerts.filter(a => !a.acknowledged).length > 0 && (
+            <div className="flex items-center gap-1 text-red-500">
+              <FaBell size={14} />
+              <span className="text-xs">{alerts.filter(a => !a.acknowledged).length}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+  
+  const MobileOptimizedCard = ({ children, className = '', ...props }) => (
+    <div 
+      className={`${isMobile ? 'p-3 text-sm' : 'p-4'} ${className}`}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+  
   /* ---------------- UI rendering ---------------- */
   const modalBg = darkMode ? "bg-gray-900" : "bg-white";
   const modalText = darkMode ? "text-gray-100" : "text-gray-900";
   const muted = darkMode ? "text-gray-400" : "text-gray-600";
+  const cardSpacing = isMobile ? 'gap-3' : 'gap-4';
+  const textSize = isMobile ? 'text-sm' : 'text-base';
 
   return (
     <section>

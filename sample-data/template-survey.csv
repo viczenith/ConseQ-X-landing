@@ -1,0 +1,4 @@
+respondent_id,question_1_score,question_2_score,comments,department
+r1,4,5,"Good service",Customer Success
+r2,3,2,"Delayed response",Support
+r3,5,4,"Excellent",Product

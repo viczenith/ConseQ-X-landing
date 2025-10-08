@@ -9,9 +9,9 @@ describe("mock integration", () => {
 
   test("runAssessment and dashboard summary work", async () => {
     const orgId = "org-1";
-    const res = await mockService.runAssessment(orgId, "iteration");
+    const res = await mockService.runAssessment(orgId, "orchestration");
     expect(res).toHaveProperty("id");
-    expect(res).toHaveProperty("systemId", "iteration");
+    expect(res).toHaveProperty("systemId", "orchestration");
     expect(typeof res.score).toBe("number");
     expect(res.meta.simulated).toBe(true);
     expect(new Date(res.timestamp).getTime()).toBeGreaterThan(0);
