@@ -5,7 +5,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import * as svc from "../services/serviceSelector";
 import { normalizeSystemKey, CANONICAL_SYSTEMS } from "../constants/systems";
 import { FaEye, FaBrain } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 
 const UPLOADS_KEY = "conseqx_uploads_v1";
 
@@ -20,26 +20,28 @@ const UPLOADS_KEY = "conseqx_uploads_v1";
 function KPICard({ title, value, hint, darkMode }) {
   return (
     <div
-      className={`rounded-2xl p-4 border ${
-        darkMode ? "bg-gray-900 border-gray-700 text-gray-100" : "bg-white border-gray-100 text-gray-900"
+      className={`rounded-lg p-4 border ${
+        darkMode ? "bg-gray-900 border-gray-700 text-gray-100" : "bg-white border-gray-200 text-gray-900"
       }`}
     >
-      <div className={`text-xs uppercase ${darkMode ? "text-gray-300" : "text-gray-500"}`}>{title}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
+      <div className={`text-xs uppercase ${darkMode ? "text-gray-400" : "text-gray-500"} mb-2`}>{title}</div>
+      <div className="text-2xl font-semibold">{value}</div>
       {hint && <div className={`${darkMode ? "text-gray-400" : "text-gray-500"} text-xs mt-1`}>{hint}</div>}
     </div>
   );
 }
 
-/* little rounded progress bar (blue) */
+/* Simple progress bar component */
 function BlueProgress({ pct = 0, darkMode = false }) {
   const safe = Math.max(0, Math.min(100, Math.round(pct || 0)));
+  
   return (
     <div className="w-full">
       <div className={`w-full h-2 rounded-full ${darkMode ? "bg-gray-700" : "bg-gray-200"}`}>
-        <div style={{ width: `${safe}%` }} className="h-full rounded-full transition-all duration-500">
-          <div style={{ width: "100%" }} className="h-full bg-gradient-to-r from-indigo-600 to-blue-500 rounded-full" />
-        </div>
+        <div 
+          style={{ width: `${safe}%` }} 
+          className="h-full rounded-full bg-blue-500 transition-all duration-500"
+        />
       </div>
     </div>
   );
@@ -239,43 +241,23 @@ export default function DashboardHome() {
 
   return (
     <section>
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <div className={`${darkMode ? "text-gray-300" : "text-gray-500"} text-sm mt-1`}>
-            <span className="text-yellow-500">{auth?.org?.name}</span> Workspace
-          </div>
+      <div className="mb-6">
+        <h1 className={`text-2xl font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
+          Dashboard Home
+        </h1>
+        <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"} mt-1`}>
+          <span className="text-blue-600">{auth?.org?.name || "ConseQ-X"}</span> Workspace
         </div>
-        {/* Top-right controls removed as requested */}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className={`rounded-2xl p-4 border col-span-1 sm:col-span-2 ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-100"}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Overall Health (quick)</div>
-              <div className="text-3xl font-bold mt-1">{overallScore}%</div>
-              <div className="text-xs text-gray-500 mt-1">Snapshot — open OrgHealth for full diagnosis</div>
-            </div>
-            <div className="w-32 h-32 flex items-center justify-center">
-              <svg viewBox="0 0 36 36" className="w-28 h-28">
-                <path d="M18 2a16 16 0 1 0 0 32 16 16 0 0 0 0-32" fill="none" stroke="#e6e6e6" strokeWidth="2" />
-                <path d="M18 2a16 16 0 1 0 0 32" fill="none" stroke="#34d399" strokeWidth="2" strokeDasharray={`${overallScore},100`} />
-                <text x="18" y="20.5" alignmentBaseline="middle" textAnchor="middle" fontSize="5" fill={darkMode ? "#fff" : "#111"}>
-                  {overallScore}%
-                </text>
-              </svg>
-            </div>
-          </div>
-          <div className="mt-3 text-xs text-gray-400">
-            This is a lightweight snapshot. <button onClick={() => navigate("/ceo/org-health")} className="ml-1 underline text-indigo-600 text-xs">Open OrgHealth</button>
-          </div>
-        </div>
-
-        {kpis.map((k) => <KPICard key={k.title} title={k.title} value={k.value} hint={k.hint} darkMode={darkMode} />)}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <KPICard title="Revenue (TTM)" value="₦120M" darkMode={darkMode} />
+        <KPICard title="EBITDA Margin" value="18%" darkMode={darkMode} />
+        <KPICard title="Team Performance" value="87%" darkMode={darkMode} />
+        <KPICard title="System Health" value={`${overallScore}%`} darkMode={darkMode} />
       </div>
 
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className={`md:col-span-2 rounded-2xl p-4 border ${darkMode ? "bg-gray-900 border-gray-700 text-gray-100" : "bg-white border-gray-100 text-gray-900"}`}>
+      <div className={`rounded-lg p-4 border ${darkMode ? "bg-gray-900 border-gray-700 text-gray-100" : "bg-white border-gray-200 text-gray-900"}`}>
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className={`${darkMode ? "text-gray-100" : "text-gray-900"} text-lg font-semibold`}>Executive Reports & Insights</h3>
@@ -283,15 +265,15 @@ export default function DashboardHome() {
                 Real-time organizational intelligence and strategic recommendations
               </p>
             </div>
-            <div className={`flex items-center gap-3 rounded-xl px-3 py-2 ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-100"} shadow-sm`}>
+            <div className={`flex items-center gap-3 rounded-lg px-3 py-2 ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-100"}`}>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500">Insights</span>
-                <span className="text-lg font-bold text-blue-400">{Object.values(systemScoresFromUpload).filter(score => score !== null).length}</span>
+                <span className="text-lg font-bold text-blue-500">{Object.values(systemScoresFromUpload).filter(score => score !== null).length}</span>
               </div>
               <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
               <div className="flex flex-col text-right">
                 <span className="text-xs text-gray-500">Actions</span>
-                <span className="text-lg font-bold text-amber-400">3</span>
+                <span className="text-lg font-bold text-blue-500">3</span>
               </div>
             </div>
           </div>
@@ -409,7 +391,7 @@ export default function DashboardHome() {
                     darkMode ? "bg-gray-800/50" : "bg-gray-50"
                   }`}>
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded bg-indigo-600 text-white flex items-center justify-center text-sm">
+                      <div className="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center text-sm">
                         {system?.icon || "📋"}
                       </div>
                       <div>
@@ -440,7 +422,7 @@ export default function DashboardHome() {
                   <div className="text-sm">No assessments completed yet</div>
                   <button
                     onClick={() => navigate("/ceo/assessments")}
-                    className="mt-2 text-indigo-600 hover:text-indigo-700 text-sm underline"
+                    className="mt-2 text-blue-600 hover:text-blue-700 text-sm underline"
                   >
                     Start your first assessment
                   </button>
@@ -450,58 +432,12 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        <aside className={`rounded-2xl p-4 border ${darkMode ? "bg-gray-900 border-gray-700 text-gray-100" : "bg-white border-gray-100 text-gray-900"}`}>
-          <h3 className={`${darkMode ? "text-gray-100" : "text-gray-900"} text-lg font-semibold flex items-center gap-2`}>
-            <FaBrain className="text-blue-500" />
-            X-Ultra Recommendations
-          </h3>
-          <div className={`mt-2 text-xs ${darkMode ? "text-gray-400" : "text-gray-600"} italic`}>Automated intelligence — prioritized next steps</div>
-
-          {USE_MOCK && summary && summary.top_recommendations ? (
-            <ul className="mt-3 space-y-3 text-sm">
-              {summary.top_recommendations.slice(0, 3).map((rec, idx) => (
-                <li key={idx} className="space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className={`${darkMode ? "text-gray-100" : "font-medium"} text-sm`}>{rec.action}</div>
-                      <div className="text-xs text-gray-400 mt-1">Owner: {rec.owner} · Priority: {rec.priority}</div>
-                      {rec.expected_impact && <div className={`text-xs mt-1 ${darkMode ? "text-blue-400" : "text-blue-600"}`}>Expected Impact: {rec.expected_impact}</div>}
-                      {rec.reasoning && <div className={`text-xs mt-1 italic ${darkMode ? "text-gray-500" : "text-gray-500"}`}>{rec.reasoning}</div>}
-                    </div>
-                    <span className={`ml-2 px-2 py-1 rounded-full text-xs flex-shrink-0 ${rec.priority === "critical" ? "bg-red-100 text-red-700" : rec.priority === "high" ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"}`}>
-                      {rec.priority}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <ul className="mt-3 space-y-2 text-sm">
-              <li className="flex items-start justify-between">
-                <div>
-                  <div className={`${darkMode ? "text-gray-100" : "font-medium"}`}>Draft offsite agenda</div>
-                  <div className="text-xs text-gray-400">Owner: COO</div>
-                </div>
-                <button className={`px-2 py-1 rounded-md border ${darkMode ? "text-gray-100 border-gray-600 bg-transparent" : "text-gray-900 border-gray-200 bg-transparent"}`}>Assign</button>
-              </li>
-              <li className="flex items-start justify-between">
-                <div>
-                  <div className={`${darkMode ? "text-gray-100" : "font-medium"}`}>KPI dashboard refresh</div>
-                  <div className="text-xs text-gray-400">Owner: Head Analytics</div>
-                </div>
-                <button className={`px-2 py-1 rounded-md border ${darkMode ? "text-gray-100 border-gray-600 bg-transparent" : "text-gray-900 border-gray-200 bg-transparent"}`}>Assign</button>
-              </li>
-            </ul>
-          )}
-        </aside>
-      </div>
-
       {/* Quick modal (short report / CTA) */}
       <AnimatePresence>
         {showQuickModal && quickModalPayload && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/50" onClick={() => setShowQuickModal(false)} />
-            <motion.div initial={{ scale: 0.98 }} animate={{ scale: 1 }} exit={{ scale: 0.98 }} className={`relative z-10 w-full max-w-2xl rounded-2xl p-4 ${darkMode ? "bg-gray-900 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"} shadow-2xl`}>
+            <div className={`relative z-10 w-full max-w-2xl rounded-lg p-4 ${darkMode ? "bg-gray-900 border border-gray-700 text-gray-100" : "bg-white border border-gray-200 text-gray-900"} shadow-xl`}>
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">{`The System of ${quickModalPayload.title} — Report`}</h3>
@@ -563,8 +499,8 @@ export default function DashboardHome() {
                   </>
                 )}
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
       </AnimatePresence>
     </section>

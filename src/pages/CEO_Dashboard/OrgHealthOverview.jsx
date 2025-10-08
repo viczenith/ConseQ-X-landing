@@ -143,7 +143,7 @@ export default function OrgHealthOverview({ orgId = null }) {
   const canonical = useMemo(
     () => [
       { id: "interdependency", label: "Interdependency", blurb: "How well teams integrate and hand-off work across boundaries." },
-      { id: "orchestration", label: "Orchestration", blurb: "Pace of learning: experiments, feedback loops, and continuous improvement." },
+      { id: "iteration", label: "Iteration", blurb: "Pace of learning: experiments, feedback loops, and continuous improvement." },
       { id: "investigation", label: "Investigation", blurb: "Root-cause discovery and data-driven problem solving." },
       { id: "interpretation", label: "Interpretation", blurb: "How insights are turned into shared understanding and decisions." },
       { id: "illustration", label: "Illustration", blurb: "Clarity in process, playbooks, and operational visualizations." },
