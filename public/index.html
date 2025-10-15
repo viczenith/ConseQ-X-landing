@@ -34,6 +34,17 @@
     <meta property="og:image" content="/og-image.png" />
     <meta property="og:url" content="https://www.conseq-x.com" />
     <meta property="og:type" content="website" />
+
+    <!-- Suppress browser extension errors that don't affect app functionality -->
+    <script>
+      window.addEventListener('error', function(e) {
+        if (e.filename && e.filename.includes('chrome-extension://')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return true;
+        }
+      }, true);
+    </script>
   </head>
   <body class="antialiased text-gray-800">
     <noscript>
