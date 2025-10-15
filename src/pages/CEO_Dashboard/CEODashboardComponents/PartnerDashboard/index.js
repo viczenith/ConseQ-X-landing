@@ -1,38 +1,31 @@
 import React from 'react';
-import { NavLink, Outlet, useOutletContext } from 'react-router-dom';
-import { FaToggleOn, FaToggleOff, FaDatabase, FaSignal, FaBrain } from 'react-icons/fa';
+import { NavLink, Outlet, useOutletContext, useNavigate } from 'react-router-dom';
+import { FaBrain, FaRobot, FaComments, FaLightbulb, FaChartPie, FaExclamationTriangle } from 'react-icons/fa';
 import CustomizationPanel from './components/CustomizationPanel';
 import useLiveUpdates from './useLiveUpdates';
 import AINarration from './AINarration';
 import { exportToCSV, exportToPDF, shareToEmail } from './exportUtils';
+import { useIntelligence } from '../../../../contexts/IntelligenceContext';
 
 // Partner Dashboard shell: provides internal navigation for CEO-level views.
 export default function PartnerDashboard() {
   const outlet = useOutletContext();
   const darkMode = outlet?.darkMode ?? false;
   const orgId = outlet?.org?.id || outlet?.org?.orgId || "anon";
+  const navigate = useNavigate();
+  
+  // X-ULTRA Intelligence Integration
+  const intelligence = useIntelligence();
+  
+  // Live updates hook - must be declared before using 'connected' variable
+  const { connected } = useLiveUpdates('ws://localhost:4002');
 
   const KEY = 'conseqx_partner_dashboard_widgets_v1';
-  const DASHBOARD_MODE_KEY = 'conseqx_dashboard_mode_v1';
-  
-  // Dashboard mode state - 'manual' or 'auto'
-  const [dashboardMode, setDashboardMode] = React.useState(() => {
-    try { 
-      const saved = localStorage.getItem(DASHBOARD_MODE_KEY); 
-      return saved || 'manual'; 
-    } catch { 
-      return 'manual'; 
-    }
-  });
 
   const savedOrder = React.useMemo(() => {
     try { 
       const raw = localStorage.getItem(KEY); 
       const saved = raw ? JSON.parse(raw) : null;
-      // If saved order doesn't include data-management, reset to default
-      if (saved && !saved.includes('data-management')) {
-        return null;
-      }
       return saved;
     } catch { 
       return null; 
@@ -44,29 +37,15 @@ export default function PartnerDashboard() {
 
   // Force update localStorage with correct tab order
   React.useEffect(() => {
-    const defaultOrder = ['overview','data-management','deep-dive','forecast','recommendations','benchmarking'];
+    const defaultOrder = ['overview','deep-dive','forecast','recommendations','benchmarking'];
     try {
-      // Force clear and reset to ensure data-management appears
       localStorage.setItem(KEY, JSON.stringify(defaultOrder));
     } catch (e) {
       console.warn('Could not update navigation order:', e);
     }
   }, []);
 
-  // Listen for mode changes from DataManagementView
-  React.useEffect(() => {
-    const handleStorageChange = () => {
-      try {
-        const saved = localStorage.getItem(DASHBOARD_MODE_KEY);
-        if (saved && saved !== dashboardMode) {
-          setDashboardMode(saved);
-        }
-      } catch {}
-    };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [dashboardMode]);
 
  
   const navItem = (to, label) => {
@@ -82,7 +61,6 @@ export default function PartnerDashboard() {
     );
   };
 
-  const { connected } = useLiveUpdates('ws://localhost:4002');
   const [aiOpen, setAiOpen] = React.useState(false);
   const [lastUpload, setLastUpload] = React.useState(() => {
     try { const raw = localStorage.getItem('conseqx_uploads_v1'); const arr = raw ? JSON.parse(raw) : []; return arr && arr.length ? arr[0] : null; } catch { return null; }
@@ -115,7 +93,15 @@ export default function PartnerDashboard() {
     <div className="min-h-[60vh]">
       <div className="flex items-start gap-4 mb-6">
         <div className="flex-1">
-          <h2 className={`text-2xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>C-Suite</h2>
+          <div className="flex items-center gap-3 mb-2">
+            <h2 className={`text-2xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>C-Suite</h2>
+            {intelligence.sharedMetrics && (
+              <div className="flex items-center gap-2">
+                <FaRobot className="text-emerald-500" size={16} />
+                <span className="text-xs text-emerald-600 font-medium">X-ULTRA Enhanced</span>
+              </div>
+            )}
+          </div>
           <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
             Comprehensive organizational health monitoring and analysis
           </p>
@@ -131,13 +117,22 @@ export default function PartnerDashboard() {
             </span>
           </div>
           
-          {/* AI Analysis Button */}
+          {/* X-ULTRA Analysis Button */}
           <button 
             onClick={() => setAiOpen((s)=>!s)} 
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700 transition-colors whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-blue-600 text-white text-sm hover:from-emerald-700 hover:to-blue-700 transition-all whitespace-nowrap shadow-lg"
           >
             <FaBrain size={14} />
-            ULTRA Analysis
+            X-ULTRA Analysis
+          </button>
+          
+          {/* Chat Integration Button */}
+          <button 
+            onClick={() => navigate('/ceo/chat')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap"
+          >
+            <FaComments size={14} />
+            Open X-ULTRA Chat
           </button>
         </div>
       </div>
@@ -168,6 +163,112 @@ export default function PartnerDashboard() {
         )}
       </div>
 
+      {/* X-ULTRA Intelligence Panel */}
+      {intelligence.sharedMetrics && (
+        <div className={`mb-6 p-4 rounded-xl border ${darkMode ? 'bg-gradient-to-r from-gray-900/50 to-gray-800/50 border-gray-700' : 'bg-gradient-to-r from-blue-50/50 to-emerald-50/50 border-gray-200'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FaRobot className="text-emerald-500" size={18} />
+              <h3 className="font-semibold text-lg">X-ULTRA Intelligence</h3>
+            </div>
+            {intelligence.conversationInsights && intelligence.conversationInsights.length > 0 && (
+              <span className={`px-3 py-1 rounded-full text-xs ${darkMode ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
+                {intelligence.conversationInsights.length} Active Insights
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Live Metrics Summary */}
+            <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-800/50' : 'bg-white/80'} border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <FaChartPie className="text-blue-500" size={14} />
+                <h4 className="font-medium text-sm">Live Metrics</h4>
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>Financial Health</span>
+                  <span className="font-medium">{intelligence.sharedMetrics.financialHealth?.score || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>Risk Level</span>
+                  <span className={`font-medium ${
+                    intelligence.sharedMetrics.riskLevel?.level === 'High' ? 'text-red-500' : 
+                    intelligence.sharedMetrics.riskLevel?.level === 'Medium' ? 'text-yellow-500' : 
+                    'text-green-500'
+                  }`}>
+                    {intelligence.sharedMetrics.riskLevel?.level || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>Overall Health</span>
+                  <span className="font-medium">{intelligence.sharedMetrics.overallHealth?.score || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Insights */}
+            <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-800/50' : 'bg-white/80'} border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <FaLightbulb className="text-yellow-500" size={14} />
+                <h4 className="font-medium text-sm">Latest Insight</h4>
+              </div>
+              {intelligence.conversationInsights && intelligence.conversationInsights.length > 0 ? (
+                <div className="text-xs">
+                  <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-1`}>
+                    {intelligence.conversationInsights[0].insight.substring(0, 100)}...
+                  </p>
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    intelligence.conversationInsights[0].category === 'Financial' ? 'bg-green-100 text-green-700' :
+                    intelligence.conversationInsights[0].category === 'Strategic' ? 'bg-blue-100 text-blue-700' :
+                    intelligence.conversationInsights[0].category === 'Risk' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {intelligence.conversationInsights[0].category}
+                  </span>
+                </div>
+              ) : (
+                <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  No insights captured yet
+                </p>
+              )}
+            </div>
+
+            {/* Smart Recommendations */}
+            <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-800/50' : 'bg-white/80'} border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <FaExclamationTriangle className="text-orange-500" size={14} />
+                <h4 className="font-medium text-sm">Smart Alert</h4>
+              </div>
+              {intelligence.sharedMetrics && (
+                <div className="text-xs">
+                  {(() => {
+                    const recommendations = intelligence.generateRecommendations();
+                    return recommendations && recommendations.length > 0 ? (
+                      <div>
+                        <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-1`}>
+                          {recommendations[0].description}
+                        </p>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          recommendations[0].priority === 'high' 
+                            ? 'bg-red-100 text-red-700' 
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {recommendations[0].priority} priority
+                        </span>
+                      </div>
+                    ) : (
+                      <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        All systems operating within normal parameters
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navigation for detailed views - Desktop Only */}
       <div className="flex gap-4">
@@ -183,22 +284,6 @@ export default function PartnerDashboard() {
           <nav className="flex flex-col gap-2">
             {/* Force all tabs to appear in correct order */}
             {navItem('overview', 'System Overview')}
-            <div className="relative">
-              {navItem('data-management', 'Data Management')}
-              <div className="absolute -right-2 -top-1 flex items-center">
-                {dashboardMode === 'manual' ? (
-                  <div className="flex items-center gap-1 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-sm">
-                    <FaDatabase size={8} />
-                    <span>M</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-sm">
-                    <FaSignal size={8} />
-                    <span>A</span>
-                  </div>
-                )}
-              </div>
-            </div>
             {navItem('deep-dive', 'Deep Dive Analysis')}
             {navItem('forecast', 'Forecast & Scenarios')}
             {navItem('recommendations', 'Action Items')}
@@ -209,7 +294,7 @@ export default function PartnerDashboard() {
 
         <main className="flex-1">
           {/* Render nested routes from App.js here */}
-          <Outlet context={{ darkMode, orgId, dashboardMode }} />
+          <Outlet context={{ darkMode, orgId }} />
         </main>
       </div>
 

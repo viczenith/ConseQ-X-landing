@@ -394,7 +394,7 @@ export default function AutoDataMode({ darkMode, orgId = "anon" }) {
     };
   }, [autoOn, assessedKeys]);
 
-  // Connection quality monitoring
+  // Connection quality data management protocols
   useEffect(() => {
     const updateConnectionQuality = () => {
       if (!navigator.onLine) {
@@ -479,7 +479,7 @@ export default function AutoDataMode({ darkMode, orgId = "anon" }) {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold">Real-Time Data Monitoring</h2>
+              <h2 className="text-2xl font-bold">Real-Time Data Management Protocols</h2>
               <div className={`px-3 py-1 rounded-full text-xs font-medium ${
                 autoOn ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 
                 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
@@ -488,7 +488,7 @@ export default function AutoDataMode({ darkMode, orgId = "anon" }) {
               </div>
             </div>
             <p className="text-sm text-gray-500 mt-1">
-              Continuous monitoring and real-time analysis of organizational health
+              Continuous data management protocols and real-time analysis of organizational health
             </p>
             <div className="flex items-center gap-4 mt-2 text-sm">
               <div className="flex items-center gap-2">
@@ -550,7 +550,7 @@ export default function AutoDataMode({ darkMode, orgId = "anon" }) {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold flex items-center gap-2">
               <FaChartLine className="text-blue-600" />
-              Live System Monitoring
+              Live System Data Management Protocols
             </h3>
             <div className="text-sm text-gray-500">
               Updates every 5 seconds
@@ -575,7 +575,7 @@ export default function AutoDataMode({ darkMode, orgId = "anon" }) {
                     <div className="flex-1">
                       <div className="font-medium">{s.title}</div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {isActive ? 'Active monitoring' : 'No data source'}
+                        {isActive ? 'Active data management protocols' : 'No data source'}
                       </div>
                     </div>
                     <div className="text-right">

@@ -44,7 +44,7 @@ export default function DataManagementView() {
           <p className={`text-sm mt-1 ${
             darkMode ? 'text-gray-400' : 'text-gray-500'
           }`}>
-            Manage data sources and configure monitoring preferences
+            Manage data sources and configure data management protocols preferences
           </p>
           <p className="text-xs text-blue-500 mt-1">
             ✅ Data Management tab is now active and working
@@ -116,7 +116,7 @@ export default function DataManagementView() {
                 <div className={`text-sm ${
                   darkMode ? 'text-green-200' : 'text-green-800'
                 }`}>
-                  Configure automatic data synchronization and real-time monitoring. Ideal for continuous operational oversight.
+                  Configure automatic data synchronization and real-time data management protocols. Ideal for continuous operational oversight.
                 </div>
               </div>
             </>

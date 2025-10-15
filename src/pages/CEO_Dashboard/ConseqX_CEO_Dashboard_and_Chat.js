@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import Logo3D from "../../assets/ConseQ-X-3d.png";
-import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaChartLine, FaBell, FaChartPie } from "react-icons/fa";
+import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaChartLine, FaBell, FaChartPie, FaDatabase, FaSignal, FaToggleOn, FaToggleOff } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
+import { IntelligenceProvider } from "../../contexts/IntelligenceContext";
 import WelcomeCongrats from "../../components/WelcomeCongrats";
 
 /* localStorage key used by Reports component */
@@ -47,6 +48,14 @@ export default function ConseqXCEODashboardShell() {
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
+  const [dashboardMode, setDashboardMode] = useState(() => {
+    try { 
+      const saved = localStorage.getItem('conseqx_dashboard_mode_v1'); 
+      return saved || 'manual'; 
+    } catch { 
+      return 'manual'; 
+    }
+  }); // 'manual' or 'auto'
 
   // sidebar UI
   const [revenueOpen, setRevenueOpen] = useState(false);
@@ -131,6 +140,35 @@ export default function ConseqXCEODashboardShell() {
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("darkMode", next ? "true" : "false");
   };
+
+  const toggleDashboardMode = () => {
+    const next = dashboardMode === 'manual' ? 'auto' : 'manual';
+    setDashboardMode(next);
+    localStorage.setItem('conseqx_dashboard_mode_v1', next);
+  };
+
+  // Sync dashboard mode with localStorage changes (from Partner Dashboard or other tabs)
+  useEffect(() => {
+    const syncDashboardMode = () => {
+      try {
+        const saved = localStorage.getItem('conseqx_dashboard_mode_v1');
+        if (saved && saved !== dashboardMode) {
+          setDashboardMode(saved);
+        }
+      } catch {}
+    };
+
+    // Listen for localStorage changes from other tabs/components
+    window.addEventListener('storage', syncDashboardMode);
+    
+    // Also poll every 500ms to catch same-tab changes
+    const interval = setInterval(syncDashboardMode, 500);
+
+    return () => {
+      window.removeEventListener('storage', syncDashboardMode);
+      clearInterval(interval);
+    };
+  }, [dashboardMode]);
 
   /* Keep reports unread in sync:
      - listen to storage events (other tabs)
@@ -271,8 +309,9 @@ export default function ConseqXCEODashboardShell() {
   const drawerBorder = darkMode ? "border-gray-700" : "border-gray-100";
 
   return (
-    <div className={`${darkMode ? "bg-gradient-to-b from-gray-900 to-gray-800 text-gray-100" : "bg-gradient-to-b from-gray-50 to-gray-100 text-gray-900"} min-h-screen transition-colors duration-300`}>
-      <WelcomeCongrats open={showCongrats} onDone={() => setShowCongrats(false)} name={auth?.user?.name?.split?.(" ")?.[0] || ""} durationMs={1500} />
+    <IntelligenceProvider>
+      <div className={`${darkMode ? "bg-gradient-to-b from-gray-900 to-gray-800 text-gray-100" : "bg-gradient-to-b from-gray-50 to-gray-100 text-gray-900"} min-h-screen transition-colors duration-300`}>
+        <WelcomeCongrats open={showCongrats} onDone={() => setShowCongrats(false)} name={auth?.user?.name?.split?.(" ")?.[0] || ""} durationMs={1500} />
 
       {/* hide scrollbar helpers */}
       <style>{`
@@ -340,7 +379,23 @@ export default function ConseqXCEODashboardShell() {
           {/* scrollable nav area */}
           <nav className="flex-1 overflow-y-auto hide-scrollbar pr-1">
             <div className="flex flex-col gap-2">
-              <NavLink onClick={handleMobileNavClick} to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Ultra View</NavLink>
+              <div className="relative">
+                <NavLink onClick={handleMobileNavClick} to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
+                <div className="absolute -right-2 -top-1 flex items-center">
+                  {dashboardMode === 'manual' ? (
+                    <div className="flex items-center gap-1 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-sm">
+                      <FaDatabase size={8} />
+                      <span>M</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-sm">
+                      <FaSignal size={8} />
+                      <span>A</span>
+                    </div>
+                  )} 
+                </div>
+              </div>
               <NavLink onClick={handleMobileNavClick} to="/ceo/chat" className={({isActive}) => navItemClass(isActive)}>Chat</NavLink>
               
               {/* Partner Dashboard (mobile: expand) */}
@@ -355,7 +410,7 @@ export default function ConseqXCEODashboardShell() {
                     <span>Partner Dashboard</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">6 sections</span>
+                    <span className="text-xs text-gray-400">5 sections</span>
                     {partnerDashboardOpen ? <FaChevronUp/> : <FaChevronDown/>}
                   </div>
                 </button>
@@ -365,10 +420,6 @@ export default function ConseqXCEODashboardShell() {
                     <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/overview" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
                       <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
                       <span>System Overview</span>
-                    </NavLink>
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/data-management" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                      <span className="w-5 h-5 rounded bg-green-500 flex items-center justify-center text-white text-xs">💾</span>
-                      <span>Data Management</span>
                     </NavLink>
                     <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/deep-dive" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
                       <span className="w-5 h-5 rounded bg-purple-500 flex items-center justify-center text-white text-xs">🔍</span>
@@ -389,11 +440,6 @@ export default function ConseqXCEODashboardShell() {
                   </div>
                 )}
               </div>
-              
-              {/* <NavLink onClick={handleMobileNavClick} to="/ceo/org-health" className={({isActive}) => navItemClass(isActive)}>Org Health</NavLink> */}
-              
-              {/* <NavLink onClick={handleMobileNavClick} to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink> */}
-              {/* Revenue (mobile: expand) */}
 
               <div className="mt-2">
                 <button
@@ -492,12 +538,26 @@ export default function ConseqXCEODashboardShell() {
             {/* nav area scrolls independently */}
             <nav className="flex-1 overflow-y-auto hide-scrollbar pr-1 mb-4">
               <div className="flex flex-col gap-2">
-                <NavLink to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
+                <NavLink to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Ultra View</NavLink>
+                <div className="relative">
+                  <NavLink to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
+                  <div className="absolute -right-2 -top-1 flex items-center">
+                    {dashboardMode === 'manual' ? (
+                      <div className="flex items-center gap-1 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-sm">
+                        <FaDatabase size={8} />
+                        <span>M</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-sm">
+                        <FaSignal size={8} />
+                        <span>A</span>
+                      </div>
+                    )} 
+                  </div>
+                </div>
+                
                 <NavLink to="/ceo/chat" className={({isActive}) => navItemClass(isActive)}>Chat</NavLink>
                 <NavLink to="/ceo/partner-dashboard" className={({isActive}) => navItemClass(isActive)}>Partner Dashboard</NavLink>
-                {/* <NavLink to="/ceo/org-health" className={({isActive}) => navItemClass(isActive)}>System Overview</NavLink> */}
-                
-                {/* <NavLink to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink> */}
 
                 {/* Revenue collapsible */}
                 <div className="relative">
@@ -726,6 +786,7 @@ export default function ConseqXCEODashboardShell() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </IntelligenceProvider>
   );
 }

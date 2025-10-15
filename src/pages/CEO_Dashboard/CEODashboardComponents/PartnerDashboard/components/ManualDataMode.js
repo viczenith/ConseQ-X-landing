@@ -339,13 +339,13 @@ function generateRecommendations(systemScores) {
       if (score < 50) {
         recommendations.push(`Prioritize immediate ${systemData.title} system restructuring and resource allocation`);
       } else {
-        recommendations.push(`Enhance ${systemData.title} system processes and monitoring capabilities`);
+        recommendations.push(`Enhance ${systemData.title} system processes and data management protocols capabilities`);
       }
     }
   });
   
   if (avgScore >= 70) {
-    recommendations.push("Maintain current performance levels through regular monitoring and assessment");
+    recommendations.push("Maintain current performance levels through regular data management protocols and assessment");
     recommendations.push("Consider implementing best practices sharing across organizational units");
   }
   

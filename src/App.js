@@ -24,7 +24,7 @@ const CEOFinanceMetrics = React.lazy(() => import("./pages/CEO_Dashboard/CEODash
 const RevenueForecasts = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/RevenueForecasts"));
 const CEODashboardHome = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/DashboardHome"));
 const CEOChat = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/Chat")); 
-const CEODataManagement = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/DataManagement"));
+const CEODataManagement = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/DataManagementView"));
 const PartnerDashboard = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard"));
 const PartnerOverview = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/OverviewView"));
 const PartnerDataManagement = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/DataManagementView"));
