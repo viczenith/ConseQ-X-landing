@@ -94,11 +94,11 @@ export default function PartnerDashboard() {
       <div className="flex items-start gap-4 mb-6">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h2 className={`text-2xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>C-Suite</h2>
             {intelligence.sharedMetrics && (
               <div className="flex items-center gap-2">
                 <FaRobot className="text-emerald-500" size={16} />
-                <span className="text-xs text-emerald-600 font-medium">X-ULTRA Enhanced</span>
+                <h2 className={`text-2xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>C-Suite X-ULTRA</h2>
+                {/* <span className="text-xs text-emerald-600 font-medium">X-ULTRA Enhanced</span> */}
               </div>
             )}
           </div>
