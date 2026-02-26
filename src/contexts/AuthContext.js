@@ -6,15 +6,13 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 const ACCESS_KEY  = "conseqx_access_token_v1";
 const REFRESH_KEY = "conseqx_refresh_token_v1";
 
-/** Inactivity timeout in milliseconds (15 minutes). */
+/** Inactivity timeout in 15 minutes. */
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 
-/** Resolve the backend base URL (env var or default localhost). */
 function getApiBase() {
   return String(process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 }
 
-/** Build a full API URL from a relative path like "/auth/token/". */
 function apiUrl(path) {
   return `${getApiBase()}/api${String(path).startsWith("/") ? "" : "/"}${path}`;
 }

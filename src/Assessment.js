@@ -1232,7 +1232,7 @@ export default function AssessmentPlatform(props) {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   if (auth?.logout) auth.logout();
-                  window.location.href = "/";
+                  navigate("/");
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   darkMode
