@@ -48,7 +48,11 @@ export default function AssessmentPlatform(props) {
   // NAV, DARK MODE, STEPS, ETC.
   const [navScrolled, setNavScrolled] = useState(false);
   const [step, setStep] = useState(0);
-  const [userInfo, setUserInfo] = useState({ organization: "", role: "", email: "" });
+  const [userInfo, setUserInfo] = useState(() => ({
+    organization: localStorage.getItem("conseqx_form_org") || "",
+    role: localStorage.getItem("conseqx_form_role") || "",
+    email: localStorage.getItem("conseqx_form_email") || "",
+  }));
   const [darkMode, setDarkMode] = useState(props.darkMode !== undefined ? props.darkMode : false);
   const [currentSystem, setCurrentSystem] = useState(null);
   const [answers, setAnswers] = useState(initialAnswers);
@@ -447,6 +451,11 @@ export default function AssessmentPlatform(props) {
       localStorage.setItem("conseqx_visitor_email", userInfo.email.trim().toLowerCase());
       localStorage.setItem("conseqx_visitor_org", userInfo.organization.trim());
       localStorage.setItem("conseqx_visitor_role", userInfo.role.trim());
+
+      // Persist form memory (survives logout so the form remembers previous entries)
+      localStorage.setItem("conseqx_form_email", userInfo.email.trim().toLowerCase());
+      localStorage.setItem("conseqx_form_org", userInfo.organization.trim());
+      localStorage.setItem("conseqx_form_role", userInfo.role.trim());
 
       // If returning user, load their previous data
       if (json.returning && json.visitor) {
