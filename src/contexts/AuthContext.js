@@ -6,6 +6,9 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 const ACCESS_KEY  = "conseqx_access_token_v1";
 const REFRESH_KEY = "conseqx_refresh_token_v1";
 
+/** Inactivity timeout in milliseconds (15 minutes). */
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+
 /** Resolve the backend base URL (env var or default localhost). */
 function getApiBase() {
   return String(process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -200,6 +203,29 @@ export function AuthProvider({ children }) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* ─── Inactivity auto-logout ─── */
+  useEffect(() => {
+    if (!rawUser) return;          // only track when signed in
+
+    let timer = null;
+    const resetTimer = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        logout();
+        window.location.href = "/";
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer();                  // start the countdown
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [rawUser, logout]);
 
   /* ═══════════════════════════════════════════════════════════════
      Backward-compatible shapes

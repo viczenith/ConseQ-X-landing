@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Logo3D from "./assets/ConseQ-X-3d.png";
-import { FaSun, FaMoon, FaStar, FaRegStar, FaTimes, FaCheck, FaDownload, FaPlay, FaEye, FaTrash, FaExclamationCircle } from "react-icons/fa";
+import { FaSun, FaMoon, FaStar, FaRegStar, FaTimes, FaCheck, FaDownload, FaPlay, FaEye, FaTrash, FaExclamationCircle, FaSignOutAlt } from "react-icons/fa";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -61,7 +61,7 @@ export default function AssessmentPlatform(props) {
   const [previousAssessments, setPreviousAssessments] = useState([]);
   const chatSaveTimerRef = useRef(null);
 
-  // Sync answers when initialAnswers changes (e.g. after page refresh when parent loads from localStorage)
+  // Sync answers when initialAnswers changes
   useEffect(() => {
     if (initialAnswers && Object.keys(initialAnswers).length > 0) {
       setAnswers((prev) => {
@@ -1220,12 +1220,31 @@ export default function AssessmentPlatform(props) {
             <motion.img src={Logo3D} alt="ConseQ-X Logo" className="h-16 w-auto mr-3 transition-all duration-500" />
           </motion.div>
 
-          <div className="flex items-center space-x-6">
-            <div className="text-sm text-gray-500">{
-              auth?.user ? `Signed in as ${auth.user.name || auth.user.email}`
+          <div className="flex items-center space-x-4">
+            <div className="text-sm text-gray-500">
+              {auth?.user ? `Signed in as ${auth.user.name || auth.user.email}`
               : userInfo.email ? `Signed in as ${userInfo.organization ? userInfo.organization + " — " : ""}${userInfo.email}`
-              : "Not signed in (freemium)"
-            }</div>
+              : "Not signed in (freemium)"}
+            </div>
+            {(auth?.user || userInfo.email) && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (auth?.logout) auth.logout();
+                  window.location.href = "/";
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  darkMode
+                    ? "bg-red-600/20 text-red-400 hover:bg-red-600/40"
+                    : "bg-red-50 text-red-600 hover:bg-red-100"
+                }`}
+                title="Sign out"
+              >
+                <FaSignOutAlt size={12} />
+                Logout
+              </motion.button>
+            )}
             <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={toggleDarkMode} className={`p-2 rounded-full ${darkMode ? "bg-yellow-500 text-gray-900" : "bg-gray-800 text-yellow-400"}`} aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
               {darkMode ? <FaSun className="text-lg" /> : <FaMoon className="text-lg" />}
             </motion.button>
