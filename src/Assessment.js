@@ -452,7 +452,7 @@ export default function AssessmentPlatform(props) {
       localStorage.setItem("conseqx_visitor_org", userInfo.organization.trim());
       localStorage.setItem("conseqx_visitor_role", userInfo.role.trim());
 
-      // Persist form memory (survives logout so the form remembers previous entries)
+      // Persist form memory
       localStorage.setItem("conseqx_form_email", userInfo.email.trim().toLowerCase());
       localStorage.setItem("conseqx_form_org", userInfo.organization.trim());
       localStorage.setItem("conseqx_form_role", userInfo.role.trim());
@@ -1232,10 +1232,10 @@ export default function AssessmentPlatform(props) {
           <div className="flex items-center space-x-4">
             <div className="text-sm text-gray-500">
               {auth?.user ? `Signed in as ${auth.user.name || auth.user.email}`
-              : userInfo.email ? `Signed in as ${userInfo.organization ? userInfo.organization + " — " : ""}${userInfo.email}`
+              : visitorId ? `Signed in as ${userInfo.organization ? userInfo.organization + " — " : ""}${userInfo.email}`
               : "Not signed in (freemium)"}
             </div>
-            {(auth?.user || userInfo.email) && (
+            {(auth?.user || visitorId) && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
