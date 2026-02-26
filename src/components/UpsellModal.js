@@ -225,7 +225,7 @@ export default function UpsellModal({
               </button>
 
               <div className={`text-[11px] text-center ${smallText}`}>
-                Payment options: daily, weekly, monthly or yearly. Prices in Nigerian Naira (₦).
+                Payment options: daily, weekly, monthly or yearly. Prices in Naira (₦).
               </div>
             </div>
 
