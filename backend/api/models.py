@@ -173,6 +173,9 @@ class Visitor(models.Model):
 	assessment_count = models.PositiveIntegerField(default=0)
 	assessment_data = models.JSONField(default=list, blank=True, help_text="List of past assessment snapshots [{date, scores, analysis_summary}]")
 	chat_history = models.JSONField(default=list, blank=True, help_text="List of chat messages [{id, role, text, timestamp}]")
+	current_answers = models.JSONField(default=dict, blank=True, help_text="In-progress assessment answers {subAssessmentId: {questionId: answerValue}}")
+	current_step = models.PositiveSmallIntegerField(default=0, help_text="Last active step (0=form, 1=system select, 3=assessment)")
+	current_system_id = models.CharField(max_length=64, blank=True, default="", help_text="ID of the system currently being assessed")
 	last_assessment_at = models.DateTimeField(null=True, blank=True)
 
 	created_at = models.DateTimeField(auto_now_add=True)

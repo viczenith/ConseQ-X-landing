@@ -226,7 +226,7 @@ export function AuthProvider({ children }) {
 
     const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
     events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
-    resetTimer();                  // start the countdown
+    resetTimer();
 
     return () => {
       if (timer) clearTimeout(timer);
@@ -234,11 +234,7 @@ export function AuthProvider({ children }) {
     };
   }, [rawUser, logout]);
 
-  /* ═══════════════════════════════════════════════════════════════
-     Backward-compatible shapes
-     (other components expect  user.name, user.email, user.orgId,
-      org.id, org.name, org.slug, org.subscription.{tier,expiresAt})
-     ═══════════════════════════════════════════════════════════════ */
+ 
   const user = rawUser
     ? {
         email: rawUser.email,

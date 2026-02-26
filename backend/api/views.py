@@ -1206,6 +1206,46 @@ class VisitorLookupView(APIView):
 		})
 
 
+class VisitorSaveProgressView(APIView):
+	"""Public endpoint — saves in-progress answers, step, and current system for a visitor."""
+	permission_classes = [permissions.AllowAny]
+
+	def post(self, request):
+		data = request.data if isinstance(request.data, dict) else {}
+		visitor_id = (data.get("visitor_id") or "").strip()
+		current_answers = data.get("current_answers")
+		current_step = data.get("current_step")
+		current_system_id = (data.get("current_system_id") or "").strip()
+
+		if not visitor_id:
+			return Response({"error": "visitor_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+		visitor = Visitor.objects.filter(id=visitor_id).first()
+		if not visitor:
+			return Response({"error": "Visitor not found"}, status=status.HTTP_404_NOT_FOUND)
+
+		update_fields = ["updated_at"]
+
+		if isinstance(current_answers, dict):
+			visitor.current_answers = current_answers
+			update_fields.append("current_answers")
+
+		if current_step is not None:
+			try:
+				visitor.current_step = int(current_step)
+				update_fields.append("current_step")
+			except (ValueError, TypeError):
+				pass
+
+		if current_system_id is not None:
+			visitor.current_system_id = current_system_id[:64]
+			update_fields.append("current_system_id")
+
+		visitor.save(update_fields=update_fields)
+
+		return Response({"ok": True})
+
+
 class AdminVisitorListView(APIView):
 	"""SuperAdmin endpoint — lists all captured visitor leads."""
 	permission_classes = [IsSuperAdmin]

@@ -392,6 +392,7 @@ export default function AssessmentPlatform(props) {
   const isValidEmail = (email) => /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
 
   // ─── Session restore: if visitorId exists in localStorage, reload full session on mount ───
+  const progressSaveTimerRef = useRef(null);
   useEffect(() => {
     const savedEmail = localStorage.getItem("conseqx_visitor_email");
     const savedOrg = localStorage.getItem("conseqx_visitor_org");
@@ -404,7 +405,7 @@ export default function AssessmentPlatform(props) {
       }));
     }
 
-    // If we have a visitorId, fetch full session from backend (chat, assessments)
+    // If we have a visitorId, fetch full session from backend (chat, assessments, progress)
     const vid = localStorage.getItem("conseqx_visitor_id");
     if (vid && savedEmail) {
       fetch(`${apiBase}/api/visitors/lookup/?email=${encodeURIComponent(savedEmail)}`)
@@ -418,12 +419,38 @@ export default function AssessmentPlatform(props) {
             if (v.chat_history && v.chat_history.length > 0) {
               setChatMessages(v.chat_history);
             }
+            // Restore in-progress answers from backend
+            if (v.current_answers && typeof v.current_answers === "object" && Object.keys(v.current_answers).length > 0) {
+              setAnswers(prev => {
+                // Only override if local answers are empty
+                if (Object.keys(prev).length === 0) return v.current_answers;
+                return prev;
+              });
+            }
+            // Restore step and current system from backend if local values are default
+            if (v.current_step && v.current_step > 0) {
+              setStep(prev => prev === 0 ? v.current_step : prev);
+            }
+            if (v.current_system_id) {
+              setCurrentSystem(prev => {
+                if (prev) return prev; // local already has one
+                const found = (customSystems || systems).find(s => s.id === v.current_system_id);
+                return found || prev;
+              });
+            }
           }
         })
         .catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Guard: if step is 3 but currentSystem is null, fall back to step 1 ───
+  useEffect(() => {
+    if (step === 3 && !currentSystem) {
+      setStep(1);
+    }
+  }, [step, currentSystem]);
 
   // ─── Persist step, answers, currentSystem, and analysis to localStorage ───
   useEffect(() => { localStorage.setItem("conseqx_session_step", String(step)); }, [step]);
@@ -438,6 +465,25 @@ export default function AssessmentPlatform(props) {
     if (analysisContent) localStorage.setItem("conseqx_session_analysis", analysisContent);
     else localStorage.removeItem("conseqx_session_analysis");
   }, [analysisContent]);
+
+  // ─── Progress auto-save to backend (debounced: saves 5s after last change) ───
+  useEffect(() => {
+    if (!visitorId) return;
+    if (progressSaveTimerRef.current) clearTimeout(progressSaveTimerRef.current);
+    progressSaveTimerRef.current = setTimeout(() => {
+      fetch(`${apiBase}/api/visitors/save-progress/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visitor_id: visitorId,
+          current_answers: answers,
+          current_step: step,
+          current_system_id: currentSystem?.id || "",
+        }),
+      }).catch(() => {});
+    }, 5000);
+    return () => { if (progressSaveTimerRef.current) clearTimeout(progressSaveTimerRef.current); };
+  }, [answers, step, currentSystem, visitorId, apiBase]);
 
   // ─── Chat auto-save (debounced: saves 3s after last message change) ───
   useEffect(() => {
