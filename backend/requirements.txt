@@ -11,4 +11,8 @@ gunicorn>=22.0,<24.0
 # Static files in production
 whitenoise>=6.7,<7.0
 
+# Database (PostgreSQL for production)
+dj-database-url>=2.1,<3.0
+psycopg2-binary>=2.9,<3.0
+
 
