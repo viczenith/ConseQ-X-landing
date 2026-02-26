@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import Logo3D from "../../assets/ConseQ-X-3d.png";
-import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaBell, FaChartPie } from "react-icons/fa";
+import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaBell, FaChartPie, FaSignOutAlt } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 import { IntelligenceProvider } from "../../contexts/IntelligenceContext";
 import WelcomeCongrats from "../../components/WelcomeCongrats";
@@ -414,7 +414,7 @@ export default function ConseqXCEODashboardShell() {
         />
 
         <aside
-          className={`fixed top-0 left-0 z-50 h-full w-80 max-w-[92%] transform transition-transform ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"} p-4 ${drawerBg} border-r ${drawerBorder} shadow-xl flex flex-col`}
+          className={`fixed top-0 left-0 z-50 h-full w-80 max-w-[92%] transform transition-transform ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"} p-4 ${drawerBg} border-r ${drawerBorder} shadow-xl flex flex-col overflow-y-auto hide-scrollbar`}
           role="dialog"
           aria-modal="true"
           aria-label="Main menu"
@@ -502,6 +502,21 @@ export default function ConseqXCEODashboardShell() {
             </div>
           </nav>
 
+          {/* Logout button */}
+          <div className="flex-shrink-0 pt-3 mb-3" style={{ borderTop: darkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)' }}>
+            <button
+              onClick={() => { auth.logout(); navigate("/"); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                darkMode
+                  ? "text-red-400 hover:bg-red-900/30 hover:text-red-300"
+                  : "text-red-600 hover:bg-red-50 hover:text-red-700"
+              }`}
+            >
+              <FaSignOutAlt className="text-sm" />
+              Logout
+            </button>
+          </div>
+
           {/* bottom pinned */}
           <div className="flex-shrink-0 mt-auto pt-3" style={{ borderTop: darkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)' }}>
             <div className="text-xs text-gray-400 font-medium">Latest Activity</div>
@@ -551,7 +566,7 @@ export default function ConseqXCEODashboardShell() {
         <div className="max-w-[1400px] mx-auto p-4 grid grid-cols-12 gap-6">
           {/* Sidebar (desktop) */}
           <aside
-            className={`hidden lg:flex flex-col col-span-3 rounded-2xl p-4 h-[calc(100vh-8rem)] sticky top-24 transition-colors ${darkMode ? "bg-gray-800 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"} shadow-sm`}
+            className={`hidden lg:flex flex-col col-span-3 rounded-2xl p-4 h-[calc(100vh-8rem)] sticky top-24 overflow-y-auto hide-scrollbar transition-colors ${darkMode ? "bg-gray-800 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"} shadow-sm`}
           >
             <div className="flex items-center gap-3 mb-4">
               <img src={Logo3D} alt="ConseQ-X" className="w-10 h-10 rounded-md object-contain" />
@@ -621,6 +636,21 @@ export default function ConseqXCEODashboardShell() {
                 <NavLink to="/ceo/billing" className={({isActive}) => navItemClass(isActive)}>Billing</NavLink>
               </div>
             </nav>
+
+            {/* Logout button */}
+            <div className="flex-shrink-0 pt-3" style={{ borderTop: darkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)' }}>
+              <button
+                onClick={() => { auth.logout(); navigate("/"); }}
+                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  darkMode
+                    ? "text-red-400 hover:bg-red-900/30 hover:text-red-300"
+                    : "text-red-600 hover:bg-red-50 hover:text-red-700"
+                }`}
+              >
+                <FaSignOutAlt className="text-sm" />
+                Logout
+              </button>
+            </div>
 
             {/* Bottom pinned section */}
             <div className="mt-auto flex-shrink-0 pt-3" style={{ borderTop: darkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)' }}>
