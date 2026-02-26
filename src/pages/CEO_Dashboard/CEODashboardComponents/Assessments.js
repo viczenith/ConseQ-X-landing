@@ -1,34 +1,24 @@
-// src/pages/CEO_Dashboard/CEODashboardComponents/Assessments.js
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import Assessment from "../../../Assessment";
 import { FaHistory, FaTrash, FaPlay, FaEye, FaTimes, FaCheckCircle, FaLightbulb, FaBuilding } from "react-icons/fa";
 import { getSystemsForUI, normalizeSystemKey } from "../constants/systems";
 import * as events from "../lib/events";
-import * as svc from "../services/serviceSelector";
 import { motion, AnimatePresence } from "framer-motion";
-import { systems as assessmentSystems } from "../../../data/systems"; // Import actual assessment systems
+import { systems as assessmentSystems } from "../../../data/systems";
 
-// NEW: orgHealth service (minimal ingest + persistence + event)
 import * as orgHealth from "../services/orgHealth";
 
-/* ---------- constants: the 6 systems (canonical) ---------- */
 const SYSTEMS = getSystemsForUI();
 
-// Return the ACTUAL full assessment systems from src/data/systems.js
-// This ensures real-time tracking counts match the actual questions users answer
 function createAssessmentSystems() {
-  // Return the exact same systems that Assessment.js uses
-  // NO simplification - this keeps question counts synchronized
   return assessmentSystems;
 }
 
 const STORAGE_KEY = "conseqx_assessments_v1";
 const ANSWERS_STORAGE_KEY = "conseqx_assessment_answers_v1";
 const PROGRESS_STORAGE_KEY = "conseqx_assessment_progress_v1";
-// Remove ad-hoc ML hooks here; real analysis is handled via services layer when needed
 
-/* ---------- storage helpers ---------- */
 function readAll() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -71,7 +61,7 @@ function summarizeSystems(arr = []) {
   return Object.keys(bySys).map((k) => ({ systemId: k, score: bySys[k].score || 0, result: bySys[k] }));
 }
 
-// Helper functions for persistent assessment state
+
 function readAssessmentAnswers(orgId) {
   try {
     const raw = localStorage.getItem(ANSWERS_STORAGE_KEY);
@@ -110,9 +100,6 @@ function writeAssessmentProgress(orgId, progress) {
   } catch {}
 }
 
-// Calculate answered count for a system based on the answer structure from Assessment.js
-// Assessment.js stores answers as: answers[subAssessmentId][questionId]
-// NOT as: answers[systemId][questionId]
 function calculateAnsweredCount(allAnswers, systemId) {
   console.log(`calculateAnsweredCount called for ${systemId}:`, allAnswers);
   
@@ -131,8 +118,6 @@ function calculateAnsweredCount(allAnswers, systemId) {
     return 0;
   }
   
-  // Count answered questions in each sub-assessment
-  // The answers are stored with subAssessment.id as the key, NOT systemId
   system.subAssessments.forEach(subAssessment => {
     const subAnswers = allAnswers[subAssessment.id] || {};
     const answered = Object.keys(subAnswers).filter(key => {
@@ -355,7 +340,7 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
         <button
           onClick={() => onStart(s.id)}
           disabled={runDisabled}
-          title={`${s.id}: ${state.status} (${state.answeredCount} answers) - ${!hasAnswers ? "Answer at least one question to unlock analysis" : isRunning ? "AI analysis in progress..." : "Run comprehensive AI analysis"}`}
+          title={`${s.id}: ${state.status} (${state.answeredCount} answers) - ${!hasAnswers ? "Answer at least one question to unlock analysis" : isRunning ? "X Ultra analysis in progress..." : "Run comprehensive X Ultra analysis"}`}
           className={`px-2 py-1.5 rounded-md border text-xs font-medium transition-all duration-200 ${runBtnBase} ${
             isRunning ? 'animate-pulse shadow-lg' : ''
           }`}
@@ -406,14 +391,12 @@ export default function CEOAssessments() {
   const { darkMode, org = null, user = null } = useOutletContext();
   const orgId = org?.id || "anon";
 
-  // Broadcast parent theme changes as an event so nested components can optionally subscribe
   useEffect(() => {
     try {
       window.dispatchEvent(new CustomEvent("conseqx:theme:changed", { detail: { darkMode } }));
     } catch {}
   }, [darkMode]);
 
-  // recent are persisted assessment records for this org (chronological newest first)
   const [recent, setRecent] = useState(() => {
     try {
       const all = readAll();
@@ -423,7 +406,6 @@ export default function CEOAssessments() {
     }
   });
 
-  // systemStates maps systemId -> { status, progress, latestResult, answeredCount }
   const [systemStates, setSystemStates] = useState(() => {
     // derive initial state from recent items and persistent answers
     const persistentAnswers = readAssessmentAnswers(orgId);
@@ -459,40 +441,33 @@ export default function CEOAssessments() {
     return init;
   });
 
-  // Real-time assessment progress tracking with persistent storage
-  // Note: Assessment.js manages the actual answer state internally
-  const [assessmentAnswers, setAssessmentAnswers] = useState({});
+  const [assessmentAnswers, setAssessmentAnswers] = useState(() => readAssessmentAnswers(orgId));
   const [currentAssessmentSystem, setCurrentAssessmentSystem] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedSystemDetails, setSelectedSystemDetails] = useState(null);
   const [realTimeProgress, setRealTimeProgress] = useState(() => readAssessmentProgress(orgId));
 
-  // Close handler: hide modal then clear selected details after exit animation to avoid content flash
   const handleClose = useCallback(() => {
     setShowDetailModal(false);
-    // keep details for the duration of the exit animation so content doesn't disappear mid-animation
+    
     setTimeout(() => setSelectedSystemDetails(null), 320);
   }, []);
   
-  // Ref to track Assessment component's internal answer state (live)
-  const assessmentAnswersRef = useRef({});
+  const assessmentAnswersRef = useRef(readAssessmentAnswers(orgId));
   
-  // Helper to get current answers (prefer live state from ref, fallback to state)
   const getCurrentAnswers = () => {
     return Object.keys(assessmentAnswersRef.current).length > 0 
       ? assessmentAnswersRef.current 
       : assessmentAnswers;
   };
 
-  // Force re-evaluation of system states when assessmentAnswers change
   useEffect(() => {
     console.log('🔄 useEffect triggered by assessmentAnswers change');
     const currentAnswers = getCurrentAnswers();
     
-    // Always update, even if empty (to reset states)
     setSystemStates((prev) => {
       console.log('⚡ Force updating systemStates from useEffect');
-      const next = {}; // Create completely new object
+      const next = {};
       
       SYSTEMS.forEach((s) => {
         const answeredCount = calculateAnsweredCount(currentAnswers, s.id);
@@ -513,11 +488,10 @@ export default function CEOAssessments() {
         };
       });
       
-      return next; // Always return new object to force re-render
+      return next;
     });
-  }, [assessmentAnswers, assessmentAnswersRef.current]); // Trigger on any answer changes
+  }, [assessmentAnswers, assessmentAnswersRef.current]);
 
-  // Broadcast update helper (persist + set state + broadcast event)
   function persistAndBroadcast(newList) {
     const all = readAll();
     all[orgId] = newList;
@@ -585,7 +559,6 @@ export default function CEOAssessments() {
     const newList = addAssessmentForOrg(orgId, normalized, 200);
     persistAndBroadcast(newList);
 
-    // Dispatch specific completion event for DashboardHome
     try {
       window.dispatchEvent(new CustomEvent("conseqx:assessment:completed", { 
         detail: { 
@@ -598,7 +571,6 @@ export default function CEOAssessments() {
       console.log(`🎉 Assessments: Assessment completed for system ${normalized.systemId} with score ${normalized.score}%`);
     } catch {}
 
-    // NEW: feed normalized assessment into the OrgHealth service
     try {
       orgHealth.ingestAssessment(normalized);
     } catch (e) {
@@ -627,7 +599,7 @@ export default function CEOAssessments() {
             progress: Math.max(0, Math.min(100, progress)),
           },
         };
-        // if completed and we have result in event, call handleAssessmentComplete (if detail includes result)
+        
         if (progress >= 100 && e.detail?.result) {
           handleAssessmentComplete(e.detail.result);
         }
@@ -914,25 +886,93 @@ export default function CEOAssessments() {
       
       if (pct >= 100) {
         clearInterval(ticker);
-        // produce a deterministic result via service selector (mock or API)
-        (async () => {
-          try {
-            const result = await svc.runAssessment(orgId, systemId);
-            // This will trigger handleAssessmentComplete and unlock the View button
-            events.emitAssessmentCompleted(result);
-          } catch (error) {
-            console.error('Assessment run failed:', error);
-            // Reset state on error
-            setSystemStates((prev) => ({
-              ...prev,
-              [systemId]: {
-                ...prev[systemId],
-                status: "ready-to-run",
-                progress: 0
+        // ── Rubrics-based scoring: compute score from actual user answers ──
+        try {
+          const allAnswers = getCurrentAnswers();
+          const sysDef = assessmentSystems.find(s => s.id === systemId);
+
+          if (!sysDef) throw new Error(`System definition not found for ${systemId}`);
+
+          let totalScore = 0;
+          let maxPossibleScore = 0;
+          const subScores = [];
+
+          sysDef.subAssessments.forEach(sub => {
+            const subAnswers = allAnswers[sub.id] || {};
+            let subScore = 0;
+            const maxPerQuestion = Math.max(...sub.scoringRubric.map(r => r.score));
+
+            sub.questions.forEach((_, idx) => {
+              const answerLabel = subAnswers[idx];
+              if (answerLabel) {
+                const rubricItem = sub.scoringRubric.find(r => r.label === answerLabel);
+                if (rubricItem) subScore += rubricItem.score;
               }
-            }));
-          }
-        })();
+            });
+
+            const subMax = sub.questions.length * maxPerQuestion;
+            totalScore += subScore;
+            maxPossibleScore += subMax;
+
+            // Per-sub interpretation
+            const subInterpretation = (sub.scoreInterpretation || []).find(
+              b => subScore >= b.range[0] && subScore <= b.range[1]
+            );
+
+            subScores.push({
+              id: sub.id,
+              title: sub.title,
+              score: subScore,
+              max: subMax,
+              percent: subMax > 0 ? Math.round((subScore / subMax) * 100) : 0,
+              interpretation: subInterpretation || null
+            });
+          });
+
+          // Overall percentage
+          const scorePercent = maxPossibleScore > 0
+            ? Math.round((totalScore / maxPossibleScore) * 100)
+            : 0;
+
+          // Overall interpretation from totalScoreInterpretation
+          const overallInterpretation = (sysDef.totalScoreInterpretation || []).find(
+            b => totalScore >= b.range[0] && totalScore <= b.range[1]
+          );
+
+          const result = {
+            id: `A-${Date.now().toString(36)}`,
+            systemId,
+            title: `${sysDef.title} Assessment`,
+            score: scorePercent,
+            rawScore: totalScore,
+            maxScore: maxPossibleScore,
+            coverage: maxPossibleScore > 0 ? totalScore / maxPossibleScore : 0,
+            timestamp: Date.now(),
+            orgId,
+            meta: {
+              simulated: false,
+              rubricsBased: true,
+              subScores,
+              interpretation: overallInterpretation || { rating: 'N/A', interpretation: 'Score outside defined ranges.' },
+              totalScore,
+              maxPossibleScore
+            }
+          };
+
+          console.log(`✅ Rubrics-based score for ${systemId}: ${scorePercent}% (${totalScore}/${maxPossibleScore})`, subScores);
+          events.emitAssessmentCompleted(result);
+        } catch (error) {
+          console.error('Assessment scoring failed:', error);
+          // Reset state on error
+          setSystemStates((prev) => ({
+            ...prev,
+            [systemId]: {
+              ...prev[systemId],
+              status: "ready-to-run",
+              progress: 0
+            }
+          }));
+        }
       }
     }, 600); // Slightly faster updates for better UX
   }
@@ -953,14 +993,26 @@ export default function CEOAssessments() {
   const { title, result, icon, answers, subProgress } = selectedSystemDetails || {};
     const score = result?.score || 0;
     const timestamp = result?.timestamp;
+    const rubricSubScores = result?.meta?.subScores || [];
+    const overallInterpretation = result?.meta?.interpretation || null;
 
-    // Mock AI recommendations and case studies for demonstration
-    const aiRecommendations = [
-      "Implement structured feedback loops to improve communication",
-      "Establish clear performance metrics and tracking systems",
-      "Develop cross-functional collaboration protocols",
-      "Create standardized training programs for consistency"
-    ];
+    // Generate recommendations from rubric interpretation data
+    const aiRecommendations = (() => {
+      if (rubricSubScores.length > 0) {
+        // Build real recommendations from sub-assessment interpretations
+        return rubricSubScores
+          .filter(ss => ss.interpretation)
+          .map(ss => `${ss.title}: ${ss.interpretation.interpretation || ss.interpretation.rating || 'Review needed'}`)
+          .slice(0, 6);
+      }
+      // Fallback generic recommendations
+      return [
+        "Implement structured feedback loops to improve communication",
+        "Establish clear performance metrics and tracking systems",
+        "Develop cross-functional collaboration protocols",
+        "Create standardized training programs for consistency"
+      ];
+    })();
 
     const caseStudy = {
       company: "Dangote Group (Nigeria)",
@@ -1032,6 +1084,25 @@ export default function CEOAssessments() {
                     style={{ width: `${score}%` }}
                   />
                 </div>
+                {result?.rawScore != null && (
+                  <p className={`text-xs mt-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    Raw score: {result.rawScore} / {result.maxScore} points
+                  </p>
+                )}
+                {overallInterpretation && overallInterpretation.rating !== 'N/A' && (
+                  <div className={`mt-3 p-3 rounded-lg border ${
+                    score >= 80 ? (darkMode ? "bg-green-900/20 border-green-500/30" : "bg-green-50 border-green-200") :
+                    score >= 60 ? (darkMode ? "bg-yellow-900/20 border-yellow-500/30" : "bg-yellow-50 border-yellow-200") :
+                    (darkMode ? "bg-red-900/20 border-red-500/30" : "bg-red-50 border-red-200")
+                  }`}>
+                    <p className={`text-sm font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}>
+                      {overallInterpretation.rating}
+                    </p>
+                    <p className={`text-xs mt-1 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                      {overallInterpretation.interpretation}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Sub-assessments with progress and answers */}
@@ -1040,36 +1111,62 @@ export default function CEOAssessments() {
                   Assessment Breakdown
                 </h3>
                 <div className="space-y-3">
-                  {subProgress.map((sub, index) => (
+                  {subProgress.map((sub, index) => {
+                    const rubricData = rubricSubScores.find(rs => rs.id === sub.id);
+                    return (
                     <div key={sub.id} className={`p-4 rounded-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
                       <div className="flex items-center justify-between mb-2">
                         <h4 className={`font-medium ${darkMode ? "text-gray-200" : "text-gray-800"}`}>{sub.title}</h4>
-                        <div className="flex items-center gap-2">
-                          <FaCheckCircle className="text-green-500" size={16} />
-                          <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            {sub.answered} / {sub.total} answered
-                          </span>
+                        <div className="flex items-center gap-3">
+                          {rubricData && (
+                            <span className={`text-sm font-bold ${
+                              rubricData.percent >= 80 ? "text-green-500" : rubricData.percent >= 60 ? "text-yellow-500" : "text-red-500"
+                            }`}>
+                              {rubricData.percent}%
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <FaCheckCircle className="text-green-500" size={14} />
+                            <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                              {sub.answered}/{sub.total}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div className="w-full mb-2">
-                        <ProgressBar pct={sub.total > 0 ? Math.round((sub.answered / sub.total) * 100) : 0} darkMode={darkMode} />
+                        <ProgressBar pct={rubricData ? rubricData.percent : (sub.total > 0 ? Math.round((sub.answered / sub.total) * 100) : 0)} darkMode={darkMode} />
                       </div>
-                      <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Questions:</p>
+                      {rubricData && (
+                        <p className={`text-xs mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                          Score: {rubricData.score} / {rubricData.max} points
+                        </p>
+                      )}
+                      {rubricData?.interpretation && (
+                        <p className={`text-xs italic mb-2 ${
+                          rubricData.percent >= 80 ? (darkMode ? "text-green-400" : "text-green-600") :
+                          rubricData.percent >= 60 ? (darkMode ? "text-yellow-400" : "text-yellow-600") :
+                          (darkMode ? "text-red-400" : "text-red-600")
+                        }`}>
+                          {rubricData.interpretation.rating} — {rubricData.interpretation.interpretation}
+                        </p>
+                      )}
+                      <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Responses:</p>
                       <ul className="list-disc list-inside ml-4">
                         {Object.entries(answers[sub.id] || {}).map(([qid, val]) => (
-                          <li key={qid} className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Q{qid}: <span className="font-semibold">{val}</span></li>
+                          <li key={qid} className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Q{Number(qid) + 1}: <span className="font-semibold">{val}</span></li>
                         ))}
                       </ul>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* AI Recommendations */}
+              {/* X Ultra Recommendations */}
               <div>
                 <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
                   <FaLightbulb className="text-yellow-500" />
-                  AI Recommendations
+                  X Ultra Recommendations
                 </h3>
                 <div className="space-y-2">
                   {aiRecommendations.map((rec, index) => (
@@ -1124,15 +1221,10 @@ export default function CEOAssessments() {
 
   return (
     <section>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className={`${darkMode ? "text-gray-100" : "text-gray-900"} text-lg font-semibold`}>Assessments</h2>
-          <p className={`mt-2 text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-            Run or view system assessments. Systems update in real-time as runs progress and complete.
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+       
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <div className={`${darkMode ? "text-gray-200" : "text-sm text-gray-700"}`}>
             <div>
               Recent runs: <span className="font-semibold">{kpis.count}</span>
@@ -1142,9 +1234,8 @@ export default function CEOAssessments() {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <div className={`rounded-xl p-3 border ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-100"} shadow-sm`}>
+      <div className="mt-3 sm:mt-4">
+          <div className={`rounded-xl p-1 sm:p-3 border ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-100"} shadow-sm overflow-x-hidden`}>
             {/* Embedded Assessment component: it should call onComplete when it finishes */}
             {/* Pass darkMode prop + key to force remount on theme change so internal theme state can't diverge */}
             <Assessment
@@ -1243,69 +1334,29 @@ export default function CEOAssessments() {
               initialAnswers={assessmentAnswers}
               // Enable real-time progress tracking
               enableRealTimeTracking={true}
+              // Action handlers for inline system card buttons
+              systemStates={(() => {
+                const states = {};
+                const currentAnswers = getCurrentAnswers();
+                SYSTEMS.forEach((s) => {
+                  const realTimeAnsweredCount = calculateAnsweredCount(currentAnswers, s.id);
+                  const currentState = systemStates[s.id] || { status: "not-started", progress: 0, latestResult: null, answeredCount: 0 };
+                  states[s.id] = {
+                    ...currentState,
+                    answeredCount: Math.max(currentState.answeredCount || 0, realTimeAnsweredCount),
+                    status: currentState.status === "in-progress" ? "in-progress" :
+                            currentState.latestResult ? "completed" :
+                            realTimeAnsweredCount > 0 ? "ready-to-run" : "not-started",
+                    progress: currentState.progress || 0
+                  };
+                });
+                return states;
+              })()}
+              onRunAnalysis={onStart}
+              onViewResults={onView}
+              onRemoveResult={onRemove}
             />
           </div>
-        </div>
-
-        <aside className={`rounded-xl p-3 border ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-100"} shadow-sm`}>
-          <div className="flex items-center justify-between mb-3">
-            <div className={`text-sm font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>Systems</div>
-            <div className={`${darkMode ? "text-xs text-gray-400" : "text-xs text-gray-500"} flex items-center gap-2`}>
-              <FaHistory /> <span>{recent.length}</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {SYSTEMS.map((s) => {
-              // Get current answers for real-time calculation
-              const currentAnswers = getCurrentAnswers();
-              const realTimeAnsweredCount = calculateAnsweredCount(currentAnswers, s.id);
-              
-              const currentState = systemStates[s.id] || { 
-                status: "not-started", 
-                progress: 0, 
-                latestResult: null, 
-                answeredCount: 0 
-              };
-              
-              // Force state consistency with real-time data
-              const consistentState = {
-                ...currentState,
-                answeredCount: Math.max(currentState.answeredCount || 0, realTimeAnsweredCount),
-                status: currentState.latestResult ? "completed" :
-                        realTimeAnsweredCount > 0 ? "ready-to-run" : "not-started"
-              };
-              
-              return (
-                <SystemRow
-                  key={`${s.id}-${consistentState.answeredCount}-${consistentState.lastUpdate || 0}`} // Force re-render on any state change
-                  s={s}
-                  state={consistentState}
-                  onStart={onStart}
-                  onView={onView}
-                  onRemove={onRemove}
-                  darkMode={darkMode}
-                />
-              );
-            })}
-          </div>
-
-          <div className={`mt-3 border-t pt-2 ${darkMode ? "text-xs text-gray-400 border-gray-800" : "text-xs text-gray-500 border-gray-200"}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${darkMode ? "bg-blue-500" : "bg-blue-600"} animate-pulse`}></div>
-                <span>Real-time assessment tracking with X-Ultra intelligence</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {Object.values(systemStates).some(state => (state.answeredCount || 0) > 0) && (
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${darkMode ? "bg-green-900/30 text-green-300" : "bg-green-100 text-green-700"}`}>
-                    Active
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
       
   {/* Detailed Assessment Modal (mounted always, visibility controlled by isOpen) */}

@@ -1,15 +1,29 @@
-// Placeholder API service scaffold. Mirror mockService API but not wired.
+import { apiFetch } from "./apiClient";
+
+// API service that mirrors mockService shapes, backed by the Django API.
 
 export async function runAssessment(orgId, systemKey, options = {}) {
-  return Promise.reject(new Error("Not wired"));
+  // orgId is resolved server-side; accepted for compatibility with mockService.
+  return apiFetch("/assessments/run", {
+    method: "POST",
+    body: {
+      system_key: systemKey,
+      ...(options && typeof options === "object" ? options : {}),
+    },
+  });
 }
 
 export async function getDashboardSummary(orgId) {
-  return Promise.reject(new Error("Not wired"));
+  // orgId is resolved server-side; accepted for compatibility with mockService.
+  return apiFetch("/dashboard/summary", { method: "GET" });
 }
 
 export async function simulateImpact(orgId, systemKey, changePct = 10) {
-  return Promise.reject(new Error("Not wired"));
+  // orgId is resolved server-side; accepted for compatibility with mockService.
+  return apiFetch("/dashboard/simulate-impact", {
+    method: "POST",
+    body: { system_key: systemKey, change_pct: changePct },
+  });
 }
 
 export async function loadFixtures() {

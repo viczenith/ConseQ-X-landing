@@ -29,7 +29,8 @@ export default function RequirePremium({ children }) {
 
   const now = Date.now();
   const sub = (org && org.subscription) ? org.subscription : { tier: "free", expiresAt: 0 };
-  const isPremium = sub.tier === "premium" && Number(sub.expiresAt || 0) > now;
+  // Treat null expiresAt as "never expires" when tier is premium (backend may return null for lifetime plans)
+  const isPremium = sub.tier === "premium" && (sub.expiresAt === null || Number(sub.expiresAt || 0) > now);
 
   const [showUpsell, setShowUpsell] = useState(false);
 
@@ -52,22 +53,8 @@ export default function RequirePremium({ children }) {
               auth.upgrade({ months, tier: "premium" });
             }
 
-            const start = Date.now();
-            const timeout = 3000;
-            let confirmed = false;
-            while (Date.now() - start < timeout) {
-              const latest = auth.getCurrent ? auth.getCurrent() : { org: auth.org };
-              const latestSub = latest?.org?.subscription;
-              if (latestSub && latestSub.tier === "premium" && Number(latestSub.expiresAt || 0) > Date.now()) {
-                confirmed = true;
-                break;
-              }
-              await new Promise((r) => setTimeout(r, 120));
-            }
-
-            if (!confirmed) {
-              console.warn("RequirePremium: upgrade not confirmed within timeout, modal will close.");
-            }
+            // Wait briefly for state to propagate, then close
+            await new Promise((r) => setTimeout(r, 800));
           } catch (err) {
             console.error("RequirePremium upgrade error:", err);
           } finally {

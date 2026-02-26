@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Logo3D from "./assets/ConseQ-X-3d.png";
-import { FaSun, FaMoon, FaStar, FaRegStar, FaTimes, FaCheck, FaDownload } from "react-icons/fa";
+import { FaSun, FaMoon, FaStar, FaRegStar, FaTimes, FaCheck, FaDownload, FaPlay, FaEye, FaTrash, FaExclamationCircle } from "react-icons/fa";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -20,8 +20,7 @@ import SystemOfInterpretation from "./pages/Systems/SystemOfInterpretation";
 
 import { generateSystemReport } from "./utils/aiPromptGenerator";
 import { calculateSubAssessmentScore, getSystemInterpretation } from "./utils/scoringUtils";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
+import { downloadPDFReport, buildPDFBlobUrl } from "./utils/pdfReportBuilder";
 
 import useFreemium from "./hooks/useFreemium";
 import UpsellModal from "./components/UpsellModal";
@@ -39,7 +38,11 @@ export default function AssessmentPlatform(props) {
     ceoPartnerMode = false,
     orgId,
     initialAnswers = {},
-    enableRealTimeTracking = false
+    enableRealTimeTracking = false,
+    systemStates: externalSystemStates,
+    onRunAnalysis,
+    onViewResults,
+    onRemoveResult,
   } = props || {};
   
   // NAV, DARK MODE, STEPS, ETC.
@@ -49,6 +52,25 @@ export default function AssessmentPlatform(props) {
   const [darkMode, setDarkMode] = useState(props.darkMode !== undefined ? props.darkMode : false);
   const [currentSystem, setCurrentSystem] = useState(null);
   const [answers, setAnswers] = useState(initialAnswers);
+
+  // ─── Visitor / user session ───
+  const [visitorId, setVisitorId] = useState(() => localStorage.getItem("conseqx_visitor_id") || "");
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [returningUser, setReturningUser] = useState(false);
+  const [previousAssessments, setPreviousAssessments] = useState([]);
+  const chatSaveTimerRef = useRef(null);
+
+  // Sync answers when initialAnswers changes (e.g. after page refresh when parent loads from localStorage)
+  useEffect(() => {
+    if (initialAnswers && Object.keys(initialAnswers).length > 0) {
+      setAnswers((prev) => {
+        // Only update if current answers are empty but initialAnswers has data
+        if (Object.keys(prev).length === 0) return initialAnswers;
+        return prev;
+      });
+    }
+  }, [initialAnswers]);
   const [resultsType, setResultsType] = useState("all");
   const [activeModal, setActiveModal] = useState(null);
 
@@ -57,7 +79,6 @@ export default function AssessmentPlatform(props) {
   const [generatingAnalysis, setGeneratingAnalysis] = useState(false);
   const [selectedSystems, setSelectedSystems] = useState([]);
   const [rating, setRating] = useState(0);
-  const analysisRef = useRef(null);
   const [scores, setScores] = useState({});
 
   // Chat state (integrated)
@@ -338,10 +359,127 @@ export default function AssessmentPlatform(props) {
     }
   }, [currentSystem, onSystemStart, enableRealTimeTracking]);
 
+  // ─── API base helper ───
+  const apiBase = useMemo(() => String(process.env.REACT_APP_API_BASE_URL || localStorage.getItem("conseqx_admin_api_base_v1") || "http://127.0.0.1:8000").replace(/\/$/, ""), []);
+
+  // ─── Email validation ───
+  const isValidEmail = (email) => /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
+
+  // ─── Session restore: if visitorId exists in localStorage, load user data on mount ───
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("conseqx_visitor_email");
+    const savedOrg = localStorage.getItem("conseqx_visitor_org");
+    const savedRole = localStorage.getItem("conseqx_visitor_role");
+    if (savedEmail) {
+      setUserInfo(prev => ({
+        organization: prev.organization || savedOrg || "",
+        role: prev.role || savedRole || "",
+        email: prev.email || savedEmail || "",
+      }));
+    }
+  }, []);
+
+  // ─── Chat auto-save (debounced: saves 3s after last message change) ───
+  useEffect(() => {
+    if (!visitorId || chatMessages.length === 0) return;
+    if (chatSaveTimerRef.current) clearTimeout(chatSaveTimerRef.current);
+    chatSaveTimerRef.current = setTimeout(() => {
+      fetch(`${apiBase}/api/visitors/save-chat/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visitor_id: visitorId, messages: chatMessages }),
+      }).catch(() => {});
+    }, 3000);
+    return () => { if (chatSaveTimerRef.current) clearTimeout(chatSaveTimerRef.current); };
+  }, [chatMessages, visitorId, apiBase]);
+
+  // ─── Save assessment to backend after analysis is generated ───
+  const saveAssessmentToBackend = (scoresObj, systemIds, analysisSummary) => {
+    if (!visitorId) return;
+    fetch(`${apiBase}/api/visitors/save-assessment/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        visitor_id: visitorId,
+        scores: scoresObj,
+        systems_completed: systemIds,
+        analysis_summary: (analysisSummary || "").slice(0, 2000),
+      }),
+    }).catch(() => {});
+  };
+
   // Step handlers
-  const handleUserInfoSubmit = () => {
-    setShowRegisterCTA(true);
+  const handleUserInfoSubmit = async () => {
+    // ── Validation ──
+    const errors = {};
+    if (!userInfo.organization.trim()) errors.organization = "Organization name is required.";
+    if (!userInfo.email.trim()) errors.email = "Email address is required.";
+    else if (!isValidEmail(userInfo.email.trim())) errors.email = "Please enter a valid email address.";
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
+    setFormErrors({});
+    setIsSubmitting(true);
+
     setAuthForm({ orgName: userInfo.organization || "", name: userInfo.role || "", email: userInfo.email || "" });
+
+    try {
+      const res = await fetch(`${apiBase}/api/visitors/capture/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          organization_name: userInfo.organization.trim(),
+          role: userInfo.role.trim(),
+          email: userInfo.email.trim().toLowerCase(),
+        }),
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setFormErrors({ email: json.error || "Something went wrong. Try again." });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Store visitor session
+      const vid = json.visitor_id;
+      setVisitorId(vid);
+      localStorage.setItem("conseqx_visitor_id", vid);
+      localStorage.setItem("conseqx_visitor_email", userInfo.email.trim().toLowerCase());
+      localStorage.setItem("conseqx_visitor_org", userInfo.organization.trim());
+      localStorage.setItem("conseqx_visitor_role", userInfo.role.trim());
+
+      // If returning user, load their previous data
+      if (json.returning && json.visitor) {
+        setReturningUser(true);
+        const v = json.visitor;
+
+        // Restore previous assessments list
+        if (v.assessment_data && v.assessment_data.length > 0) {
+          setPreviousAssessments(v.assessment_data);
+        }
+
+        // Restore chat history into chat
+        if (v.chat_history && v.chat_history.length > 0) {
+          setChatMessages(v.chat_history);
+        }
+
+        // Add welcome-back message to chat
+        const welcomeMsg = {
+          id: `welcome-back-${Date.now()}`,
+          role: "assistant",
+          text: `## Welcome Back, ${userInfo.role || "there"}!\n\nGood to see you again from **${v.organization_name}**.\n\n${v.assessment_count > 0 ? `You have **${v.assessment_count}** previous assessment${v.assessment_count > 1 ? "s" : ""} on record**. Your conversation history has been restored.\n\nPick up where you left off or start a fresh assessment.` : "Your previous conversation has been restored. Let\u2019s continue where you left off."}`,
+          timestamp: new Date().toISOString(),
+        };
+        setChatMessages(prev => [...prev, welcomeMsg]);
+      }
+
+      setShowRegisterCTA(true);
+    } catch {
+      // If backend is down, proceed anyway (graceful degradation)
+      setShowRegisterCTA(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+
     setStep(1);
   };
   const handleSystemSelect = (system) => {
@@ -444,106 +582,77 @@ export default function AssessmentPlatform(props) {
       });
 
       const finalText = analysisText || "Mock analysis (no LLM configured)";
+
+      // determine title for the report
+      let title = "Assessment Report";
+      if (resultsType === "specific" && selectedSystems.length === 1) {
+        const s = systems.find((x) => x.id === selectedSystems[0]);
+        title = s ? s.title : title;
+      } else if (resultsType === "all") {
+        title = "Full Assessment Report";
+      } else if (resultsType === "specific" && selectedSystems.length > 1) {
+        const names = selectedSystems
+          .map((id) => systems.find((s) => s.id === id)?.title || id)
+          .filter(Boolean);
+        title = names.join(", ");
+      } else if (completedSystems.length === 1) {
+        title = completedSystems[0].title;
+      }
+
+      // ─── IMMEDIATELY inject the full analysis into chat ───
+      const analysisMsg = {
+        id: `analysis-text-${Date.now()}`,
+        role: "assistant",
+        text: `## \u{1F4CA} ConseQ-X Ultra Analysis \u2014 ${title}\n\n${finalText}`,
+        timestamp: new Date().toISOString(),
+        isAnalysis: true,
+      };
+      setChatMessages((prev) => [...prev, analysisMsg]);
+
+      // record the run
+      const record = recordFreemiumRun();
+      if (record.remaining <= 0) {
+        openFreemiumExpiredModal();
+      }
+
       setAnalysisContent(finalText);
       setActiveModal("results");
 
-      // after DOM paints, render the hidden analysisRef to PDF and attach as downloadable file in chat
-      setTimeout(async () => {
+      // ─── Persist assessment to backend ───
+      const systemIds = resultsType === "specific" ? selectedSystems : completedSystems.map((sys) => sys.id);
+      saveAssessmentToBackend(scoresObj, systemIds, finalText);
+
+      // ─── Background: generate professional PDF and attach as bonus message ───
+      setTimeout(() => {
         try {
-          if (!analysisRef.current) {
-            // fallback text message
-            const fallbackMsg = {
-              id: `analysis-fallback-${Date.now()}`,
-              role: "assistant",
-              text: `Your assessment report is ready (text fallback):\n\n${finalText}`,
-              timestamp: new Date().toISOString(),
-              isAnalysis: true,
-            };
-            setChatMessages((prev) => [...prev, fallbackMsg]);
-
-            // record the run (text fallback)
-            const rec = recordFreemiumRun();
-            if (rec.remaining <= 0) openFreemiumExpiredModal();
-            return;
-          }
-
-          const canvas = await html2canvas(analysisRef.current, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: darkMode ? "#1f2937" : "#ffffff",
-          });
-          const imgData = canvas.toDataURL("image/png");
-          const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-          const imgWidth = 210;
-          const pageHeight = 297;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          let heightLeft = imgHeight;
-          let position = 0;
-          pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
-          while (heightLeft >= 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-          }
-          const blob = pdf.output("blob");
-          const blobUrl = URL.createObjectURL(blob);
-
-          // determine title for message
-          let title = "Assessment Report";
-          if (resultsType === "specific" && selectedSystems.length === 1) {
-            const s = systems.find((x) => x.id === selectedSystems[0]);
-            title = s ? s.title : title;
-          } else if (resultsType === "all") {
-            title = "Full Assessment Report";
-          } else if (resultsType === "specific" && selectedSystems.length > 1) {
-            const names = selectedSystems
-              .map((id) => systems.find((s) => s.id === id)?.title || id)
-              .filter(Boolean);
-            title = names.join(", ");
-          } else if (completedSystems.length === 1) {
-            title = completedSystems[0].title;
-          }
-
-          const assistantMsg = {
-            id: `analysis-${Date.now()}`,
+          const blobUrl = buildPDFBlobUrl({ scores: scoresObj, userInfo, analysisText: finalText });
+          const pdfMsg = {
+            id: `analysis-pdf-${Date.now()}`,
             role: "assistant",
-            text: `Your assessment result for ${title} is ready.`,
+            text: `\u{1F4C4} **PDF Report Generated** \u2014 Your detailed ConseQ-X report for **${title}** is ready for download. Click the file below to save it to your device.`,
             timestamp: new Date().toISOString(),
-            file: { name: `${title.replace(/\s+/g, "_")}_report.pdf`, url: blobUrl },
+            file: { name: `${(userInfo?.organization || title).replace(/\s+/g, "_")}_ConseQX_Report.pdf`, url: blobUrl },
             isAnalysis: true,
           };
-
-          setChatMessages((prev) => [...prev, assistantMsg]);
-
-          // record the successful run (only now)
-          const record = recordFreemiumRun();
-          if (record.remaining <= 0) {
-            openFreemiumExpiredModal();
-          }
+          setChatMessages((prev) => [...prev, pdfMsg]);
         } catch (err) {
-          console.error("PDF generation error:", err);
-          const fallbackMsg = {
-            id: `analysis-fallback-${Date.now()}`,
-            role: "assistant",
-            text: `Your assessment report is ready (text fallback):\n\n${finalText}`,
-            timestamp: new Date().toISOString(),
-            isAnalysis: true,
-          };
-          setChatMessages((prev) => [...prev, fallbackMsg]);
-
-          const recordErr = recordFreemiumRun();
-          if (recordErr.remaining <= 0) openFreemiumExpiredModal();
+          console.error("PDF generation error (analysis already displayed in chat):", err);
         }
       }, 400);
-
-      setAnalysisContent(finalText);
-      setActiveModal("results");
     } catch (error) {
       console.error("AI GENERATION ERROR:", error);
-      setAnalysisContent(error?.message || "Error generating analysis");
+      const errorText = error?.message || "Error generating analysis";
+      setAnalysisContent(errorText);
+
+      // ─── Even on error, inject a message so the user sees something ───
+      const errorMsg = {
+        id: `analysis-error-${Date.now()}`,
+        role: "assistant",
+        text: `## \u26A0\uFE0F Analysis Error\n\nSomething went wrong while generating your analysis:\n\n> ${errorText}\n\nPlease try again by clicking **"Run ConseQ-X Ultra Analysis"** or ask me a question using the helper buttons below.`,
+        timestamp: new Date().toISOString(),
+        isAnalysis: true,
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
     } finally {
       setGeneratingAnalysis(false);
     }
@@ -586,28 +695,13 @@ export default function AssessmentPlatform(props) {
     openFinanceModal();
   }
 
-  // Download PDF report
+  // Download professional PDF report directly to device
   const downloadPDF = () => {
-    if (!analysisRef.current) return;
-    const input = analysisRef.current;
-    html2canvas(input, { scale: 2, useCORS: true, logging: false, backgroundColor: darkMode ? "#1f2937" : "#ffffff" }).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-      pdf.save(`${userInfo.organization || "assessment"}_report.pdf`);
-    });
+    try {
+      downloadPDFReport({ scores, userInfo, analysisText: analysisContent });
+    } catch (err) {
+      console.error("PDF download error:", err);
+    }
   };
 
   // Auth modal handlers
@@ -961,7 +1055,7 @@ export default function AssessmentPlatform(props) {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-2xl font-semibold">You're about to access <span className="font-extrabold">ConseQ-X Ultra</span></h3>
-                <p className="mt-1 opacity-90 max-w-xl">ConseQ-X Ultra is our premium CEO workspace — AI-guided executive analysis, multi-user dashboards and strategic recommendations. Sign in to continue or create an account (mock).</p>
+                <p className={`mt-2 text-sm ${subtleText}`}>Please sign in or create an account to continue to the C-Suite dashboard.</p>
               </div>
               <button onClick={() => { setShowCEOPrompt(false); }} className="ml-4 text-white/80 hover:text-white">✕</button>
             </div>
@@ -1117,7 +1211,7 @@ export default function AssessmentPlatform(props) {
 
   // ---------- Render ----------
   return (
-    <div className={`min-h-screen font-sans overflow-x-hidden transition-colors duration-500 ${darkMode ? "bg-gradient-to-b from-gray-900 to-gray-800 text-gray-200" : "bg-gradient-to-b from-gray-50 to-gray-100 text-gray-800"}`}>
+    <div className={`${ceoPartnerMode ? '' : 'min-h-screen'} font-sans overflow-x-hidden transition-colors duration-500 ${darkMode ? "bg-gradient-to-b from-gray-900 to-gray-800 text-gray-200" : "bg-gradient-to-b from-gray-50 to-gray-100 text-gray-800"}`}>
       {/* Navigation */}
       <nav className={`${!showClientInfo ? "hidden " : ""}fixed w-full z-50 transition-all duration-500 ${navScrolled ? (darkMode ? "bg-gray-900/90 backdrop-blur-sm py-2 shadow-sm" : "bg-white/90 backdrop-blur-sm py-2 shadow-sm") : "bg-transparent py-4"}`}>
         <div className="container mx-auto px-4 flex justify-between items-center">
@@ -1126,7 +1220,11 @@ export default function AssessmentPlatform(props) {
           </motion.div>
 
           <div className="flex items-center space-x-6">
-            <div className="text-sm text-gray-500">{auth?.user ? `Signed in as ${auth.user.name || auth.user.email}` : "Not signed in (freemium)"}</div>
+            <div className="text-sm text-gray-500">{
+              auth?.user ? `Signed in as ${auth.user.name || auth.user.email}`
+              : userInfo.email ? `Signed in as ${userInfo.organization ? userInfo.organization + " — " : ""}${userInfo.email}`
+              : "Not signed in (freemium)"
+            }</div>
             <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={toggleDarkMode} className={`p-2 rounded-full ${darkMode ? "bg-yellow-500 text-gray-900" : "bg-gray-800 text-yellow-400"}`} aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
               {darkMode ? <FaSun className="text-lg" /> : <FaMoon className="text-lg" />}
             </motion.button>
@@ -1134,7 +1232,7 @@ export default function AssessmentPlatform(props) {
         </div>
       </nav>
 
-      <div className={`container mx-auto px-4 ${navScrolled ? "pt-24" : "pt-32"} pb-24`}>
+      <div className={`${ceoPartnerMode ? 'px-1 sm:px-3 py-2' : `container mx-auto px-4 ${navScrolled ? "pt-24" : "pt-32"} pb-24`}`}>
         <AnimatePresence mode="wait">
           {/* Step 0 */}
           {/* {step === 0 && ( */}
@@ -1151,22 +1249,26 @@ export default function AssessmentPlatform(props) {
                 <h2 className={`text-2xl font-bold mb-6 ${darkMode ? "text-white" : "text-gray-900"}`}>Client Information</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Organization</label>
-                    <input type="text" placeholder="Your organization" className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-black dark:placeholder-gray-300 ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={userInfo.organization} onChange={(e) => setUserInfo({ ...userInfo, organization: e.target.value })} />
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Organization <span className="text-red-500">*</span></label>
+                    <input type="text" placeholder="Your organization" className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-gray-400 ${formErrors.organization ? "border-red-500 ring-1 ring-red-500" : ""} ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={userInfo.organization} onChange={(e) => { setUserInfo({ ...userInfo, organization: e.target.value }); setFormErrors(f => ({ ...f, organization: "" })); }} />
+                    {formErrors.organization && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><FaExclamationCircle size={10} /> {formErrors.organization}</p>}
                   </div>
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Role</label>
-                    <input type="text" placeholder="Your role" className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-black dark:placeholder-gray-300 ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={userInfo.role} onChange={(e) => setUserInfo({ ...userInfo, role: e.target.value })} />
+                    <input type="text" placeholder="Your role (e.g. CEO, COO)" className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-gray-400 ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={userInfo.role} onChange={(e) => setUserInfo({ ...userInfo, role: e.target.value })} />
                   </div>
                   <div className="md:col-span-2">
-                    <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Email Address</label>
-                    <input type="email" placeholder="your.email@company.com" className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-black dark:placeholder-gray-300 ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={userInfo.email} onChange={(e) => setUserInfo({ ...userInfo, email: e.target.value })} />
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Email Address <span className="text-red-500">*</span></label>
+                    <input type="email" placeholder="your.email@company.com" className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-gray-400 ${formErrors.email ? "border-red-500 ring-1 ring-red-500" : ""} ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={userInfo.email} onChange={(e) => { setUserInfo({ ...userInfo, email: e.target.value }); setFormErrors(f => ({ ...f, email: "" })); }} onKeyDown={(e) => { if (e.key === "Enter") handleUserInfoSubmit(); }} />
+                    {formErrors.email && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><FaExclamationCircle size={10} /> {formErrors.email}</p>}
+                    <p className={`mt-1 text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>Use your work or personal email. Returning users will see their previous assessments.</p>
                   </div>
                 </div>
 
                 <div className="flex justify-center">
-                  <motion.button whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0,0,0,0.2)" }} whileTap={{ scale: 0.95 }} onClick={() => handleUserInfoSubmit()} disabled={!userInfo.organization || !userInfo.email} className={`px-8 py-3 rounded-lg text-lg font-medium transition ${userInfo.organization && userInfo.email ? "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white hover:from-yellow-600 hover:to-yellow-700" : "bg-gray-200 text-gray-500 cursor-not-allowed"}`}>
-                    Continue to Assessment
+                  <motion.button whileHover={{ scale: isSubmitting ? 1 : 1.05, boxShadow: isSubmitting ? "none" : "0 5px 15px rgba(0,0,0,0.2)" }} whileTap={{ scale: isSubmitting ? 1 : 0.95 }} onClick={() => handleUserInfoSubmit()} disabled={isSubmitting || !userInfo.organization || !userInfo.email} className={`px-8 py-3 rounded-lg text-lg font-medium transition flex items-center gap-2 ${!isSubmitting && userInfo.organization && userInfo.email ? "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white hover:from-yellow-600 hover:to-yellow-700" : "bg-gray-200 text-gray-500 cursor-not-allowed"}`}>
+                    {isSubmitting && <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />}
+                    {isSubmitting ? "Verifying..." : "Continue to Assessment"}
                   </motion.button>
                 </div>
               </div>
@@ -1182,10 +1284,10 @@ export default function AssessmentPlatform(props) {
                 </motion.div>
                 <motion.h2 className={`text-4xl md:text-5xl font-bold mb-8 text-center ${darkMode ? "text-white" : "text-gray-900"}`}>Organizational Health Assessment</motion.h2>
 
-                <motion.div className={`mb-12 p-8 rounded-2xl shadow-lg ${darkMode ? "bg-gray-800/50 border border-gray-700" : "bg-white border border-gray-200"}`}>
-                  <h3 className={`text-2xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>About the TORIL System</h3>
-                  <p className={`text-lg mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>The TORIL framework evaluates six critical dimensions of organizational health. Each system represents a key area where alignment, clarity, and effectiveness contribute to overall performance.</p>
-                  <p className={`text-lg ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Complete each assessment to receive a comprehensive organizational health report with actionable insights.</p>
+                <motion.div className={`${ceoPartnerMode ? 'mb-6 p-4 sm:p-6 rounded-xl' : 'mb-12 p-8 rounded-2xl'} shadow-lg ${darkMode ? "bg-gray-800/50 border border-gray-700" : "bg-white border border-gray-200"}`}>
+                  <h3 className={`${ceoPartnerMode ? 'text-lg sm:text-xl' : 'text-2xl'} font-bold mb-3 sm:mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>About the TORIL System</h3>
+                  <p className={`${ceoPartnerMode ? 'text-sm sm:text-base' : 'text-lg'} mb-3 sm:mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>The TORIL framework evaluates six critical dimensions of organizational health. Each system represents a key area where alignment, clarity, and effectiveness contribute to overall performance.</p>
+                  <p className={`${ceoPartnerMode ? 'text-sm sm:text-base' : 'text-lg'} ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Complete each assessment to receive a comprehensive organizational health report with actionable insights.</p>
                 </motion.div>
 
                 {/* CEO button inserted immediately after the "About" section for visibility */}
@@ -1193,16 +1295,16 @@ export default function AssessmentPlatform(props) {
                   <CEODashboardButton />
                 </div> */}
 
-                <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <motion.div className={`grid grid-cols-1 ${ceoPartnerMode ? 'sm:grid-cols-2 gap-3 sm:gap-4' : 'md:grid-cols-2 lg:grid-cols-3 gap-8'}`}>
                   {activeSystems.map((system) => {
                     const completion = calculateSystemCompletion(system);
                     const isCompleted = completion.isCompleted;
                     const isInProgress = !isCompleted && completion.answered > 0;
                     return (
-                      <motion.div key={system.id} whileHover={{ y: -6 }} className={`p-6 rounded-xl border transition-all h-full flex flex-col cursor-pointer ${darkMode ? "bg-gray-800/30 border-gray-700 hover:border-yellow-500" : "bg-white border border-gray-200 hover:border-yellow-500"} shadow-lg hover:shadow-xl ${isCompleted ? (darkMode ? "border-green-500/50" : "border-green-500/30 bg-green-50/50") : ""}`} onClick={() => handleSystemSelect(system)}>
-                        <div className="text-4xl mb-4">{system.icon}</div>
-                        <h3 className={`text-xl font-bold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>{system.title}</h3>
-                        <p className={`text-sm mb-4 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{system.description}</p>
+                      <motion.div key={system.id} whileHover={{ y: -6 }} className={`${ceoPartnerMode ? 'p-3 sm:p-4' : 'p-6'} rounded-xl border transition-all h-full flex flex-col cursor-pointer ${darkMode ? "bg-gray-800/30 border-gray-700 hover:border-yellow-500" : "bg-white border border-gray-200 hover:border-yellow-500"} shadow-lg hover:shadow-xl ${isCompleted ? (darkMode ? "border-green-500/50" : "border-green-500/30 bg-green-50/50") : ""}`} onClick={() => handleSystemSelect(system)}>
+                        <div className={`${ceoPartnerMode ? 'text-2xl sm:text-3xl mb-2 sm:mb-3' : 'text-4xl mb-4'}`}>{system.icon}</div>
+                        <h3 className={`${ceoPartnerMode ? 'text-sm sm:text-base' : 'text-xl'} font-bold mb-1 sm:mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>{system.title}</h3>
+                        <p className={`${ceoPartnerMode ? 'text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-3' : 'text-sm mb-4'} ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{system.description}</p>
                         <div className="mt-auto">
                           <div className="flex justify-between items-center mb-2">
                             <span className={`text-xs font-medium ${isCompleted ? "text-green-500" : isInProgress ? "text-yellow-500" : darkMode ? "text-gray-500" : "text-gray-400"}`}>{isCompleted ? "Completed" : isInProgress ? "In Progress" : "Not Started"}</span>
@@ -1211,6 +1313,87 @@ export default function AssessmentPlatform(props) {
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div className={`h-2 rounded-full ${isCompleted ? "bg-green-500" : isInProgress ? "bg-yellow-500" : "bg-gray-300"}`} style={{ width: isCompleted ? "100%" : isInProgress ? `${(completion.answered / completion.total) * 100}%` : "0%" }} />
                           </div>
+
+                          {/* CEO Partner Mode: inline action buttons */}
+                          {ceoPartnerMode && externalSystemStates && (() => {
+                            const sState = externalSystemStates[system.id] || {};
+                            const hasResult = !!sState.latestResult;
+                            const isRunning = sState.status === "in-progress";
+                            const runProgress = sState.progress || 0;
+                            const hasAnswers = (sState.answeredCount || 0) > 0;
+                            const score = hasResult ? (sState.latestResult.score || 0) : null;
+                            return (
+                              <div className="mt-2 sm:mt-3" onClick={(e) => e.stopPropagation()}>
+                                {/* Analysis progress bar — shown while running */}
+                                {isRunning && (
+                                  <div className={`mb-2 p-2 rounded-lg ${darkMode ? 'bg-blue-950/50 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <span className={`text-xs font-semibold flex items-center gap-1.5 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                                        <span className="animate-spin inline-block">🧠</span> X-Ultra Analyzing...
+                                      </span>
+                                      <span className={`text-xs font-bold ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>{runProgress}%</span>
+                                    </div>
+                                    <div className={`w-full h-2 rounded-full overflow-hidden ${darkMode ? 'bg-blue-900/50' : 'bg-blue-200'}`}>
+                                      <div
+                                        className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-700 ease-out relative overflow-hidden"
+                                        style={{ width: `${runProgress}%` }}
+                                      >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_1.5s_infinite]" 
+                                          style={{ animation: 'shimmer 1.5s infinite', backgroundSize: '200% 100%' }} />
+                                      </div>
+                                    </div>
+                                    <p className={`text-[10px] mt-1 ${darkMode ? 'text-blue-400/70' : 'text-blue-500/70'}`}>
+                                      {runProgress < 30 ? 'Collecting assessment data...' : runProgress < 60 ? 'Running AI analysis...' : runProgress < 90 ? 'Generating insights...' : 'Finalizing report...'}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Action buttons */}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); onRunAnalysis?.(system.id); }}
+                                  disabled={!hasAnswers || isRunning}
+                                  className={`px-2 py-1 rounded-md border text-xs font-medium transition-all duration-200 ${
+                                    isRunning
+                                      ? (darkMode ? 'bg-blue-900/40 border-blue-500 text-blue-300 cursor-wait opacity-60' : 'bg-blue-100 border-blue-400 text-blue-700 cursor-wait opacity-60')
+                                      : !hasAnswers
+                                      ? (darkMode ? 'bg-gray-800 border-gray-700 text-gray-600 cursor-not-allowed' : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed')
+                                      : (darkMode ? 'bg-indigo-900/40 border-indigo-500 text-indigo-300 hover:bg-indigo-800/60' : 'bg-indigo-50 border-indigo-300 text-indigo-700 hover:bg-indigo-100')
+                                  }`}
+                                >
+                                  {isRunning ? (
+                                    <>Analyzing...</>
+                                  ) : !hasAnswers ? (
+                                    <><span className="inline-block mr-1">🔒</span> Locked</>
+                                  ) : (
+                                    <><FaPlay className="inline-block mr-1" size={9} /> Run Analysis</>
+                                  )}
+                                </button>
+                                {hasResult && (
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); onViewResults?.(system.id); }}
+                                      className={`px-2 py-1 rounded-md border text-xs font-medium transition-all ${
+                                        darkMode ? 'bg-green-900/30 border-green-600 text-green-300 hover:bg-green-800/50' : 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
+                                      }`}
+                                    >
+                                      <FaEye className="inline-block mr-1" size={9} /> {score}%
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); onRemoveResult?.(sState.latestResult.id); }}
+                                      className={`px-1.5 py-1 rounded-md text-xs transition-all ${
+                                        darkMode ? 'text-gray-500 hover:text-red-400 hover:bg-gray-800' : 'text-gray-400 hover:text-red-500 hover:bg-gray-100'
+                                      }`}
+                                      title="Remove result"
+                                    >
+                                      <FaTrash size={9} />
+                                    </button>
+                                  </>
+                                )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </motion.div>
                     );
@@ -1400,7 +1583,7 @@ export default function AssessmentPlatform(props) {
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                       </div>
                       <h2 className={`text-2xl font-bold mb-1 ${darkMode ? "text-white" : "text-gray-900"}`}>Assessment Results</h2>
-                      <p className={`${darkMode ? "text-blue-300" : "text-blue-600"}`}>{analysisContent ? "Your AI Analysis Report is available in the chat below" : "Select your report preferences"}</p>
+                      <p className={`${darkMode ? "text-blue-300" : "text-blue-600"}`}>{analysisContent ? "Your Analysis Report is available in the chat below" : "Select your report preferences"}</p>
                     </div>
 
                     {generatingAnalysis ? (
@@ -1413,7 +1596,7 @@ export default function AssessmentPlatform(props) {
                     ) : analysisContent ? (
                       <div className="space-y-5">
                         {/* Chat dashboard embedded here */}
-                        <div className={`p-0 rounded-xl ${darkMode ? "bg-gray-800/30 border border-gray-700" : "bg-white border border-gray-200"}`}>
+                        <div className="rounded-xl overflow-hidden">
                           <ChatSection
                             darkMode={darkMode}
                             chatMessages={chatMessages}
@@ -1429,15 +1612,18 @@ export default function AssessmentPlatform(props) {
                             onSchedule={() => setActiveModal("booking")}
                             onFinance={() => openFinanceModal()}
                             onRunAnalysis={handleRunAnalysisClick}
+                            generatingAnalysis={generatingAnalysis}
+                            assessmentContext={{
+                              scores,
+                              systems: activeSystems,
+                              userInfo,
+                              answers,
+                              selectedSystems: resultsType === "specific" ? selectedSystems : activeSystems.map(s => s.id),
+                            }}
                           />
                         </div>
 
-                        {/* Hidden formatted analysis for accurate PDF capture */}
-                        <div style={{ position: "absolute", left: "-9999px", top: 0, width: "800px" }} aria-hidden>
-                          <div ref={analysisRef} className={`p-6 ${darkMode ? "bg-gray-800/30 border border-gray-700 text-gray-100" : "bg-white border border-gray-200 text-gray-900"}`}>
-                            <ReactMarkdown components={MarkdownComponents} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{analysisContent}</ReactMarkdown>
-                          </div>
-                        </div>
+
                       </div>
                     ) : (
                       <>

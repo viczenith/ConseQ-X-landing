@@ -53,11 +53,11 @@ const SystemOfInvestigation = ({
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-500 ${
+      className={`transition-colors duration-500 ${
         darkMode
           ? "bg-gradient-to-b from-gray-900 to-gray-800 text-gray-200"
           : "bg-gradient-to-b from-blue-50 to-indigo-100 text-gray-800"
-      } p-4 md:p-8`}
+      } p-2 sm:p-4 md:p-8`}
     >
       <div className="max-w-6xl mx-auto">
         {!currentCard ? (

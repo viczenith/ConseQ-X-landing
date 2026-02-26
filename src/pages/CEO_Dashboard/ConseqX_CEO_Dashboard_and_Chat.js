@@ -2,24 +2,39 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import Logo3D from "../../assets/ConseQ-X-3d.png";
-import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaChartLine, FaBell, FaChartPie, FaDatabase, FaSignal, FaToggleOn, FaToggleOff } from "react-icons/fa";
+import { FaSun, FaMoon, FaBars, FaTimes, FaChevronDown, FaChevronUp, FaBell, FaChartPie } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 import { IntelligenceProvider } from "../../contexts/IntelligenceContext";
 import WelcomeCongrats from "../../components/WelcomeCongrats";
+import { CANONICAL_SYSTEMS, normalizeSystemKey } from "./constants/systems";
 
 /* localStorage key used by Reports component */
 const STORAGE_NOTIFS = "conseqx_reports_notifications_v1";
 
-const MOCK_MEETINGS = [
-  { id: "m1", title: "Leadership Review", time: "2025-10-03 10:00" },
-  { id: "m2", title: "Product Roadmap", time: "2025-10-07 14:00" },
-];
+// Route → page header mapping
+const PAGE_META = {
+  dashboard:        { title: "Strategic Ultra View",  sub: "Organizational health intelligence at a glance" },
+  data:             { title: "Data Management",           sub: "Upload datasets or enable real-time sync to feed the ConseQ-X Six Systems analysis" },
+  chat:             { title: "X Ultra Chat",                   sub: "Conversational intelligence powered by your organizational data" },
+  assessments:      { title: "Assessments",               sub: "Evaluate and score each of the Six Systems" },
+  reports:          { title: "Reports",                   sub: "Generate and review organizational health reports" },
+  team:             { title: "Team Management",           sub: "Manage users, roles, and permissions" },
+  billing:          { title: "Billing & Subscription",    sub: "Manage your plan and payment details" },
+  revenue:          { title: "Organizational Metrics",   sub: "Track financial & operational KPIs aligned to the TORIL framework" },
+  "org-health":     { title: "Organizational Health",     sub: "Holistic view of your organization's wellbeing" },
+  "partner-dashboard":          { title: "Partner Dashboard",   sub: "C-Suite partner analytics and insights" },
+  "partner-dashboard/overview":  { title: "Partner Overview",    sub: "High-level partner performance summary" },
+  "partner-dashboard/deep-dive": { title: "Deep Dive Analysis",  sub: "Granular system-by-system analysis" },
+  "partner-dashboard/forecast":  { title: "Partner Forecast",    sub: "Predictive analytics for partner performance" },
+  "partner-dashboard/recommendations": { title: "Recommendations", sub: "X Ultra improvement suggestions" },
+  "partner-dashboard/benchmarking":    { title: "Benchmarking & Trends",     sub: "Compare performance against industry standards" },
+};
 
-const MOCK_SYSTEMS = [
-  { id: "s1", title: "Interpretation", scorePct: 74 },
-  { id: "s2", title: "Investigation", scorePct: 55 },
-  { id: "s3", title: "Orchestration", scorePct: 42 },
-];
+function getPageMeta(pathname) {
+  // strip /ceo/ prefix and trailing slash
+  const seg = pathname.replace(/^\/ceo\/?/, "").replace(/\/$/, "") || "dashboard";
+  return PAGE_META[seg] || null;
+}
 
 function readJSON(key, fallback) {
   try {
@@ -48,18 +63,14 @@ export default function ConseqXCEODashboardShell() {
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
-  const [dashboardMode, setDashboardMode] = useState(() => {
-    try { 
-      const saved = localStorage.getItem('conseqx_dashboard_mode_v1'); 
-      return saved || 'manual'; 
-    } catch { 
-      return 'manual'; 
-    }
-  }); // 'manual' or 'auto'
+
 
   // sidebar UI
-  const [revenueOpen, setRevenueOpen] = useState(false);
   const [partnerDashboardOpen, setPartnerDashboardOpen] = useState(false);
+
+  // Dynamic sidebar data (replaces old mock constants)
+  const [systemScores, setSystemScores] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
 
   // notifications state
   const [notifications, setNotifications] = useState(() => readJSON(STORAGE_NOTIFS, []) || []);
@@ -124,11 +135,6 @@ export default function ConseqXCEODashboardShell() {
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileMenuOpen, notifOpen]);
 
-  // auto-open revenue group when on revenue routes
-  useEffect(() => {
-    if (location?.pathname?.startsWith?.("/ceo/revenue")) setRevenueOpen(true);
-  }, [location?.pathname]);
-
   // auto-open partner dashboard group when on partner-dashboard routes
   useEffect(() => {
     if (location?.pathname?.startsWith?.("/ceo/partner-dashboard")) setPartnerDashboardOpen(true);
@@ -141,34 +147,86 @@ export default function ConseqXCEODashboardShell() {
     localStorage.setItem("darkMode", next ? "true" : "false");
   };
 
-  const toggleDashboardMode = () => {
-    const next = dashboardMode === 'manual' ? 'auto' : 'manual';
-    setDashboardMode(next);
-    localStorage.setItem('conseqx_dashboard_mode_v1', next);
-  };
-
-  // Sync dashboard mode with localStorage changes (from Partner Dashboard or other tabs)
+  /* ── Dynamic sidebar data (Systems Snapshot + Latest Activity) ── */
   useEffect(() => {
-    const syncDashboardMode = () => {
-      try {
-        const saved = localStorage.getItem('conseqx_dashboard_mode_v1');
-        if (saved && saved !== dashboardMode) {
-          setDashboardMode(saved);
-        }
-      } catch {}
-    };
+    const orgId = auth?.org?.id || "anon";
 
-    // Listen for localStorage changes from other tabs/components
-    window.addEventListener('storage', syncDashboardMode);
-    
-    // Also poll every 500ms to catch same-tab changes
-    const interval = setInterval(syncDashboardMode, 500);
+    function loadSystemScores() {
+      try {
+        // Read assessment results
+        const assessRaw = localStorage.getItem("conseqx_assessments_v1");
+        const assessAll = assessRaw ? JSON.parse(assessRaw) : {};
+        const assessments = assessAll[orgId] || [];
+
+        // Read org-health results
+        const healthRaw = localStorage.getItem("conseqx_org_health_v1");
+        const healthAll = healthRaw ? JSON.parse(healthRaw) : {};
+        const healthResults = healthAll[orgId] || [];
+
+        const scores = CANONICAL_SYSTEMS.map((sys) => {
+          const nk = sys.key;
+          // Latest assessment for this system
+          const matchAssess = assessments.find((a) => normalizeSystemKey(a.systemId || a.system || "") === nk);
+          // Latest org-health for this system
+          const matchHealth = healthResults.find((h) => normalizeSystemKey(h.systemId || "") === nk);
+          const score = matchAssess?.score ?? matchHealth?.score ?? null;
+          return { id: sys.key, title: sys.title, icon: sys.icon, scorePct: typeof score === "number" ? Math.round(score) : null };
+        });
+        setSystemScores(scores);
+      } catch {
+        setSystemScores(CANONICAL_SYSTEMS.map((sys) => ({ id: sys.key, title: sys.title, icon: sys.icon, scorePct: null })));
+      }
+    }
+
+    function loadRecentActivity() {
+      try {
+        const items = [];
+        // Assessment completions
+        const aRaw = localStorage.getItem("conseqx_assessments_v1");
+        const aAll = aRaw ? JSON.parse(aRaw) : {};
+        (aAll[orgId] || []).slice(0, 5).forEach((a) => {
+          items.push({ id: `a-${a.id}`, title: a.title || a.systemId || "Assessment", time: a.timestamp || 0, type: "assessment" });
+        });
+        // Org metric entries
+        const fRaw = localStorage.getItem("conseqx_fin_metrics_v1");
+        const fData = fRaw ? JSON.parse(fRaw) : [];
+        (Array.isArray(fData) ? fData : []).slice(0, 3).forEach((r) => {
+          items.push({ id: `m-${r.id}`, title: r.label || "Metric entry", time: r.ts || r.timestamp || 0, type: "metric" });
+        });
+        // Report notifications
+        const nRaw = localStorage.getItem(STORAGE_NOTIFS);
+        const nData = nRaw ? JSON.parse(nRaw) : [];
+        (Array.isArray(nData) ? nData : []).slice(0, 3).forEach((n) => {
+          items.push({ id: `r-${n.id}`, title: n.title || n.message || "Report", time: n.timestamp || 0, type: "report" });
+        });
+
+        items.sort((a, b) => (b.time || 0) - (a.time || 0));
+        setRecentActivity(items.slice(0, 4));
+      } catch {
+        setRecentActivity([]);
+      }
+    }
+
+    loadSystemScores();
+    loadRecentActivity();
+
+    function onSidebarDataUpdate() { loadSystemScores(); loadRecentActivity(); }
+
+    window.addEventListener("storage", onSidebarDataUpdate);
+    window.addEventListener("conseqx:assessments:updated", onSidebarDataUpdate);
+    window.addEventListener("conseqx:orghealth:completed", onSidebarDataUpdate);
+    window.addEventListener("conseqx:notifications:updated", onSidebarDataUpdate);
+    const sidebarPoll = setInterval(onSidebarDataUpdate, 3000);
 
     return () => {
-      window.removeEventListener('storage', syncDashboardMode);
-      clearInterval(interval);
+      window.removeEventListener("storage", onSidebarDataUpdate);
+      window.removeEventListener("conseqx:assessments:updated", onSidebarDataUpdate);
+      window.removeEventListener("conseqx:orghealth:completed", onSidebarDataUpdate);
+      window.removeEventListener("conseqx:notifications:updated", onSidebarDataUpdate);
+      clearInterval(sidebarPoll);
     };
-  }, [dashboardMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth?.org?.id]);
 
   /* Keep reports unread in sync:
      - listen to storage events (other tabs)
@@ -324,7 +382,7 @@ export default function ConseqXCEODashboardShell() {
         <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <button
-              className={`sm:hidden p-2 rounded-md focus:ring-2 focus:ring-indigo-300 ${darkMode ? "text-gray-100" : "text-gray-800"}`}
+              className={`lg:hidden p-2 rounded-md focus:ring-2 focus:ring-indigo-300 ${darkMode ? "text-gray-100" : "text-gray-800"}`}
               aria-label="Open menu"
               onClick={() => setMobileMenuOpen(true)}
             >
@@ -335,7 +393,7 @@ export default function ConseqXCEODashboardShell() {
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="hidden sm:block text-sm text-right">
+            <div className="hidden lg:block text-sm text-right">
               <div className={`${darkMode ? "text-gray-300" : "text-gray-500"}`}>{signedInText}</div>
             </div>
 
@@ -380,22 +438,7 @@ export default function ConseqXCEODashboardShell() {
           <nav className="flex-1 overflow-y-auto hide-scrollbar pr-1">
             <div className="flex flex-col gap-2">
               <NavLink onClick={handleMobileNavClick} to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Ultra View</NavLink>
-              <div className="relative">
-                <NavLink onClick={handleMobileNavClick} to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
-                <div className="absolute -right-2 -top-1 flex items-center">
-                  {dashboardMode === 'manual' ? (
-                    <div className="flex items-center gap-1 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-sm">
-                      <FaDatabase size={8} />
-                      <span>M</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-sm">
-                      <FaSignal size={8} />
-                      <span>A</span>
-                    </div>
-                  )} 
-                </div>
-              </div>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
               <NavLink onClick={handleMobileNavClick} to="/ceo/chat" className={({isActive}) => navItemClass(isActive)}>Chat</NavLink>
               
               {/* Partner Dashboard (mobile: expand) */}
@@ -415,58 +458,28 @@ export default function ConseqXCEODashboardShell() {
                   </div>
                 </button>
 
-                {partnerDashboardOpen && (
-                  <div className="mt-2 ml-3 flex flex-col gap-1">
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/overview" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                      <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
-                      <span>System Overview</span>
+                <div className={`overflow-hidden transition-all duration-200 ${partnerDashboardOpen ? "max-h-60" : "max-h-0"}`}>
+                  <div className="mt-1 ml-3 flex flex-col gap-1">
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/overview" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      System Overview
                     </NavLink>
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/deep-dive" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                      <span className="w-5 h-5 rounded bg-purple-500 flex items-center justify-center text-white text-xs">🔍</span>
-                      <span>Deep Dive Analysis</span>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/deep-dive" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      Deep Dive Analysis
                     </NavLink>
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/forecast" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                      <span className="w-5 h-5 rounded bg-orange-500 flex items-center justify-center text-white text-xs">📈</span>
-                      <span>Forecast & Scenarios</span>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/forecast" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      Forecast & Scenarios
                     </NavLink>
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/recommendations" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                      <span className="w-5 h-5 rounded bg-red-500 flex items-center justify-center text-white text-xs">⚡</span>
-                      <span>Action Items</span>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/recommendations" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      Action Items
                     </NavLink>
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/benchmarking" className={({isActive}) => `flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                      <span className="w-5 h-5 rounded bg-indigo-500 flex items-center justify-center text-white text-xs">🏆</span>
-                      <span>Industry Benchmarks</span>
+                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/benchmarking" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                      Industry Benchmarks
                     </NavLink>
                   </div>
-                )}
+                </div>
               </div>
 
-              <div className="mt-2">
-                <button
-                  onClick={() => setRevenueOpen((s) => !s)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md ${darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800"}`}
-                  aria-expanded={revenueOpen}
-                >
-                  <div className="flex items-center gap-2">
-                    <FaChartLine />
-                    <span>Revenue</span>
-                  </div>
-                  <div>{revenueOpen ? <FaChevronUp/> : <FaChevronDown/>}</div>
-                </button>
-
-                {revenueOpen && (
-                  <div className="mt-2 ml-2 flex flex-col gap-2">
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/revenue" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
-                    <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
-                    Revenue View
-                    </NavLink>
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/revenue/metrics" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
-                    <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
-                    Financial Metrics
-                    </NavLink>
-                  </div>
-                )}
-              </div>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/revenue" className={({isActive}) => navItemClass(isActive)}>Org Metrics</NavLink>
 
               <NavLink onClick={handleMobileNavClick} to="/ceo/assessments" className={({isActive}) => navItemClass(isActive)}>Assessments</NavLink>
 
@@ -489,31 +502,44 @@ export default function ConseqXCEODashboardShell() {
             </div>
           </nav>
 
-          {/* bottom fixed-ish sections (outside nav so they stay visible). Their internal content scrolls. */}
-          <div className="flex-shrink-0 mt-4">
-            <div className="text-xs text-gray-400">Upcoming</div>
-            <div className="mt-2 p-2 rounded-md" style={{ background: darkMode ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)" }}>
-              <ul className="max-h-28 overflow-auto hide-scrollbar space-y-2">
-                {MOCK_MEETINGS.map((m) => (
-                  <li key={m.id}>
-                    <div className={`font-medium ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{m.title}</div>
-                    <div className="text-xs text-gray-400">{m.time}</div>
-                  </li>
-                ))}
-              </ul>
+          {/* bottom pinned */}
+          <div className="flex-shrink-0 mt-auto pt-3" style={{ borderTop: darkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)' }}>
+            <div className="text-xs text-gray-400 font-medium">Latest Activity</div>
+            <div className="mt-2 space-y-2">
+              {recentActivity.length === 0 ? (
+                <div className="text-xs text-gray-500 italic">No activity yet — complete an assessment to get started.</div>
+              ) : (
+                recentActivity.map((item) => (
+                  <div key={item.id} className="flex items-start gap-2">
+                    <div className={`w-1 h-8 rounded-full flex-shrink-0 ${
+                      item.type === "assessment" ? (darkMode ? "bg-indigo-500" : "bg-indigo-400") :
+                      item.type === "metric" ? (darkMode ? "bg-emerald-500" : "bg-emerald-400") :
+                      (darkMode ? "bg-yellow-500" : "bg-yellow-400")
+                    }`} />
+                    <div className="min-w-0">
+                      <div className={`text-sm font-medium truncate ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{item.title}</div>
+                      <div className="text-xs text-gray-400">{item.time ? new Date(item.time).toLocaleDateString() : "—"}</div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="mt-3">
-              <div className="text-xs text-gray-400">Systems Snapshot</div>
-              <div className="mt-2 p-2 rounded-md" style={{ background: darkMode ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)" }}>
-                <div className="max-h-28 overflow-auto hide-scrollbar space-y-2">
-                  {MOCK_SYSTEMS.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between text-sm">
-                      <div className={darkMode ? "text-gray-100" : "text-gray-900"}>{s.title}</div>
-                      <div className={`px-2 py-1 rounded-full text-xs ${s.scorePct > 70 ? "bg-green-100 text-green-700" : s.scorePct > 45 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>{s.scorePct}%</div>
-                    </div>
-                  ))}
-                </div>
+              <div className="text-xs text-gray-400 font-medium">Systems Snapshot</div>
+              <div className="mt-2 space-y-1.5">
+                {systemScores.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between text-sm">
+                    <span className={`flex items-center gap-1 ${darkMode ? "text-gray-200" : "text-gray-700"}`}>
+                      <span className="text-xs">{s.icon}</span> {s.title}
+                    </span>
+                    {s.scorePct !== null ? (
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.scorePct > 70 ? (darkMode ? "bg-green-900/50 text-green-300" : "bg-green-100 text-green-700") : s.scorePct > 45 ? (darkMode ? "bg-yellow-900/50 text-yellow-300" : "bg-yellow-100 text-yellow-700") : (darkMode ? "bg-red-900/50 text-red-300" : "bg-red-100 text-red-700")}`}>{s.scorePct}%</span>
+                    ) : (
+                      <span className="text-xs text-gray-500">—</span>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -525,128 +551,131 @@ export default function ConseqXCEODashboardShell() {
         <div className="max-w-[1400px] mx-auto p-4 grid grid-cols-12 gap-6">
           {/* Sidebar (desktop) */}
           <aside
-            className={`hidden md:flex flex-col col-span-3 rounded-2xl p-4 h-[86vh] sticky top-6 transition-colors ${darkMode ? "bg-gray-800 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"} shadow-sm`}
+            className={`hidden lg:flex flex-col col-span-3 rounded-2xl p-4 h-[calc(100vh-8rem)] sticky top-24 transition-colors ${darkMode ? "bg-gray-800 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"} shadow-sm`}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-md bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold">C</div>
-              <div>
-                <div className={`text-sm font-semibold ${darkMode ? "text-gray-100" : "text-gray-800"}`}>Conse<span className="text-yellow-500">Q</span>-X-Ultra</div>
-                <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-500"}`}><span className="text-yellow-500">{auth?.org?.name}</span></div>
+              <img src={Logo3D} alt="ConseQ-X" className="w-10 h-10 rounded-md object-contain" />
+              <div className="min-w-0">
+                <div className={`text-sm font-semibold truncate ${darkMode ? "text-gray-100" : "text-gray-800"}`}>Conse<span className="text-yellow-500">Q</span>-X-Ultra</div>
+                <div className={`text-xs truncate ${darkMode ? "text-gray-300" : "text-gray-500"}`}><span className="text-yellow-500">{auth?.org?.name}</span></div>
               </div>
             </div>
 
             {/* nav area scrolls independently */}
             <nav className="flex-1 overflow-y-auto hide-scrollbar pr-1 mb-4">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <NavLink to="/ceo/dashboard" className={({isActive}) => navItemClass(isActive)}>Ultra View</NavLink>
-                <div className="relative">
-                  <NavLink to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
-                  <div className="absolute -right-2 -top-1 flex items-center">
-                    {dashboardMode === 'manual' ? (
-                      <div className="flex items-center gap-1 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-sm">
-                        <FaDatabase size={8} />
-                        <span>M</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-sm">
-                        <FaSignal size={8} />
-                        <span>A</span>
-                      </div>
-                    )} 
-                  </div>
-                </div>
-                
+                <NavLink to="/ceo/data" className={({isActive}) => navItemClass(isActive)}>Data Management</NavLink>
                 <NavLink to="/ceo/chat" className={({isActive}) => navItemClass(isActive)}>Chat</NavLink>
-                <NavLink to="/ceo/partner-dashboard" className={({isActive}) => navItemClass(isActive)}>Partner Dashboard</NavLink>
 
-                {/* Revenue collapsible */}
-                <div className="relative">
+                {/* Partner Dashboard collapsible */}
+                <div>
                   <button
-                    onClick={() => setRevenueOpen((s) => !s)}
-                    aria-expanded={revenueOpen}
+                    onClick={() => setPartnerDashboardOpen((s) => !s)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800"}`}
+                    aria-expanded={partnerDashboardOpen}
                   >
                     <div className="flex items-center gap-2">
-                      <FaChartLine />
-                      <span>Revenue</span>
+                      <FaChartPie className="text-sm" />
+                      <span>Partner Dashboard</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">Overview</span>
-                      {revenueOpen ? <FaChevronUp /> : <FaChevronDown />}
+                      <span className="text-xs text-gray-400">5</span>
+                      {partnerDashboardOpen ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
                     </div>
                   </button>
 
-                  <div className={`mt-2 ml-2 overflow-hidden transition-all ${revenueOpen ? "max-h-56" : "max-h-0"}`}>
-                    <div className="flex flex-col gap-1">
-                      <NavLink to="/ceo/revenue/metrics" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
-                      <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
-                      Financial Metrics
+                  <div className={`overflow-hidden transition-all duration-200 ${partnerDashboardOpen ? "max-h-60" : "max-h-0"}`}>
+                    <div className="mt-1 ml-3 flex flex-col gap-1">
+                      <NavLink to="/ceo/partner-dashboard/overview" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                        System Overview
                       </NavLink>
-                      <NavLink to="/ceo/revenue" className={({isActive}) => `px-3 py-2 rounded-md ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
-                      <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-xs">📊</span>
-                      Revenue Dashboard
+                      <NavLink to="/ceo/partner-dashboard/deep-dive" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                        Deep Dive Analysis
+                      </NavLink>
+                      <NavLink to="/ceo/partner-dashboard/forecast" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                        Forecast & Scenarios
+                      </NavLink>
+                      <NavLink to="/ceo/partner-dashboard/recommendations" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                        Action Items
+                      </NavLink>
+                      <NavLink to="/ceo/partner-dashboard/benchmarking" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
+                        Industry Benchmarks
                       </NavLink>
                     </div>
                   </div>
                 </div>
+
+                <NavLink to="/ceo/revenue" className={({isActive}) => navItemClass(isActive)}>Org Metrics</NavLink>
 
                 <NavLink to="/ceo/assessments" className={({isActive}) => navItemClass(isActive)}>Assessments</NavLink>
 
                 <NavLink to="/ceo/reports" className={({isActive}) => `flex items-center justify-between w-full text-left px-3 py-2 rounded-md transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-gray-100" : "bg-blue-50 text-gray-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-100" : "hover:bg-gray-50 text-gray-800")}`}>
                   <span>Reports</span>
-                  <span className="flex items-center gap-2">
-                    {reportsUnread > 0 ? (
-                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500 text-white">{reportsUnread}</span>
-                    ) : (
-                      <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-400"}`}> </span>
-                    )}
-                  </span>
+                  {reportsUnread > 0 && (
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500 text-white">{reportsUnread}</span>
+                  )}
                 </NavLink>
 
                 <NavLink to="/ceo/team" className={({isActive}) => navItemClass(isActive)}>Team</NavLink>
                 <NavLink to="/ceo/billing" className={({isActive}) => navItemClass(isActive)}>Billing</NavLink>
-
-                
               </div>
             </nav>
 
-            {/* bottom pinned box: sticky at bottom of sidebar; internal content scrolls */}
-            <div className="sticky bottom-4">
-              <div className="text-xs text-gray-400">Upcoming</div>
-              <div className="mt-2 p-2 rounded-md" style={{ background: darkMode ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)" }}>
-                <ul className="max-h-36 overflow-auto hide-scrollbar space-y-2">
-                  {MOCK_MEETINGS.map((m) => (
-                    <li key={m.id}>
-                      <div className={`${darkMode ? "text-gray-100" : "text-gray-900"} font-medium`}>{m.title}</div>
-                      <div className="text-xs text-gray-400">{m.time}</div>
-                    </li>
-                  ))}
-                </ul>
+            {/* Bottom pinned section */}
+            <div className="mt-auto flex-shrink-0 pt-3" style={{ borderTop: darkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)' }}>
+              <div className="text-xs text-gray-400 font-medium">Latest Activity</div>
+              <div className="mt-2 space-y-2">
+                {recentActivity.length === 0 ? (
+                  <div className="text-xs text-gray-500 italic">No activity yet — complete an assessment to get started.</div>
+                ) : (
+                  recentActivity.map((item) => (
+                    <div key={item.id} className="flex items-start gap-2">
+                      <div className={`w-1 h-8 rounded-full flex-shrink-0 ${
+                        item.type === "assessment" ? (darkMode ? "bg-indigo-500" : "bg-indigo-400") :
+                        item.type === "metric" ? (darkMode ? "bg-emerald-500" : "bg-emerald-400") :
+                        (darkMode ? "bg-yellow-500" : "bg-yellow-400")
+                      }`} />
+                      <div className="min-w-0">
+                        <div className={`text-sm font-medium truncate ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{item.title}</div>
+                        <div className="text-xs text-gray-400">{item.time ? new Date(item.time).toLocaleDateString() : "—"}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               <div className="mt-3">
-                <div className="text-xs text-gray-400">Systems Snapshot</div>
-                <div className="mt-2 p-2 rounded-md" style={{ background: darkMode ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)" }}>
-                  <div className="max-h-40 overflow-auto hide-scrollbar space-y-2">
-                    {MOCK_SYSTEMS.map((s) => (
-                      <div key={s.id} className="flex items-center justify-between text-sm">
-                        <div className={darkMode ? "text-gray-100" : ""}>{s.title}</div>
-                        <div className={`px-2 py-1 rounded-full text-xs ${s.scorePct > 70 ? "bg-green-100 text-green-700" : s.scorePct > 45 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>{s.scorePct}%</div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="text-xs text-gray-400 font-medium">Systems Snapshot</div>
+                <div className="mt-2 space-y-1.5">
+                  {systemScores.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between text-sm">
+                      <span className={`flex items-center gap-1 ${darkMode ? "text-gray-200" : "text-gray-700"}`}>
+                        <span className="text-xs">{s.icon}</span> {s.title}
+                      </span>
+                      {s.scorePct !== null ? (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.scorePct > 70 ? (darkMode ? "bg-green-900/50 text-green-300" : "bg-green-100 text-green-700") : s.scorePct > 45 ? (darkMode ? "bg-yellow-900/50 text-yellow-300" : "bg-yellow-100 text-yellow-700") : (darkMode ? "bg-red-900/50 text-red-300" : "bg-red-100 text-red-700")}`}>{s.scorePct}%</span>
+                      ) : (
+                        <span className="text-xs text-gray-500">—</span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </aside>
 
           {/* Main */}
-          <main className="col-span-12 md:col-span-9">
+          <main className="col-span-12 lg:col-span-9">
             <div className={`rounded-2xl p-4 md:p-6 transition-colors ${darkMode ? "bg-gray-800 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"} shadow-sm`}>
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className={`${darkMode ? "text-gray-100" : "text-gray-900"} text-xl md:text-2xl font-bold`}>Welcome back, <span className="text-yellow-500">{auth.user.name || auth.user.email}</span></h1>
-                  <p className={`${darkMode ? "text-gray-300" : "text-gray-500"} text-xs md:text-sm mt-1`}>Executive tools & insights for your organization</p>
+                  <h1 className={`${darkMode ? "text-gray-100" : "text-gray-900"} text-xl md:text-2xl font-bold`}>
+                    {getPageMeta(location.pathname)?.title || (<>Welcome back, <span className="text-yellow-500">{auth.user.name || auth.user.email}</span></>)}
+                  </h1>
+                  <p className={`${darkMode ? "text-gray-300" : "text-gray-500"} text-xs md:text-sm mt-1`}>
+                    {getPageMeta(location.pathname)?.sub || "Executive tools & insights for your organization"}
+                  </p>
                 </div>
 
                 {/* NOTIFICATION BELL */}

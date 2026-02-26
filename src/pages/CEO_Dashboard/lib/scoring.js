@@ -78,7 +78,7 @@ export function scoreSystem(metrics = {}, weights = {}, requiredMetrics) {
     ? `Top drivers: ${top.map((t) => `${t.key} (${t.value})`).join(", ")}`
     : "No strong drivers";
 
-  return { score, coverage: Number(coverage.toFixed(3)), inputMetrics: norm, rationale: { top, text } };
+  return { score, coverage, inputMetrics: norm, rationale: { top, text } };
 }
 
 export function computeOrgHealth(systemScores = [], systemWeights = {}) {

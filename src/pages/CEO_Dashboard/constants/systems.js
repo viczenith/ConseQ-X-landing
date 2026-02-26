@@ -1,17 +1,3 @@
-/**
- * Canonical  {
-    key: 'orchestration',
-    title: 'Orchestration',
-    description: 'Development cycles, sprint planning, and continuous improvement',
-    icon: '🔄',
-    color: '#10B981', // emerald-500
-    order: 2
-  }, for C-Suite Partner Dashboard
- * 
- * Defines the six core systems that form the assessment framework,
- * display metadata, and legacy key mapping for backwards compatibility.
- */
-
 // Six canonical systems with display metadata
 export const CANONICAL_SYSTEMS = [
   {
@@ -64,14 +50,9 @@ export const CANONICAL_SYSTEMS = [
   }
 ];
 
-// Legacy system keys mapping to canonical keys for backwards compatibility
-// TODO: Remove legacy mappings after migration period (6 months)
+
 export const LEGACY_TO_CANONICAL = {
-  // Legacy keys that need normalization
-  'orchestration': 'orchestration', // legacy iteration maps to orchestration
-  'inlignment': 'inlignment', // legacy ilignment maps to inlignment
-  
-  // Ensure canonical keys map to themselves
+  // Canonical keys map to themselves
   'interdependency': 'interdependency',
   'orchestration': 'orchestration',
   'investigation': 'investigation',

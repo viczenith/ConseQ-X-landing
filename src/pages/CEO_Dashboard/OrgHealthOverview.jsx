@@ -1,4 +1,3 @@
-// src/pages/CEO_Dashboard/OrgHealthOverview.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { getResults } from "./services/orgHealth"; // ensure path is correct

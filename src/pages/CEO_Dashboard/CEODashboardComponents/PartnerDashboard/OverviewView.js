@@ -1,161 +1,171 @@
-import React from 'react';
-import { CANONICAL_SYSTEMS } from '../../constants/systems';
-import { useOutletContext } from 'react-router-dom';
-import { ResponsiveContainer, LineChart, Line, Tooltip, Area, XAxis, YAxis } from 'recharts';
+import React from "react";
+import { useOutletContext } from "react-router-dom";
+import { CANONICAL_SYSTEMS } from "../../constants/systems";
+import { ResponsiveContainer, LineChart, Line, Tooltip, XAxis, YAxis } from "recharts";
+import { FaSpinner, FaExclamationTriangle } from "react-icons/fa";
 
-// lightweight local date formatting to avoid adding a dependency
-function fmtShort(d) {
-  try { return new Date(d).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' }); } catch { return '' + d; }
-}
-function fmtLong(d) {
-  try { return new Date(d).toLocaleString(); } catch { return '' + d; }
+function fmtDate(d) { return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
+
+function ScoreCard({ sys, score, delta, series, darkMode }) {
+  const color = sys.color || "#3B82F6";
+  return (
+    <div className={`rounded-xl p-4 border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium">{sys.title}</span>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${score >= 70 ? (darkMode ? "bg-green-900/50 text-green-300" : "bg-green-100 text-green-700") : score >= 45 ? (darkMode ? "bg-yellow-900/50 text-yellow-300" : "bg-yellow-100 text-yellow-700") : (darkMode ? "bg-red-900/50 text-red-300" : "bg-red-100 text-red-700")}`}>
+          {score != null ? `${score}%` : "—"}
+        </span>
+      </div>
+      {delta !== 0 && delta != null && (
+        <div className={`text-xs mb-1 ${delta > 0 ? "text-green-500" : "text-red-500"}`}>
+          {delta > 0 ? "▲" : "▼"} {Math.abs(delta)} pts vs prior
+        </div>
+      )}
+      {series && series.length > 0 && (
+        <ResponsiveContainer width="100%" height={48}>
+          <LineChart data={series}>
+            <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} />
+            <Tooltip
+              contentStyle={{ fontSize: 11, padding: "2px 6px", borderRadius: 6, background: darkMode ? "#1f2937" : "#fff", border: "none", boxShadow: "0 1px 4px rgba(0,0,0,.1)" }}
+              labelFormatter={fmtDate}
+              formatter={(v) => [`${v}%`, sys.title]}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
 }
 
-/**
- * OverviewView
- * - Clean system overview with high-level health scores and trends
- * - Focuses purely on overview metrics without data management functionality
- */
 export default function OverviewView() {
-  const outlet = useOutletContext();
-  const darkMode = outlet?.darkMode ?? false;
-  const dashboardMode = outlet?.dashboardMode ?? 'manual';
-  const orgId = outlet?.orgId || "anon";
+  const ctx = useOutletContext() || {};
+  const { darkMode, summary, overview, loading, error, refresh } = ctx;
 
-  // Fetch overview data from mock API
-  const [scores, setScores] = React.useState({});
-  const [series, setSeries] = React.useState([]);
-  const [perSystemSeries, setPerSystemSeries] = React.useState({});
+  if (loading) return (
+    <div className="flex items-center justify-center py-20 gap-2 text-gray-400">
+      <FaSpinner className="animate-spin" /> Loading overview…
+    </div>
+  );
 
-  React.useEffect(() => {
-    let mounted = true;
+  if (error) return (
+    <div className={`rounded-xl p-6 text-center ${darkMode ? "bg-red-900/20 text-red-300" : "bg-red-50 text-red-600"}`}>
+      <FaExclamationTriangle className="mx-auto mb-2 text-xl" />
+      <div className="text-sm">{error}</div>
+      <button onClick={refresh} className="mt-3 px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Retry</button>
+    </div>
+  );
 
-    function makeSeriesFromBase(base, tsBase = Date.now()) {
-      const arr = [];
-      for (let i = 6; i >= 0; i--) {
-        const ts = tsBase - i * 24 * 3600 * 1000;
-        const v = Math.max(5, Math.min(95, base + Math.floor((Math.random() - 0.5) * 6)));
-        arr.push({ ts, value: v, upper: Math.min(100, v + 4), lower: Math.max(0, v - 4), date: new Date(ts) });
-      }
-      return arr;
-    }
-
-    async function load() {
-      try {
-        // Prefer client-side latest upload (manual upload-driven flow)
-        const raw = localStorage.getItem('conseqx_uploads_v1');
-        const uploads = raw ? JSON.parse(raw) : [];
-        if (uploads && uploads.length) {
-          const latest = uploads[0];
-          // derive simple scores: presence -> 70, absent -> 45, allow assessments to override (if present in local assessments)
-          const byAssessRaw = localStorage.getItem('conseqx_assessments_v1');
-          const byOrg = byAssessRaw ? JSON.parse(byAssessRaw) : {};
-          const assessments = (byOrg[outlet?.org?.id || 'anon'] || []).reduce((acc, a) => { const k = a.systemId || a.system || a.systemKey; if (k) acc[k] = a.score || acc[k] || 0; return acc; }, {});
-
-          const scoresLocal = CANONICAL_SYSTEMS.reduce((acc, s) => {
-            if (assessments[s.key]) acc[s.key] = Math.round(Math.max(0, Math.min(100, assessments[s.key])));
-            else if (Array.isArray(latest.analyzedSystems) && latest.analyzedSystems.includes(s.key)) acc[s.key] = 70;
-            else acc[s.key] = 45;
-            return acc;
-          }, {});
-
-          if (!mounted) return;
-          setScores(scoresLocal);
-          const overallBase = Math.round(Object.values(scoresLocal).reduce((a,b)=>a+b,0)/Math.max(1,Object.keys(scoresLocal).length));
-          setSeries(makeSeriesFromBase(overallBase, latest.timestamp || Date.now()));
-          const per = {};
-          CANONICAL_SYSTEMS.forEach((s) => { per[s.key] = makeSeriesFromBase(scoresLocal[s.key] || 50, latest.timestamp || Date.now()); });
-          setPerSystemSeries(per);
-          return;
-        }
-
-        // fallback to mock API when no manual uploads present
-        const res = await fetch('http://localhost:4001/api/overview');
-        if (!res.ok) throw new Error('bad response');
-        const data = await res.json();
-        if (!mounted) return;
-        setSeries(data.overallSeries.map(d => ({ ...d, date: new Date(d.ts) })));
-        setPerSystemSeries(Object.keys(data.perSystemSeries).reduce((acc, k) => { acc[k] = data.perSystemSeries[k].map(d => ({ ...d, date: new Date(d.ts) })); return acc; }, {}));
-        setScores(data.scores || {});
-      } catch (e) {
-        // final fallback: generate reasonable mock series
-        const scoresLocal = CANONICAL_SYSTEMS.reduce((acc, s) => { acc[s.key] = Math.floor(40 + Math.random() * 50); return acc; }, {});
-        if (!mounted) return;
-        setScores(scoresLocal);
-        setSeries(makeSeriesFromBase(62));
-        setPerSystemSeries(CANONICAL_SYSTEMS.reduce((acc, s) => { acc[s.key] = makeSeriesFromBase(40 + Math.floor(Math.random()*40)); return acc; }, {}));
-      }
-    }
-
-    load();
-
-    // Listen for storage changes (uploads may be added by Data Management)
-    function onStorage(e) {
-      if (!e.key || e.key === 'conseqx_uploads_v1' || e.key === 'conseqx_assessments_v1') load();
-    }
-    window.addEventListener('storage', onStorage);
-    let bc;
-    try {
-      if (typeof BroadcastChannel !== 'undefined') {
-        bc = new BroadcastChannel('conseqx_assessments');
-        bc.addEventListener('message', (ev) => { if (ev?.data?.type === 'assessments:update') load(); });
-      }
-    } catch {}
-
-    return () => { mounted = false; window.removeEventListener('storage', onStorage); if (bc) try { bc.close(); } catch {} };
-  }, [outlet?.org]);
-
-  const overall = Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / (Object.keys(scores).length || 1));
+  const orgHealth = summary?.org_health ?? 0;
+  const confidence = summary?.confidence ?? 0;
+  const systems = summary?.systems || [];
+  const overallSeries = overview?.overallSeries || [];
+  const perSystemSeries = overview?.perSystemSeries || {};
+  const northStar = summary?.north_star;
+  const forecast = summary?.health_forecast;
 
   return (
-    <div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className={`rounded-2xl p-4 col-span-1 md:col-span-1 ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-100'}`}>
-          <div className="text-xs text-gray-400">Overall Health</div>
-          <div className="text-3xl font-bold mt-2">{overall}%</div>
-          <div className="mt-4 h-20">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={series} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <XAxis dataKey="date" tickFormatter={(d)=> fmtShort(d)} />
-                <YAxis domain={[0,100]} />
-                <Tooltip formatter={(v) => `${v}%`} labelFormatter={(label) => (label ? fmtLong(label) : '')} />
-                {/* confidence band */}
-                <Area type="monotone" dataKey="upper" stroke={false} fill="#60A5FA" fillOpacity={0.08} />
-                <Area type="monotone" dataKey="lower" stroke={false} fill="#60A5FA" fillOpacity={0.08} />
-                <Line type="monotone" dataKey="value" stroke="#60A5FA" strokeWidth={2} dot={false} />
+    <section className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`col-span-1 md:col-span-2 rounded-xl p-6 border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"}`}>
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-lg font-semibold">Overall Organizational Health</h3>
+            <span className={`text-3xl font-bold ${orgHealth >= 70 ? "text-green-500" : orgHealth >= 45 ? "text-yellow-500" : "text-red-500"}`}>{orgHealth}%</span>
+          </div>
+          <div className={`text-xs mb-3 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+            Confidence: {(confidence * 100).toFixed(0)}% · Based on {systems.filter(s => s.score != null).length} assessed systems
+          </div>
+          {overallSeries.length > 0 && (
+            <ResponsiveContainer width="100%" height={100}>
+              <LineChart data={overallSeries}>
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={fmtDate} />
+                <YAxis domain={[0, 100]} hide />
+                <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} dot={false} />
+                <Tooltip formatter={(v) => [`${v}%`, "Health"]} labelFormatter={fmtDate}
+                  contentStyle={{ fontSize: 11, borderRadius: 6, background: darkMode ? "#1f2937" : "#fff", border: "none", boxShadow: "0 1px 4px rgba(0,0,0,.1)" }} />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          )}
         </div>
 
-        <div className={`rounded-2xl p-4 col-span-2 ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-100'}`}>
-          <div className="text-sm font-semibold">System Score Cards</div>
-          <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
-            {CANONICAL_SYSTEMS.map((s) => (
-              <div key={s.key} className={`p-3 rounded-lg border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold">{s.title}</div>
-                  <div className="text-xl font-bold">{scores[s.key]}%</div>
-                </div>
-                <div className="text-xs text-gray-400 mt-2">Quick insight: {s.description?.slice(0, 80)}</div>
-                <div className="mt-3 h-12">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={perSystemSeries[s.key] || []} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                      <Tooltip formatter={(v) => `${v}%`} labelFormatter={(l)=> l ? fmtShort(l) : ''} />
-                      <Line type="monotone" dataKey="value" stroke="#34D399" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+        <div className={`rounded-xl p-6 border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"}`}>
+          {northStar && (
+            <div className="mb-4">
+              <div className={`text-xs font-medium mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>North Star</div>
+              <div className="text-sm font-semibold">{northStar.name}</div>
+              <div className="text-lg font-bold mt-1">{northStar.value}{northStar.unit}</div>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${northStar.trend === "improving" ? (darkMode ? "bg-green-900/50 text-green-300" : "bg-green-100 text-green-700") : northStar.trend === "needs_attention" ? (darkMode ? "bg-red-900/50 text-red-300" : "bg-red-100 text-red-700") : (darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600")}`}>
+                {northStar.trend?.replace("_", " ")}
+              </span>
+            </div>
+          )}
+          {forecast && (
+            <div>
+              <div className={`text-xs font-medium mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>30-Day Forecast</div>
+              <div className="text-2xl font-bold">{forecast.next_30_days}%</div>
+              <div className={`text-xs ${forecast.next_30_days > orgHealth ? "text-green-500" : "text-red-500"}`}>
+                {forecast.next_30_days > orgHealth ? "▲ Improving" : forecast.next_30_days < orgHealth ? "▼ Declining" : "→ Stable"}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* System score cards */}
+      <div>
+        <h3 className="text-sm font-semibold mb-3">System Scores</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {CANONICAL_SYSTEMS.map((sys) => {
+            const data = systems.find(s => s.key === sys.key);
+            return (
+              <ScoreCard
+                key={sys.key}
+                sys={sys}
+                score={data?.score}
+                delta={data?.delta_mom}
+                series={perSystemSeries[sys.key]}
+                darkMode={darkMode}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Risk alerts (from real backend data) */}
+      {forecast?.risk_areas?.length > 0 && (
+        <div className={`rounded-xl p-4 border ${darkMode ? "bg-red-900/10 border-red-900/30" : "bg-red-50 border-red-200"}`}>
+          <h4 className={`text-sm font-semibold mb-2 ${darkMode ? "text-red-300" : "text-red-700"}`}>
+            <FaExclamationTriangle className="inline mr-1" /> Risk Alerts
+          </h4>
+          <div className="space-y-2">
+            {forecast.risk_areas.map((r, i) => (
+              <div key={i} className="flex items-center justify-between text-sm">
+                <span className="capitalize">{r.system}</span>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${r.risk_level === "critical" ? (darkMode ? "bg-red-900/50 text-red-300" : "bg-red-100 text-red-700") : (darkMode ? "bg-yellow-900/50 text-yellow-300" : "bg-yellow-100 text-yellow-700")}`}>
+                    {r.risk_level}
+                  </span>
+                  <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Mitigate in {r.mitigation_timeline}</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="rounded-2xl p-4 mb-4">
-        <h3 className="font-semibold">Key Alerts</h3>
-        <div className="mt-2 text-sm text-gray-500">No critical alerts (placeholder). Thresholds and predictive warnings will show here.</div>
-      </div>
-    </div>
+      {/* Opportunity highlights */}
+      {forecast?.improvement_opportunities?.length > 0 && (
+        <div className={`rounded-xl p-4 border ${darkMode ? "bg-green-900/10 border-green-900/30" : "bg-green-50 border-green-200"}`}>
+          <h4 className={`text-sm font-semibold mb-2 ${darkMode ? "text-green-300" : "text-green-700"}`}>Leverage Opportunities</h4>
+          <div className="space-y-2">
+            {forecast.improvement_opportunities.map((o, i) => (
+              <div key={i} className="flex items-center justify-between text-sm">
+                <span className="capitalize">{o.system}</span>
+                <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{o.suggested_action}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

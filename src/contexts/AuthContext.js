@@ -1,128 +1,275 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-const STORAGE_KEY = "conseqx_auth_mock";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
-const defaultState = {
-  users: {},
-  orgs: {},
-  sessions: {},
-  current: null,
-};
+/* ═══════════════════════════════════════════════════════════════
+   TOKEN / API CONFIGURATION
+   ═══════════════════════════════════════════════════════════════ */
+const ACCESS_KEY  = "conseqx_access_token_v1";
+const REFRESH_KEY = "conseqx_refresh_token_v1";
 
-function readState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { ...defaultState };
-  } catch (e) {
-    return { ...defaultState };
-  }
+/** Resolve the backend base URL (env var or default localhost). */
+function getApiBase() {
+  return String(process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 }
 
-function writeState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+/** Build a full API URL from a relative path like "/auth/token/". */
+function apiUrl(path) {
+  return `${getApiBase()}/api${String(path).startsWith("/") ? "" : "/"}${path}`;
 }
 
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTH CONTEXT
+   ═══════════════════════════════════════════════════════════════ */
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [state, setState] = useState(() => readState());
+  /* Raw backend payloads (DRF serializer shapes) */
+  const [rawUser, setRawUser] = useState(null);
+  const [rawOrg, setRawOrg]   = useState(null);
   const [loading, setLoading] = useState(false);
+  /** true once session-restore finishes (success or fail) */
+  const [ready, setReady]     = useState(false);
 
+  /* ─── Token helpers ─── */
+  const getToken   = () => { try { return localStorage.getItem(ACCESS_KEY) || ""; } catch { return ""; } };
+  const getRefresh = () => { try { return localStorage.getItem(REFRESH_KEY) || ""; } catch { return ""; } };
+  const saveTokens = (access, refresh) => {
+    try {
+      if (access) localStorage.setItem(ACCESS_KEY, access);
+      if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
+    } catch {}
+  };
+  const clearTokens = () => {
+    try { localStorage.removeItem(ACCESS_KEY); localStorage.removeItem(REFRESH_KEY); } catch {}
+  };
+
+  /* ─── Low-level authenticated fetch ─── */
+  const rawFetch = useCallback(async (path, { method = "GET", body = null, token } = {}) => {
+    const h = { Accept: "application/json" };
+    const tok = token !== undefined ? token : getToken();
+    if (tok) h.Authorization = `Bearer ${tok}`;
+    const opts = { method, headers: h };
+    if (body != null) { h["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+
+    const res = await fetch(apiUrl(path), opts);
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+    if (!res.ok) {
+      const msg = typeof data === "object" && data
+        ? (data.detail || data.error || JSON.stringify(data))
+        : String(text || `HTTP ${res.status}`);
+      const err = new Error(msg);
+      err.status = res.status;
+      err.payload = data;
+      throw err;
+    }
+    return data;
+  }, []);
+
+  /* ─── Token refresh ─── */
+  const tryRefresh = useCallback(async () => {
+    const rt = getRefresh();
+    if (!rt) return false;
+    try {
+      const data = await rawFetch("/auth/token/refresh/", { method: "POST", body: { refresh: rt }, token: "" });
+      if (data?.access) { saveTokens(data.access, data.refresh || null); return true; }
+    } catch {}
+    return false;
+  }, [rawFetch]);
+
+  /* ─── Load /auth/me ─── */
+  const fetchMe = useCallback(async (token) => {
+    const data = await rawFetch("/auth/me", { token });
+    setRawUser(data?.user || null);
+    setRawOrg(data?.org || null);
+    return data;
+  }, [rawFetch]);
+
+  /* ═══════════════════════════════════════════════════════════════
+     PUBLIC API
+     ═══════════════════════════════════════════════════════════════ */
+
+  /** Register a new organisation + user account */
+  const register = useCallback(async ({ orgName, ceoName, email, phone, password }) => {
+    setLoading(true);
+    try {
+      const e = normalizeEmail(email);
+      if (!orgName?.trim())   throw new Error("Company name is required");
+      if (!ceoName?.trim())   throw new Error("Name / role is required");
+      if (!isValidEmail(e))   throw new Error("A valid email address is required");
+      if (!phone?.trim())     throw new Error("Phone number is required");
+      if (!password || password.length < 6) throw new Error("Password must be at least 6 characters");
+
+      // 1) Create the account
+      await rawFetch("/auth/register", {
+        method: "POST",
+        body: { org_name: orgName.trim(), ceo_name: ceoName.trim(), email: e, phone: phone.trim(), password },
+        token: "",
+      });
+
+      // 2) Obtain JWT tokens
+      const jwt = await rawFetch("/auth/token/", {
+        method: "POST",
+        body: { username: e, password },
+        token: "",
+      });
+      if (!jwt?.access) throw new Error("Account created but session could not start. Please sign in.");
+      saveTokens(jwt.access, jwt.refresh);
+
+      // 3) Load user + org profile
+      const me = await fetchMe(jwt.access);
+      return { user: me?.user, org: me?.org };
+    } finally {
+      setLoading(false);
+    }
+  }, [rawFetch, fetchMe]);
+
+  /** Sign in with email + password */
+  const login = useCallback(async ({ email, password }) => {
+    setLoading(true);
+    try {
+      const e = normalizeEmail(email);
+      if (!e)        throw new Error("Email is required");
+      if (!password) throw new Error("Password is required");
+
+      const jwt = await rawFetch("/auth/token/", {
+        method: "POST",
+        body: { username: e, password },
+        token: "",
+      });
+      if (!jwt?.access) throw new Error("Invalid credentials");
+      saveTokens(jwt.access, jwt.refresh);
+
+      const me = await fetchMe(jwt.access);
+      return { user: me?.user, org: me?.org };
+    } finally {
+      setLoading(false);
+    }
+  }, [rawFetch, fetchMe]);
+
+  /** Sign out */
+  const logout = useCallback(() => {
+    clearTokens();
+    setRawUser(null);
+    setRawOrg(null);
+  }, []);
+
+  /** Upgrade / downgrade subscription tier (demo flow). */
+  const upgrade = useCallback(async ({ months = 12, tier = "premium" } = {}) => {
+    if (!rawOrg?.id) return null;
+    try {
+      const updated = await rawFetch("/auth/upgrade", { method: "POST", body: { tier, months } });
+      if (updated) { setRawOrg(updated); return updated; }
+    } catch {
+      // Fallback: local-only state update if self-upgrade endpoint is unavailable
+      const expires = new Date(Date.now() + months * 30 * 86400000).toISOString();
+      setRawOrg(prev => prev ? { ...prev, subscription_tier: tier, subscription_expires_at: expires } : prev);
+    }
+    return rawOrg;
+  }, [rawOrg, rawFetch]);
+
+  /* ─── Boot: restore session from stored JWT on mount ─── */
+  const booted = useRef(false);
   useEffect(() => {
-    writeState(state);
-  }, [state]);
-
-  const register = async ({ orgName, ceoName, email, phone, password }) => {
-    setLoading(true);
-    try {
-      if (!email) throw new Error("Email required");
-      const s = readState();
-      // if user exists, throw
-      if (s.users[email]) {
-        throw new Error("User already exists");
+    if (booted.current) return;
+    booted.current = true;
+    const tok = getToken();
+    if (!tok) { setReady(true); return; }
+    (async () => {
+      try {
+        await fetchMe(tok);
+      } catch (err) {
+        if (err?.status === 401) {
+          const ok = await tryRefresh();
+          if (ok) {
+            try { await fetchMe(); } catch { clearTokens(); setRawUser(null); setRawOrg(null); }
+          } else { clearTokens(); setRawUser(null); setRawOrg(null); }
+        }
+        // If backend is simply unreachable, keep tokens for retry on next load
+      } finally {
+        setReady(true);
       }
-      // create org id
-      const orgId = (orgName || "Org").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString(36);
-      s.orgs[orgId] = {
-        id: orgId,
-        name: orgName || "Organization",
-        subscription: { tier: "free", expiresAt: null },
-      };
-      s.users[email] = { email, name: ceoName || email.split("@")[0], phone: phone || "", password: password || "", orgId };
-      s.current = email;
-      setState(s);
-      return { user: s.users[email], org: s.orgs[orgId] };
-    } finally {
-      setLoading(false);
-    }
-  };
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const login = async ({ email, password }) => {
-    setLoading(true);
-    try {
-      const s = readState();
-      const user = s.users[email];
-      if (!user) {
-        return null;
+  /* ═══════════════════════════════════════════════════════════════
+     Backward-compatible shapes
+     (other components expect  user.name, user.email, user.orgId,
+      org.id, org.name, org.slug, org.subscription.{tier,expiresAt})
+     ═══════════════════════════════════════════════════════════════ */
+  const user = rawUser
+    ? {
+        email: rawUser.email,
+        name: `${rawUser.first_name || ""} ${rawUser.last_name || ""}`.trim() || rawUser.username || rawUser.email,
+        phone: rawUser.phone || "",
+        orgId: rawOrg?.id || null,
+        id: rawUser.id,
+        is_superuser: rawUser.is_superuser,
+        is_staff: rawUser.is_staff,
       }
-      if (password && user.password && password !== user.password) {
-        throw new Error("Invalid password");
+    : null;
+
+  const org = rawOrg
+    ? {
+        id: rawOrg.id,
+        name: rawOrg.name,
+        slug: rawOrg.slug,
+        subscription: {
+          tier: rawOrg.subscription_tier || "free",
+          expiresAt: rawOrg.subscription_expires_at
+            ? new Date(rawOrg.subscription_expires_at).getTime()
+            : null,
+        },
       }
-      s.current = email;
-      setState(s);
-      return { user: s.users[email], org: s.orgs[user.orgId] };
-    } finally {
-      setLoading(false);
-    }
-  };
+    : null;
 
-  const logout = () => {
-    const s = readState();
-    s.current = null;
-    setState(s);
-  };
+  /** Legacy helper used by RequirePremium, PartnerTenantEntry, etc. */
+  const getCurrent = useCallback(() => {
+    if (!rawUser) return null;
+    // Re-derive from raw state so callers always see the latest values
+    const u = {
+      email: rawUser.email,
+      name: `${rawUser.first_name || ""} ${rawUser.last_name || ""}`.trim() || rawUser.username || rawUser.email,
+      phone: rawUser.phone || "",
+      orgId: rawOrg?.id || null,
+      id: rawUser.id,
+    };
+    const o = rawOrg
+      ? {
+          id: rawOrg.id, name: rawOrg.name, slug: rawOrg.slug,
+          subscription: {
+            tier: rawOrg.subscription_tier || "free",
+            expiresAt: rawOrg.subscription_expires_at ? new Date(rawOrg.subscription_expires_at).getTime() : null,
+          },
+        }
+      : null;
+    return { user: u, org: o };
+  }, [rawUser, rawOrg]);
 
-  const upgrade = ({ months = 12, tier = "premium" } = {}) => {
-    // set current org subscription to premium for months
-    const s = readState();
-    const email = s.current;
-    if (!email) return;
-    const user = s.users[email];
-    if (!user) return;
-    const org = s.orgs[user.orgId];
-    if (!org) return;
-    const now = Date.now();
-    const expiresAt = now + (months * 30 * 24 * 60 * 60 * 1000);
-    org.subscription = { tier, expiresAt };
-    setState(s);
-    return org;
-  };
+  const isAdmin = Boolean(rawUser?.is_superuser || rawUser?.is_staff);
 
-  const getCurrent = () => {
-    const s = readState();
-    const email = s.current;
-    if (!email) return null;
-    const user = s.users[email];
-    if (!user) return null;
-    const org = s.orgs[user.orgId];
-    return { user, org };
-  };
-
+  /* ─── Context value ─── */
   const ctx = {
+    user,
+    org,
     loading,
+    ready,
+    isAdmin,
     register,
     login,
     logout,
     upgrade,
     getCurrent,
-    // convenience properties that read live
-    get user() {
-      const cur = getCurrent();
-      return cur?.user || null;
-    },
-    get org() {
-      const cur = getCurrent();
-      return cur?.org || null;
-    },
+    getAccessToken: getToken,
   };
 
   return <AuthContext.Provider value={ctx}>{children}</AuthContext.Provider>;

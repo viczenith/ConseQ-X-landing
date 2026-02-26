@@ -3,11 +3,16 @@ import { motion, useAnimation, useInView, AnimatePresence } from "framer-motion"
 import Lenis from "@studio-freight/lenis";
 import { FaSun, FaMoon, FaQuoteLeft, FaQuoteRight, FaTimes } from "react-icons/fa";
 import Logo3D from "./assets/ConseQ-X-3d.png";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "./contexts/AuthContext";
 
 
 export default function HomePage() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const auth = useAuth();
+
+  const [authReturnTo, setAuthReturnTo] = useState(null);
   const [navScrolled, setNavScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -42,7 +47,6 @@ export default function HomePage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Form submission logic would go here
-    console.log("Form submitted:", formData);
     setShowBookingModal(false);
   };
 
@@ -75,6 +79,19 @@ export default function HomePage() {
       window.removeEventListener("scroll", handleScroll);
     };
   }, [servicesInView, controls]);
+
+  useEffect(() => {
+    const open = Boolean(location?.state?.openCEOPrompt);
+    if (open) {
+      setAuthReturnTo(location.state?.returnTo || null);
+      setShowCEOPrompt(true);
+
+      // Clear location.state so refresh/back doesn't re-open the modal.
+      try {
+        navigate(location.pathname + (location.search || ""), { replace: true, state: {} });
+      } catch {}
+    }
+  }, [location?.state, location?.pathname, location?.search, navigate]);
 
   // Animation variants
   const fadeUp = {
@@ -298,12 +315,13 @@ const whyDifferent = [
         </div>
         
         {/* Mobile Menu */}
+        <AnimatePresence>
         {menuOpen && (
           <motion.div 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className={`md:hidden ${
+            className={`md:hidden overflow-hidden ${
               darkMode ? "bg-gray-800" : "bg-white"
             }`}
           >
@@ -325,6 +343,7 @@ const whyDifferent = [
             </div>
           </motion.div>
         )}
+        </AnimatePresence>
       </nav>
 
       {/* Hero Section */}
@@ -500,7 +519,7 @@ const whyDifferent = [
       </section>
 
       {/* CTA Section  */}
-      <section id="mission" className={`py-20 md:py-32 ${
+      <section className={`py-20 md:py-32 ${
         darkMode ? "bg-gray-900" : "bg-white"
       }`}>
         <div className="container mx-auto px-4">    
@@ -523,7 +542,7 @@ const whyDifferent = [
                     onClick={ () => { 
                       setShowToolModal(true);
                     }}
-                    className={`px-16 py-8 bg-yellow-500 text-white font-bold hover:bg-yellow-600 rounded-lg shadow-lg transition-all ${
+                    className={`px-10 sm:px-16 py-5 sm:py-8 bg-yellow-500 text-white font-bold hover:bg-yellow-600 rounded-lg shadow-lg transition-all ${
                       darkMode ? "hover:bg-yellow-600" : "hover:bg-yellow-600"
                     }`}
                   >
@@ -657,7 +676,7 @@ const whyDifferent = [
                   <div className="self-end mt-4">
                     <FaQuoteRight 
                       className={`text-3xl ${darkMode ? "text-yellow-500/30" : "text-yellow-500/20"}`} 
-                      style={{ marginRight: "7rem" }}
+                      style={{ marginRight: "clamp(1rem, 7vw, 7rem)" }}
                     />
                   </div>
                 </div>
@@ -778,12 +797,12 @@ const whyDifferent = [
           
           <div className="max-w-5xl mx-auto">
             {/* Tabs for Offerings */}
-            <div className={`mb-8 flex border-b ${
+            <div className={`mb-8 flex overflow-x-auto border-b ${
               darkMode ? "border-gray-700" : "border-gray-200"
             }`}>
               <button
                 onClick={() => setActiveTab("flagship")}
-                className={`py-3 px-6 font-medium text-sm ${
+                className={`py-3 px-6 font-medium text-sm whitespace-nowrap ${
                   activeTab === "flagship"
                     ? darkMode
                       ? "text-yellow-400 border-b-2 border-yellow-400"
@@ -797,7 +816,7 @@ const whyDifferent = [
               </button>
               <button
                 onClick={() => setActiveTab("toolkits")}
-                className={`py-3 px-6 font-medium text-sm ${
+                className={`py-3 px-6 font-medium text-sm whitespace-nowrap ${
                   activeTab === "toolkits"
                     ? darkMode
                       ? "text-yellow-400 border-b-2 border-yellow-400"
@@ -811,7 +830,7 @@ const whyDifferent = [
               </button>
               <button
                 onClick={() => setActiveTab("ourSolution")}
-                className={`py-3 px-6 font-medium text-sm ${
+                className={`py-3 px-6 font-medium text-sm whitespace-nowrap ${
                   activeTab === "ourSolution"
                     ? darkMode
                       ? "text-yellow-400 border-b-2 border-yellow-400"
@@ -843,8 +862,8 @@ const whyDifferent = [
                           : "bg-gray-50 border border-gray-200"
                       }`}
                     >
-                      <div className="flex items-center mb-3">
-                        <div className={`w-8 h-8 rounded-full ${
+                      <div className="flex items-start mb-3">
+                        <div className={`w-8 h-8 rounded-full flex-shrink-0 ${
                           darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
                         } flex items-center justify-center mr-3`}>
                           <span className="text-yellow-500 font-bold">{index + 1}</span>
@@ -875,8 +894,8 @@ const whyDifferent = [
                           : "bg-gray-50 border border-gray-200"
                       }`}
                     >
-                      <div className="flex items-center mb-3">
-                        <div className={`w-8 h-8 rounded-full ${
+                      <div className="flex items-start mb-3">
+                        <div className={`w-8 h-8 rounded-full flex-shrink-0 ${
                           darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
                         } flex items-center justify-center mr-3`}>
                           <span className="text-yellow-500 font-bold">{index + 1}</span>
@@ -907,8 +926,8 @@ const whyDifferent = [
                           : "bg-gray-50 border border-gray-200"
                       }`}
                     >
-                      <div className="flex items-center mb-3">
-                        <div className={`w-8 h-8 rounded-full ${
+                      <div className="flex items-start mb-3">
+                        <div className={`w-8 h-8 rounded-full flex-shrink-0 ${
                           darkMode ? "bg-yellow-500/20" : "bg-yellow-500/10"
                         } flex items-center justify-center mr-3`}>
                           <span className="text-yellow-500 font-bold">{index + 1}</span>
@@ -1315,7 +1334,7 @@ const whyDifferent = [
                 </p>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
                 <div>
                   <h3 className="text-white font-medium mb-4">Company</h3>
                   <ul className="space-y-2">
@@ -1568,289 +1587,293 @@ const whyDifferent = [
     </div>
   );
 
-  // CEOPromptModal component
+  // CEOPromptModal component — Professional Auth Modal wired to Django backend
   function CEOPromptModal() {
-    const [localOrgName, setLocalOrgName] = useState(formData.company || "");
-    const [localEmail, setLocalEmail] = useState(formData.email || "");
-    const [localRole, setLocalRole] = useState(formData.name || "");
-    const [localPhone, setLocalPhone] = useState("");
-    const [localPassword, setLocalPassword] = useState("");
-    const [localConfirmPassword, setLocalConfirmPassword] = useState("");
-    const [localLoginPassword, setLocalLoginPassword] = useState("");
-    const [localIsLogin, setLocalIsLogin] = useState(true); // Start with Sign In tab
-    const [localProcessing, setLocalProcessing] = useState(false);
-    const [localError, setLocalError] = useState(null);
-
-    // Debug state changes
-    useEffect(() => {
-      console.log("CEO Modal state changed - localIsLogin:", localIsLogin);
-    }, [localIsLogin]);
+    const [tab, setTab] = useState("signin"); // "signin" | "signup"
+    const [email, setEmail] = useState(formData.email || "");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [orgName, setOrgNameLocal] = useState(formData.company || "");
+    const [fullName, setFullName] = useState(formData.name || "");
+    const [phone, setPhone] = useState("");
+    const [processing, setProcessing] = useState(false);
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
+    const [showPw, setShowPw] = useState(false);
 
     useEffect(() => {
       if (showCEOPrompt) {
-        setLocalOrgName(formData.company || "");
-        setLocalEmail(formData.email || "");
-        setLocalRole(formData.name || "");
-        setLocalPhone("");
-        setLocalPassword("");
-        setLocalConfirmPassword("");
-        setLocalLoginPassword("");
-        setLocalIsLogin(true); // Default to Sign In tab
-        setLocalError(null);
-        // Prevent body scroll when modal is open
-        document.body.style.overflow = 'hidden';
-      } else {
-        // Restore body scroll when modal is closed
-        document.body.style.overflow = 'unset';
+        document.body.style.overflow = "hidden";
+        setError(null);
+        setSuccess(null);
+        setPassword("");
+        setConfirmPassword("");
       }
-      
-      return () => {
-        document.body.style.overflow = 'unset';
-      };
+      return () => { document.body.style.overflow = "unset"; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     if (!showCEOPrompt) return null;
 
-    const containerBg = darkMode ? "bg-gray-900" : "bg-white";
-    const panelBg = darkMode ? "bg-gray-800" : "bg-white";
-    const sectionBg = darkMode ? "bg-gray-800" : "bg-white";
-    const subtleText = darkMode ? "text-gray-300" : "text-gray-600";
-    const strongText = darkMode ? "text-white" : "text-gray-900";
-    const cardBorder = darkMode ? "border-gray-700" : "border-gray-200";
-    const inputClass = `w-full px-3 py-2 rounded border ${darkMode ? "bg-gray-700 border-gray-600 placeholder-gray-300 text-white" : "bg-white border-gray-300 placeholder-black text-gray-900"}`;
-    const smallBtnClass = `px-3 py-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-gray-200" : "bg-white border-gray-200 text-gray-700"}`;
-    const primaryBtnClass = `px-4 py-2 rounded ${darkMode ? "bg-indigo-500 hover:bg-indigo-600 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`;
+    /* ─── Shared styles ─── */
+    const inputCls = `w-full px-4 py-2.5 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+      darkMode
+        ? "bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
+        : "bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-400 hover:border-gray-400"
+    }`;
+    const labelCls = `block text-xs font-semibold mb-1.5 ${darkMode ? "text-gray-300" : "text-gray-600"}`;
+    const bgCls = darkMode ? "bg-gray-900" : "bg-white";
 
-    const handleRegisterSubmit = (e) => {
-      // Prevent any potential form submission or event bubbling
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
+    /* ─── Handlers ─── */
+    const handleSignIn = async () => {
+      setProcessing(true);
+      setError(null);
+      try {
+        if (!email.trim()) throw new Error("Email is required");
+        if (!password) throw new Error("Password is required");
+        const result = await auth.login({ email: email.trim(), password });
+        if (!result) throw new Error("Invalid credentials. Please check your email and password.");
+        setSuccess("Welcome back! Redirecting...");
+        setTimeout(() => {
+          setShowCEOPrompt(false);
+          const cur = auth.getCurrent ? auth.getCurrent() : null;
+          const slug = cur?.org?.slug;
+          const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/partner-dashboard");
+          navigate(next, { replace: true, state: { justLoggedIn: true } });
+        }, 600);
+      } catch (err) {
+        setError(err?.message || "Sign in failed. Please try again.");
+      } finally {
+        setProcessing(false);
       }
-      
-      console.log("🚀 Registration attempt started:", {
-        orgName: localOrgName,
-        email: localEmail,
-        role: localRole,
-        phone: localPhone,
-        password: localPassword ? "***" : "empty",
-        confirmPassword: localConfirmPassword ? "***" : "empty"
-      });
-      
-      setLocalProcessing(true);
-      setLocalError(null);
-
-      // Comprehensive client-side validation
-      if (!localOrgName.trim()) {
-        setLocalError("Please provide a company name.");
-        setLocalProcessing(false);
-        return;
-      }
-      if (!localEmail.trim()) {
-        setLocalError("Please provide an email.");
-        setLocalProcessing(false);
-        return;
-      }
-      if (!localRole.trim()) {
-        setLocalError("Please provide your role.");
-        setLocalProcessing(false);
-        return;
-      }
-      if (!localPhone.trim()) {
-        setLocalError("Please provide a phone number.");
-        setLocalProcessing(false);
-        return;
-      }
-      if (!localPassword || localPassword.length < 6) {
-        setLocalError("Password must be at least 6 characters long.");
-        setLocalProcessing(false);
-        return;
-      }
-      if (localPassword !== localConfirmPassword) {
-        setLocalError("Passwords do not match.");
-        setLocalProcessing(false);
-        return;
-      }
-
-      // All validation passed - process registration and switch tabs
-      console.log("✅ Validation passed, processing registration...");
-      
-      // Update global form data
-      setFormData(prev => ({
-        ...prev,
-        company: localOrgName,
-        email: localEmail,
-        name: localRole
-      }));
-      
-      // Simulate processing with success animation
-      setTimeout(() => {
-        console.log("✅ Registration successful! Switching to login tab...");
-        console.log("📊 Current state - localIsLogin before switch:", localIsLogin);
-        
-        // Reset form state and switch to login
-        setLocalError(null);
-        setLocalProcessing(false);
-        setLocalLoginPassword("");
-        
-        console.log("🔄 Switching to login tab now...");
-        setLocalIsLogin(true); // SWITCH TO LOGIN TAB
-        
-        console.log("🎯 Successfully switched to login tab! New state should be true");
-      }, 800);
     };
 
-    const handleLoginSubmit = async () => {
-      setLocalProcessing(true);
-      setLocalError(null);
-
-      if (!localEmail || !localLoginPassword) {
-        setLocalError("Email and password are required.");
-        setLocalProcessing(false);
-        return;
-      }
-
+    const handleSignUp = async (e) => {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      setProcessing(true);
+      setError(null);
       try {
-        // Update formData with local values for future use
-        setFormData(prev => ({
-          ...prev,
-          company: localOrgName,
-          email: localEmail,
-          name: localRole
-        }));
-        
-        // For demo purposes, simulate successful login
-        console.log("Login successful for:", { email: localEmail, orgName: localOrgName, role: localRole });
-        
-        // Close the modal
-        setShowCEOPrompt(false);
-        
-        // Navigate to CEO dashboard
-        navigate("/ceo");
-        
+        if (!orgName.trim()) throw new Error("Company name is required");
+        if (!fullName.trim()) throw new Error("Your name is required");
+        if (!email.trim()) throw new Error("Email is required");
+        if (!phone.trim()) throw new Error("Phone number is required");
+        if (!password || password.length < 6) throw new Error("Password must be at least 6 characters");
+        if (password !== confirmPassword) throw new Error("Passwords do not match");
+
+        setFormData(prev => ({ ...prev, company: orgName, email, name: fullName }));
+
+        await auth.register({
+          orgName: orgName.trim(),
+          ceoName: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          password,
+        });
+
+        setSuccess("Account created! Redirecting...");
+        setTimeout(() => {
+          setShowCEOPrompt(false);
+          const cur = auth.getCurrent ? auth.getCurrent() : null;
+          const slug = cur?.org?.slug;
+          const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/partner-dashboard");
+          navigate(next, { replace: true, state: { justLoggedIn: true } });
+        }, 600);
       } catch (err) {
-        console.error("Login error", err);
-        setLocalError(err?.message || "Login failed. Try again.");
+        setError(err?.message || "Registration failed. Please try again.");
       } finally {
-        setLocalProcessing(false);
+        setProcessing(false);
       }
+    };
+
+    const handleKeyDown = (e, handler) => {
+      if (e.key === "Enter") { e.preventDefault(); handler(); }
     };
 
     return (
-      <motion.div 
+      <motion.div
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
         variants={backdropVariants}
         initial="hidden"
         animate="visible"
         exit="hidden"
       >
-        <div 
-          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-          onClick={() => setShowCEOPrompt(false)}
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => !processing && setShowCEOPrompt(false)}
         />
-        <motion.div 
-          className={`relative w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden z-10 ${containerBg} max-h-[90vh] overflow-y-auto`}
+
+        {/* Modal */}
+        <motion.div
+          className={`relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden z-10 ${bgCls}`}
           variants={modalVariants}
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
-          }}
-          onWheel={(e) => e.stopPropagation()}
         >
-          <style jsx>{`
-            .ceo-modal-scroll::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
-          {/* header */}
-          <div className={`p-6 ${darkMode ? "bg-gradient-to-r from-indigo-700 to-blue-600 text-white" : "bg-gradient-to-r from-indigo-600 to-blue-500 text-white"}`}>
-            <div className="flex items-start justify-between">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 px-6 py-5">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-2xl font-semibold">You're about to access <span className="font-extrabold">ConseQ-X Ultra</span></h3>
-                <p className="mt-1 opacity-90 max-w-xl">ConseQ-X Ultra is our premium CEO workspace — AI-guided executive analysis, multi-user dashboards and strategic recommendations. Sign in to continue or create an account.</p>
+                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-200/80">Secure Access</div>
+                <h3 className="text-xl font-bold text-white mt-0.5">ConseQ-X Platform</h3>
               </div>
-              <button onClick={() => { setShowCEOPrompt(false); }} className="ml-4 text-white/80 hover:text-white">✕</button>
+              <button
+                onClick={() => !processing && setShowCEOPrompt(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <FaTimes size={14} />
+              </button>
             </div>
           </div>
 
-          <div className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-6 ${panelBg}`}>
-            {/* left info column */}
-            <div className="space-y-3">
-              <div className={`text-sm ${subtleText}`}>Organization</div>
-              <div className={`font-semibold text-lg ${strongText}`}>{localOrgName || <span className="text-gray-400">Not provided</span>}</div>
+          {/* Tab bar */}
+          <div className={`flex border-b ${darkMode ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
+            {[
+              { key: "signin", label: "Sign In" },
+              { key: "signup", label: "Create Account" },
+            ].map(t => (
+              <button
+                key={t.key}
+                onClick={() => { setTab(t.key); setError(null); setSuccess(null); }}
+                className={`flex-1 py-3 text-sm font-semibold transition-all relative ${
+                  tab === t.key
+                    ? (darkMode ? "text-indigo-400" : "text-indigo-600")
+                    : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-700")
+                }`}
+              >
+                {t.label}
+                {tab === t.key && (
+                  <motion.div
+                    layoutId="authTabIndicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500"
+                  />
+                )}
+              </button>
+            ))}
+          </div>
 
-              <div className="mt-3 text-sm">
-                <div className={subtleText}>Email</div>
-                <div className={`font-semibold ${strongText}`}>{localEmail || <span className="text-gray-400">Not provided</span>}</div>
+          {/* Form body */}
+          <div className="p-6">
+            {/* Error message */}
+            {error && (
+              <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 text-sm text-red-700 dark:text-red-300 flex items-start gap-2">
+                <span className="text-red-500 mt-0.5">&#9888;</span>
+                <span>{error}</span>
               </div>
+            )}
 
-              <div className="mt-3 text-sm">
-                <div className={subtleText}>Role</div>
-                <div className={`font-semibold ${strongText}`}>{localRole || <span className="text-gray-400">Not provided</span>}</div>
+            {/* Success message */}
+            {success && (
+              <div className="mb-4 px-4 py-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 text-sm text-emerald-700 dark:text-emerald-300 flex items-start gap-2">
+                <span className="text-emerald-500 mt-0.5">&#10003;</span>
+                <span>{success}</span>
               </div>
+            )}
 
-              <div className={`mt-4 text-xs ${subtleText}`}>By continuing you agree to receive onboarding emails. Your data is secured with our end to end security.</div>
-            </div>
-
-            {/* right auth panel */}
-            <div className={`${sectionBg} p-4 rounded-lg border ${cardBorder}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${strongText}`}>{localIsLogin ? "Sign in" : "Create CEO account"}</div>
+            {tab === "signin" ? (
+              /* ─── Sign In ─── */
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls}>Email Address</label>
+                  <input
+                    type="email" value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, handleSignIn)}
+                    placeholder="you@company.com"
+                    className={inputCls}
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPw ? "text" : "password"} value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, handleSignIn)}
+                      placeholder="Enter your password"
+                      className={inputCls}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw(!showPw)}
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium ${darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-700"}`}
+                    >
+                      {showPw ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
                 <button
-                  className="text-xs"
-                  onClick={() => { setLocalIsLogin((m) => !m); setLocalError(null); }}
-                  style={{ color: darkMode ? "#93C5FD" : "#2563EB" }}
+                  onClick={handleSignIn}
+                  disabled={processing || !email.trim() || !password}
+                  className={`w-full py-3 rounded-lg text-sm font-bold text-white transition-all ${
+                    processing || !email.trim() || !password
+                      ? "bg-indigo-400 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-700 shadow-sm hover:shadow-md active:scale-[0.98]"
+                  }`}
                 >
-                  {localIsLogin ? "New? create account" : "Have an account? sign in"}
+                  {processing ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Signing in...
+                    </span>
+                  ) : "Sign In"}
                 </button>
               </div>
-
-              {localError && <div className="text-sm text-red-500 mb-2">{localError}</div>}
-
-              {!localIsLogin ? (
-                <div className="space-y-3">
-                  <label className="text-xs">Company</label>
-                  <input name="company" value={localOrgName} onChange={(e) => setLocalOrgName(e.target.value)} placeholder="Your company name" className={inputClass} autoFocus onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
-
-                  <label className="text-xs">Email</label>
-                  <input name="email" type="email" value={localEmail} onChange={(e) => setLocalEmail(e.target.value)} placeholder="you@company.com" className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
-
-                  <label className="text-xs">Role</label>
-                  <input name="role" value={localRole} onChange={(e) => setLocalRole(e.target.value)} placeholder="Your role (e.g., CEO, Manager)" className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
-
-                  <label className="text-xs">Phone</label>
-                  <input name="phone" value={localPhone} onChange={(e) => setLocalPhone(e.target.value)} placeholder="+234..." className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
-
-                  <label className="text-xs">Password</label>
-                  <input type="password" name="password" value={localPassword} onChange={(e) => setLocalPassword(e.target.value)} placeholder="Create a password" className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} />
-
-                  <label className="text-xs">Confirm Password</label>
-                  <input type="password" name="confirm" value={localConfirmPassword} onChange={(e) => setLocalConfirmPassword(e.target.value)} placeholder="Confirm password" className={inputClass} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleRegisterSubmit(e); } }} />
-
-                  <div className="flex items-center justify-between">
-                    <button type="button" onClick={handleRegisterSubmit} disabled={localProcessing} className={primaryBtnClass}>
-                      {localProcessing ? "Registering..." : "Register"}
-                    </button>
-                    <button type="button" onClick={() => setShowCEOPrompt(false)} className={smallBtnClass}>Cancel</button>
+            ) : (
+              /* ─── Create Account ─── */
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Company *</label>
+                    <input value={orgName} onChange={e => setOrgNameLocal(e.target.value)} placeholder="Acme Inc." className={inputCls} autoFocus onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Your Name *</label>
+                    <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Victor Godwin" className={inputCls} onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <label className="text-xs">Email</label>
-                  <input name="email" value={localEmail} onChange={(e) => setLocalEmail(e.target.value)} placeholder="you@company.com" className={inputClass} readOnly />
-
-                  <label className="text-xs">Password</label>
-                  <input type="password" name="loginPassword" value={localLoginPassword} onChange={(e) => setLocalLoginPassword(e.target.value)} placeholder="Your password" autoFocus className={inputClass} />
-
-                  <div className="flex items-center justify-between">
-                    <button type="button" onClick={handleLoginSubmit} disabled={localProcessing} className={primaryBtnClass}>
-                      {localProcessing ? "Signing in..." : "Login"}
-                    </button>
-                    <button type="button" onClick={() => setShowCEOPrompt(false)} className={smallBtnClass}>Cancel</button>
+                <div>
+                  <label className={labelCls}>Email Address *</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" className={inputCls} onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+                </div>
+                <div>
+                  <label className={labelCls}>Phone *</label>
+                  <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+234 812 345 6789" className={inputCls} onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Password *</label>
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 6 chars" className={inputCls} onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Confirm *</label>
+                    <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Re-enter" className={inputCls} onKeyDown={e => handleKeyDown(e, handleSignUp)} />
                   </div>
                 </div>
-              )}
+                <button
+                  onClick={handleSignUp}
+                  disabled={processing}
+                  className={`w-full py-3 rounded-lg text-sm font-bold text-white transition-all ${
+                    processing
+                      ? "bg-indigo-400 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-700 shadow-sm hover:shadow-md active:scale-[0.98]"
+                  }`}
+                >
+                  {processing ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Creating account...
+                    </span>
+                  ) : "Create Account & Continue"}
+                </button>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className={`mt-5 pt-4 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+              <div className={`flex items-center justify-center gap-1.5 text-[11px] ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                <span>Secured with end-to-end encryption</span>
+              </div>
             </div>
           </div>
         </motion.div>

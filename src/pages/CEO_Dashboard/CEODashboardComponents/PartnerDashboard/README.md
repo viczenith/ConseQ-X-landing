@@ -33,7 +33,6 @@ PartnerDashboard/
 ├── index.js                     # Main dashboard shell with clean navigation
 ├── components/
 │   ├── ManualDataMode.js       # Manual data upload functionality
-│   ├── AutoDataMode.js         # Real-time monitoring functionality  
 │   └── CustomizationPanel.js   # Dashboard customization features
 ├── OverviewView.js             # Clean system overview (no duplicates)
 ├── DataManagementView.js       # Dedicated data management tab

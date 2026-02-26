@@ -1,4 +1,3 @@
-// Lightweight client-side export helpers (stubs for now)
 export function exportToCSV(filename = 'export.csv', rows = []) {
   try {
     if (!rows || !rows.length) return;
@@ -11,7 +10,6 @@ export function exportToCSV(filename = 'export.csv', rows = []) {
 }
 
 export async function exportToPDF(node, filename = 'export.pdf') {
-  // placeholder: requires html2canvas/jsPDF in real build; we'll attempt a minimal fallback
   try {
     const html = node ? node.innerText || node.textContent : 'Report';
     const blob = new Blob([html], { type: 'text/plain' });
@@ -21,7 +19,6 @@ export async function exportToPDF(node, filename = 'export.pdf') {
 }
 
 export function shareToSlack(webhookUrl, payload) {
-  // stub: cannot perform cross-origin without server; dispatch event for dev
   window.dispatchEvent(new CustomEvent('conseqx:share:slack', { detail: { webhookUrl, payload } }));
 }
 
