@@ -216,6 +216,10 @@ export function AuthProvider({ children }) {
         localStorage.removeItem("conseqx_visitor_email");
         localStorage.removeItem("conseqx_visitor_org");
         localStorage.removeItem("conseqx_visitor_role");
+        localStorage.removeItem("conseqx_session_step");
+        localStorage.removeItem("conseqx_session_system");
+        localStorage.removeItem("conseqx_session_answers");
+        localStorage.removeItem("conseqx_session_analysis");
         window.location.href = "/";
       }, INACTIVITY_TIMEOUT_MS);
     };

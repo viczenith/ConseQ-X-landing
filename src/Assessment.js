@@ -47,15 +47,34 @@ export default function AssessmentPlatform(props) {
   
   // NAV, DARK MODE, STEPS, ETC.
   const [navScrolled, setNavScrolled] = useState(false);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() => {
+    const saved = localStorage.getItem("conseqx_session_step");
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [userInfo, setUserInfo] = useState(() => ({
     organization: localStorage.getItem("conseqx_form_org") || "",
     role: localStorage.getItem("conseqx_form_role") || "",
     email: localStorage.getItem("conseqx_form_email") || "",
   }));
   const [darkMode, setDarkMode] = useState(props.darkMode !== undefined ? props.darkMode : false);
-  const [currentSystem, setCurrentSystem] = useState(null);
-  const [answers, setAnswers] = useState(initialAnswers);
+  const [currentSystem, setCurrentSystem] = useState(() => {
+    const savedId = localStorage.getItem("conseqx_session_system");
+    if (savedId) {
+      const found = (customSystems || systems).find(s => s.id === savedId);
+      return found || null;
+    }
+    return null;
+  });
+  const [answers, setAnswers] = useState(() => {
+    try {
+      const saved = localStorage.getItem("conseqx_session_answers");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && Object.keys(parsed).length > 0) return parsed;
+      }
+    } catch {}
+    return initialAnswers;
+  });
 
   // ─── Visitor / user session ───
   const [visitorId, setVisitorId] = useState(() => localStorage.getItem("conseqx_visitor_id") || "");
@@ -79,7 +98,9 @@ export default function AssessmentPlatform(props) {
   const [activeModal, setActiveModal] = useState(null);
 
   // AI ANALYSIS STATE
-  const [analysisContent, setAnalysisContent] = useState(null);
+  const [analysisContent, setAnalysisContent] = useState(() => {
+    return localStorage.getItem("conseqx_session_analysis") || null;
+  });
   const [generatingAnalysis, setGeneratingAnalysis] = useState(false);
   const [selectedSystems, setSelectedSystems] = useState([]);
   const [rating, setRating] = useState(0);
@@ -370,7 +391,7 @@ export default function AssessmentPlatform(props) {
   // ─── Email validation ───
   const isValidEmail = (email) => /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
 
-  // ─── Session restore: if visitorId exists in localStorage, load user data on mount ───
+  // ─── Session restore: if visitorId exists in localStorage, reload full session on mount ───
   useEffect(() => {
     const savedEmail = localStorage.getItem("conseqx_visitor_email");
     const savedOrg = localStorage.getItem("conseqx_visitor_org");
@@ -382,7 +403,41 @@ export default function AssessmentPlatform(props) {
         email: prev.email || savedEmail || "",
       }));
     }
+
+    // If we have a visitorId, fetch full session from backend (chat, assessments)
+    const vid = localStorage.getItem("conseqx_visitor_id");
+    if (vid && savedEmail) {
+      fetch(`${apiBase}/api/visitors/lookup/?email=${encodeURIComponent(savedEmail)}`)
+        .then(r => r.json())
+        .then(json => {
+          if (json.found && json.visitor) {
+            const v = json.visitor;
+            if (v.assessment_data && v.assessment_data.length > 0) {
+              setPreviousAssessments(v.assessment_data);
+            }
+            if (v.chat_history && v.chat_history.length > 0) {
+              setChatMessages(v.chat_history);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Persist step, answers, currentSystem, and analysis to localStorage ───
+  useEffect(() => { localStorage.setItem("conseqx_session_step", String(step)); }, [step]);
+  useEffect(() => {
+    if (currentSystem) localStorage.setItem("conseqx_session_system", currentSystem.id);
+    else localStorage.removeItem("conseqx_session_system");
+  }, [currentSystem]);
+  useEffect(() => {
+    try { localStorage.setItem("conseqx_session_answers", JSON.stringify(answers)); } catch {}
+  }, [answers]);
+  useEffect(() => {
+    if (analysisContent) localStorage.setItem("conseqx_session_analysis", analysisContent);
+    else localStorage.removeItem("conseqx_session_analysis");
+  }, [analysisContent]);
 
   // ─── Chat auto-save (debounced: saves 3s after last message change) ───
   useEffect(() => {
@@ -1244,11 +1299,22 @@ export default function AssessmentPlatform(props) {
                   if (auth?.logout) auth.logout();
                   // 2. Clear local component state
                   setUserInfo({ organization: "", role: "", email: "" });
+                  setStep(0);
+                  setCurrentSystem(null);
+                  setAnswers({});
+                  setAnalysisContent(null);
+                  setChatMessages([]);
+                  setPreviousAssessments([]);
+                  setVisitorId("");
                   // 3. Clear persisted visitor session from localStorage
                   localStorage.removeItem("conseqx_visitor_id");
                   localStorage.removeItem("conseqx_visitor_email");
                   localStorage.removeItem("conseqx_visitor_org");
                   localStorage.removeItem("conseqx_visitor_role");
+                  localStorage.removeItem("conseqx_session_step");
+                  localStorage.removeItem("conseqx_session_system");
+                  localStorage.removeItem("conseqx_session_answers");
+                  localStorage.removeItem("conseqx_session_analysis");
                   // 4. Navigate home via React Router (no full reload)
                   navigate("/");
                 }}
