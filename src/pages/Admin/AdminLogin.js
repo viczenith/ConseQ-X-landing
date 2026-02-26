@@ -128,7 +128,7 @@ export default function AdminLogin() {
 
   /* ─────────────────────── RENDER ─────────────────────── */
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/40 to-purple-50/30 dark:from-gray-950 dark:via-indigo-950/20 dark:to-gray-950 px-4 py-10 transition-colors">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4 py-10 transition-colors">
       {/* dark mode toggle floating */}
       <button
         onClick={toggleDarkMode}
@@ -148,15 +148,12 @@ export default function AdminLogin() {
             Admin Portal
           </h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            ConseQ-X Super Admin — Secure Access
+            ConseQ-X Super Admin
           </p>
         </div>
 
         {/* ── Sign In Card ── */}
-        <div className="rounded-2xl border border-gray-200/80 dark:border-gray-700/60 bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-black/30 overflow-hidden">
-          {/* gradient accent strip */}
-          <div className="h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
           <form onSubmit={signIn} className="p-6 space-y-5">
             {/* Email */}
             <div>
