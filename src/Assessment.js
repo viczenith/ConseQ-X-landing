@@ -469,6 +469,8 @@ export default function AssessmentPlatform(props) {
   // ─── Progress auto-save to backend (debounced: saves 5s after last change) ───
   useEffect(() => {
     if (!visitorId) return;
+    // Don't save empty answers to backend (prevents wiping on logout)
+    if (Object.keys(answers).length === 0 && step === 0) return;
     if (progressSaveTimerRef.current) clearTimeout(progressSaveTimerRef.current);
     progressSaveTimerRef.current = setTimeout(() => {
       fetch(`${apiBase}/api/visitors/save-progress/`, {
@@ -571,6 +573,24 @@ export default function AssessmentPlatform(props) {
         // Restore chat history into chat
         if (v.chat_history && v.chat_history.length > 0) {
           setChatMessages(v.chat_history);
+        }
+
+        // Restore in-progress answers from backend
+        if (v.current_answers && typeof v.current_answers === "object" && Object.keys(v.current_answers).length > 0) {
+          setAnswers(v.current_answers);
+          localStorage.setItem("conseqx_session_answers", JSON.stringify(v.current_answers));
+        }
+
+        // Restore step from backend (skip step 0 since we're about to go to step 1)
+        // current_step is used on next page refresh; for now go to step 1
+
+        // Restore current system from backend
+        if (v.current_system_id) {
+          const found = (customSystems || systems).find(s => s.id === v.current_system_id);
+          if (found) {
+            setCurrentSystem(found);
+            localStorage.setItem("conseqx_session_system", found.id);
+          }
         }
 
         // Add welcome-back message to chat
@@ -1343,16 +1363,10 @@ export default function AssessmentPlatform(props) {
                 onClick={() => {
                   // 1. Clear auth tokens & context
                   if (auth?.logout) auth.logout();
-                  // 2. Clear local component state
-                  setUserInfo({ organization: "", role: "", email: "" });
-                  setStep(0);
-                  setCurrentSystem(null);
-                  setAnswers({});
-                  setAnalysisContent(null);
-                  setChatMessages([]);
-                  setPreviousAssessments([]);
-                  setVisitorId("");
-                  // 3. Clear persisted visitor session from localStorage
+                  // 2. Cancel any pending progress save (prevent overwriting backend with empty data)
+                  if (progressSaveTimerRef.current) clearTimeout(progressSaveTimerRef.current);
+                  if (chatSaveTimerRef.current) clearTimeout(chatSaveTimerRef.current);
+                  // 3. Clear persisted visitor session from localStorage FIRST
                   localStorage.removeItem("conseqx_visitor_id");
                   localStorage.removeItem("conseqx_visitor_email");
                   localStorage.removeItem("conseqx_visitor_org");
@@ -1361,7 +1375,17 @@ export default function AssessmentPlatform(props) {
                   localStorage.removeItem("conseqx_session_system");
                   localStorage.removeItem("conseqx_session_answers");
                   localStorage.removeItem("conseqx_session_analysis");
-                  // 4. Navigate home via React Router (no full reload)
+                  // 4. Clear visitorId first so persist effects don't fire
+                  setVisitorId("");
+                  // 5. Clear local component state
+                  setUserInfo({ organization: "", role: "", email: "" });
+                  setStep(0);
+                  setCurrentSystem(null);
+                  setAnswers({});
+                  setAnalysisContent(null);
+                  setChatMessages([]);
+                  setPreviousAssessments([]);
+                  // 6. Navigate home via React Router (no full reload)
                   navigate("/");
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
