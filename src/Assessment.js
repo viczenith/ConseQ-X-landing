@@ -1231,7 +1231,16 @@ export default function AssessmentPlatform(props) {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
+                  // 1. Clear auth tokens & context
                   if (auth?.logout) auth.logout();
+                  // 2. Clear local component state
+                  setUserInfo({ organization: "", role: "", email: "" });
+                  // 3. Clear persisted visitor session from localStorage
+                  localStorage.removeItem("conseqx_visitor_id");
+                  localStorage.removeItem("conseqx_visitor_email");
+                  localStorage.removeItem("conseqx_visitor_org");
+                  localStorage.removeItem("conseqx_visitor_role");
+                  // 4. Navigate home via React Router (no full reload)
                   navigate("/");
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${

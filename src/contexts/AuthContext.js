@@ -211,6 +211,11 @@ export function AuthProvider({ children }) {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         logout();
+        // Clear visitor session from localStorage on inactivity timeout
+        localStorage.removeItem("conseqx_visitor_id");
+        localStorage.removeItem("conseqx_visitor_email");
+        localStorage.removeItem("conseqx_visitor_org");
+        localStorage.removeItem("conseqx_visitor_role");
         window.location.href = "/";
       }, INACTIVITY_TIMEOUT_MS);
     };
