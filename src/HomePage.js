@@ -1146,17 +1146,14 @@ export default function HomePage() {
         if (!password) throw new Error("Password is required");
         const result = await auth.login({ email: email.trim(), password });
         if (!result) throw new Error("Invalid credentials. Please check your email and password.");
-        setSuccess("Welcome back! Redirecting...");
-        setTimeout(() => {
-          setShowCEOPrompt(false);
-          const cur = auth.getCurrent ? auth.getCurrent() : null;
-          const slug = cur?.org?.slug;
-          const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/partner-dashboard");
-          navigate(next, { replace: true, state: { justLoggedIn: true } });
-        }, 600);
+        // Navigate immediately — no artificial delay
+        setShowCEOPrompt(false);
+        const cur = auth.getCurrent ? auth.getCurrent() : null;
+        const slug = cur?.org?.slug;
+        const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/partner-dashboard");
+        navigate(next, { replace: true, state: { justLoggedIn: true } });
       } catch (err) {
         setError(err?.message || "Sign in failed. Please try again.");
-      } finally {
         setProcessing(false);
       }
     };
@@ -1183,17 +1180,14 @@ export default function HomePage() {
           password,
         });
 
-        setSuccess("Account created! Redirecting...");
-        setTimeout(() => {
-          setShowCEOPrompt(false);
-          const cur = auth.getCurrent ? auth.getCurrent() : null;
-          const slug = cur?.org?.slug;
-          const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/partner-dashboard");
-          navigate(next, { replace: true, state: { justLoggedIn: true } });
-        }, 600);
+        // Navigate immediately — no artificial delay
+        setShowCEOPrompt(false);
+        const cur = auth.getCurrent ? auth.getCurrent() : null;
+        const slug = cur?.org?.slug;
+        const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/partner-dashboard");
+        navigate(next, { replace: true, state: { justLoggedIn: true } });
       } catch (err) {
         setError(err?.message || "Registration failed. Please try again.");
-      } finally {
         setProcessing(false);
       }
     };

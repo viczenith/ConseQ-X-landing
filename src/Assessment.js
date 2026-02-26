@@ -102,6 +102,7 @@ export default function AssessmentPlatform(props) {
   const [ceoConfirmPassword, setCeoConfirmPassword] = useState("");
   const [ceoLoginPassword, setCeoLoginPassword] = useState("");
   const [ceoIsLoginMode, setCeoIsLoginMode] = useState(true);
+  // eslint-disable-next-line no-unused-vars
   const [ceoAuthError, setCeoAuthError] = useState(null);
   const [isProcessingCeoAuth, setIsProcessingCeoAuth] = useState(false);
 
