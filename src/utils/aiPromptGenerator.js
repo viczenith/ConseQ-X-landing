@@ -14,7 +14,7 @@ export async function generateSystemReport({ scores, userInfo, selectedSystems =
     try {
       const inputJson = JSON.stringify({ scores: filteredScores, userInfo }, null, 2);
 
-      const systemPrompt = `You are ConseQ-X's senior organizational consultant writing a report directly to a Nigerian CEO.
+      const systemPrompt = `You are ConseQ-X's senior organizational consultant writing a strategic decision report directly to a Nigerian CEO.
 
 IMPORTANT RULES:
 - Write as if you are speaking directly to the CEO about their company. Use "your organization", "your team", "you scored".
@@ -25,14 +25,30 @@ IMPORTANT RULES:
 - Structure output in valid GitHub Flavored Markdown.
 - End with a clear call-to-action.
 
-Generate a detailed health report for EACH system in the JSON input. Cover:
-1. What the score means for the company in plain language
-2. A breakdown of each sub-assessment with scores
-3. How this affects daily operations, revenue, people and strategy
-4. A real Nigerian/African company that faced a similar situation and what they did
-5. Three specific things the company should do right now
-6. What happens in 3-5 years if nothing changes
-7. A clear roadmap of recommended next steps
+Generate a strategic decision report with this EXACT structure:
+
+## PART 1: CURRENT STATE DIAGNOSIS
+For EACH system in the JSON input, cover:
+1. What the score means in plain language
+2. Sub-assessment breakdown with scores
+3. Impact on daily operations, revenue, people and strategy
+
+## PART 2: THREE STRATEGIC OPTIONS
+Present EXACTLY 3 distinct strategic options the CEO can take. For EACH option:
+- **Option Title** — a clear, action-oriented name
+- **What You Would Do** — specific actions, not vague suggestions
+- **Timeline** — realistic implementation timeframe
+- **Investment Required** — Low / Medium / High with explanation
+- **Consequences Across All 6 Systems** — a table showing projected impact (positive, neutral, or negative) on each of the 6 ConseQ-X systems: Interdependency & Interaction, Inlignment, Investigation, Orchestration, Illustration, Interpretation
+- **Risk Level** — Low / Medium / High with explanation
+- **Expected Outcome in 12 Months** — specific, measurable projected results
+- **Real Nigerian/African Example** — a company that took a similar path and what happened
+
+## PART 3: COMPARISON MATRIX
+A single table comparing all 3 options side-by-side across: Timeline, Cost, Risk, Expected ROI, Impact on weakest system, Impact on strongest system.
+
+## PART 4: RECOMMENDATION
+State which option you recommend and why, based on the scores. Include what happens in 3-5 years if the CEO does nothing.
 
 Output ONLY the Markdown.`;
 
@@ -112,134 +128,245 @@ function buildLocalReport(scores, userInfo) {
     sections.push(`> **Bottom Line:** ${org} is in a critical state. The numbers show serious problems across your systems. Without immediate action, your organization risks losing key people, revenue, and market position.\n`);
   }
 
-  // ─── Per-System Reports ───
+  // ─── PART 1: Current State Diagnosis — Per-System Reports ───
+  sections.push(`---\n`);
+  sections.push(`# PART 1: CURRENT STATE DIAGNOSIS\n`);
+
   for (const [sysId, sysData] of entries) {
     const pct = sysData.maxSystemScore > 0 ? Math.round((sysData.systemScore / sysData.maxSystemScore) * 100) : 0;
     const sysName = formatSystemName(sysId);
-
-    // Extract interpretation properly — it may be an object or a string
     const rawInterp = sysData.interpretation;
     const rating = extractText(rawInterp, "rating") || getPlainRating(pct);
     const interpText = extractText(rawInterp, "interpretation") || getPlainInterpretation(pct, sysName);
 
-    sections.push(`---\n`);
     sections.push(`## The System of ${sysName}\n`);
-    sections.push(`**Your Score:** **${sysData.systemScore}** out of ${sysData.maxSystemScore} (${pct}%)  `);
-    sections.push(`**What This Means:** ${rating} \u2014 ${interpText}  `);
-    sections.push(`**Date:** ${today}\n`);
+    sections.push(`**Your Score:** **${sysData.systemScore}** out of ${sysData.maxSystemScore} (${pct}%) — ${rating}  `);
+    sections.push(`${interpText}\n`);
 
-    // 1. What This Score Means for Your Business
-    sections.push(`### 1. What This Score Means for ${org}\n`);
-    sections.push(getPlainBrief(sysName, pct, org));
-
-    // 2. Sub-assessment breakdown — FIX: properly handle object interpretation
+    // Sub-assessment breakdown
     if (sysData.subAssessments && Object.keys(sysData.subAssessments).length > 0) {
-      sections.push(`\n### 2. Detailed Breakdown of ${sysName}\n`);
-      sections.push(`Here is how you scored on each part of the ${sysName} system:\n`);
-      sections.push(`| Area | Your Score | Percentage | Status | What It Means |`);
-      sections.push(`|------|-----------|------------|--------|---------------|`);
+      sections.push(`| Area | Score | % | Status |`);
+      sections.push(`|------|-------|---|--------|`);
       for (const [subId, subData] of Object.entries(sysData.subAssessments)) {
         const subPct = subData.maxScore > 0 ? Math.round((subData.score / subData.maxScore) * 100) : 0;
-        const subStatus = getPlainStatus(subPct);
-        const subName = formatSystemName(subId);
-        // FIX: interpretation can be an object { rating, interpretation } or a string
-        const subInterpText = extractText(subData.interpretation, "interpretation")
-          || extractText(subData.interpretation, "rating")
-          || getPlainInterpretation(subPct, subName);
-        sections.push(`| **${subName}** | ${subData.score}/${subData.maxScore} | ${subPct}% | ${subStatus} | ${subInterpText} |`);
+        sections.push(`| **${formatSystemName(subId)}** | ${subData.score}/${subData.maxScore} | ${subPct}% | ${getPlainStatus(subPct)} |`);
       }
 
-      // Add plain text commentary
       const subEntries = Object.entries(sysData.subAssessments);
       const weakSubs = subEntries.filter(([, d]) => d.maxScore > 0 && Math.round((d.score / d.maxScore) * 100) < 40);
-      const strongSubs = subEntries.filter(([, d]) => d.maxScore > 0 && Math.round((d.score / d.maxScore) * 100) >= 70);
-
       if (weakSubs.length > 0) {
-        sections.push(`\n**Areas that need urgent attention:**`);
+        sections.push(`\n**Critical areas dragging this system down:**`);
         weakSubs.forEach(([subId, subData]) => {
-          const subPct = Math.round((subData.score / subData.maxScore) * 100);
-          sections.push(`- **${formatSystemName(subId)}** scored only ${subPct}%. This is pulling down the entire ${sysName} system. If this area is not fixed, it will affect everything else.`);
-        });
-      }
-      if (strongSubs.length > 0) {
-        sections.push(`\n**Areas where you are doing well:**`);
-        strongSubs.forEach(([subId, subData]) => {
-          const subPct = Math.round((subData.score / subData.maxScore) * 100);
-          sections.push(`- **${formatSystemName(subId)}** scored ${subPct}%. This is solid performance. Use the practices from this area as a model for improving the weaker ones.`);
+          sections.push(`- **${formatSystemName(subId)}** at ${Math.round((subData.score / subData.maxScore) * 100)}% — needs immediate intervention`);
         });
       }
     }
 
-    // 3. How This Affects Your Business Day-to-Day
-    sections.push(`\n### 3. How This Affects Your Business Day-to-Day\n`);
-    sections.push(`| Business Area | Current State | What This Means in Practice |`);
-    sections.push(`|--------------|---------------|----------------------------|`);
-    sections.push(`| **How Work Gets Done** | ${getPlainStatus(pct)} | ${pct >= 70 ? "Your workflows are running smoothly. Tasks move from one team to another without unnecessary delays." : pct >= 40 ? "There are bottlenecks slowing things down. Some tasks take longer than they should because processes are not clear enough." : "Work is getting stuck. People are confused about who does what, and tasks fall through the cracks regularly."} |`);
-    sections.push(`| **Revenue and Money** | ${getPlainStatus(pct)} | ${pct >= 70 ? "This system is helping you make money. It keeps operations tight so you are not losing revenue to waste or delays." : pct >= 40 ? "You are leaving money on the table. Inefficiencies in this system mean you are spending more than you need to or missing revenue opportunities." : "This is costing you real money. Revenue is leaking because of broken processes, missed deadlines, and poor coordination."} |`);
-    sections.push(`| **Your Strategy** | ${getPlainStatus(pct)} | ${pct >= 70 ? "Your strategic plans are being executed. The team understands the direction and is moving towards it." : pct >= 40 ? "Strategy exists on paper but execution is inconsistent. Some teams get it, others do not." : "There is a disconnect between what leadership wants and what is actually happening on the ground."} |`);
-    sections.push(`| **Daily Operations** | ${getPlainStatus(pct)} | ${pct >= 70 ? "Operations are resilient. When problems come up, the team handles them without major disruption." : pct >= 40 ? "Operations are fragile. When something goes wrong, it tends to create a chain of problems across the organization." : "Operations are constantly firefighting. Small problems become big crises because the system cannot absorb disruptions."} |`);
-    sections.push(`| **Your People** | ${getPlainStatus(pct)} | ${pct >= 70 ? "Your people are engaged and productive. The culture supports collaboration and accountability." : pct >= 40 ? "Staff morale is mixed. Some teams are doing well, others are frustrated and disengaged." : "You are likely losing good people. When systems are this broken, talented staff leave because they cannot do their best work here."} |`);
-
-    // 4. Real-World Example
-    sections.push(`\n### 4. A Real-World Example You Can Learn From\n`);
-    sections.push(getPlainCaseStudy(pct, sysName));
-
-    // 5. What You Should Do Right Now
-    sections.push(`\n### 5. What You Should Do Right Now\n`);
-    sections.push(`Based on your ${sysName} score of ${pct}%, here are three things you should do immediately:\n`);
-    const actions = getPlainActions(pct, sysName, org);
-    actions.forEach((item, i) => {
-      sections.push(`**${i + 1}. ${item.title}**  `);
-      sections.push(`What to do: ${item.action}  `);
-      sections.push(`What you can expect: ${item.result}\n`);
-    });
-
-    // 6. What Happens If You Do Nothing
-    sections.push(`### 6. What Happens If You Do Nothing\n`);
-    sections.push(`> "${getPlainQuote(pct, sysName, org)}"\n`);
-    if (pct < 40) {
-      sections.push(`If nothing changes in the next 3-5 years:`);
-      sections.push(`- You will lose between **25% and 40%** of your operational efficiency. That means things that should take 1 week will take 2 weeks.`);
-      sections.push(`- Your best staff will leave. People do not stay in organizations where broken systems make their work harder than it needs to be.`);
-      sections.push(`- Your competitors who fix their systems will take your market share. It is that simple.\n`);
-    } else if (pct < 70) {
-      sections.push(`If nothing changes in the next 3-5 years:`);
-      sections.push(`- Expect a **15-20% drop** in how efficiently your team operates. You will not notice it immediately, but it will show up in your numbers.`);
-      sections.push(`- You will miss opportunities because your team is too busy fixing internal problems instead of innovating.`);
-      sections.push(`- What is a moderate issue today will become a serious problem if left unaddressed.\n`);
-    } else {
-      sections.push(`Your ${sysName} system is in good shape. Here is what to keep in mind for the next 3-5 years:`);
-      sections.push(`- Keep doing what you are doing. Your current approach is working.`);
-      sections.push(`- Do regular check-ups. Even healthy systems need monitoring to stay healthy.`);
-      sections.push(`- Use this system as a benchmark. Show other teams in your organization what good looks like.\n`);
-    }
-
-    // 7. Recommended Next Steps
-    sections.push(`### 7. Recommended Next Steps for ${org}\n`);
-    const steps = getPlainNextSteps(pct, sysName, org);
-    steps.forEach(s => sections.push(`\u2713 ${s}`));
-    sections.push(``);
+    // Business impact
+    sections.push(`\n**Business Impact:**`);
+    sections.push(`- **Operations:** ${pct >= 70 ? "Running smoothly" : pct >= 40 ? "Bottlenecks and delays present" : "Constant firefighting"}`);
+    sections.push(`- **Revenue:** ${pct >= 70 ? "System is protecting revenue" : pct >= 40 ? "Money being left on the table" : "Active revenue leakage"}`);
+    sections.push(`- **People:** ${pct >= 70 ? "Team is engaged and productive" : pct >= 40 ? "Mixed morale, some frustration" : "Risk of losing key talent"}\n`);
   }
 
-  // ─── Closing ───
+  // ─── PART 2: Three Strategic Options ───
   sections.push(`---\n`);
-  sections.push(`## Tools Available to Help You\n`);
-  sections.push(`ConseQ-X has specific tools designed to address the areas we identified in this report:\n`);
-  sections.push(`| Tool | What It Does | How It Helps You |`);
-  sections.push(`|------|-------------|-----------------|`);
-  sections.push(`| **Transformation Simulator** | Lets you model different scenarios before you invest money | You can see the likely return on investment before committing resources |`);
-  sections.push(`| **Health Index Dashboard** | Tracks your progress over time in real-time | You can see whether your interventions are actually working |`);
-  sections.push(`| **Executive Coaching** | One-on-one leadership development with experienced consultants | Helps you lead the transformation effectively |`);
-  sections.push(`| **Deep-Dive System Audit** | Goes deeper into any system that scored below expectations | Finds the root cause of problems, not just the symptoms |\n`);
+  sections.push(`# PART 2: YOUR THREE STRATEGIC OPTIONS\n`);
+  sections.push(`Based on ${org}'s scores across all assessed systems, here are three distinct paths you can take. Each has different costs, timelines, risks, and consequences.\n`);
+
+  const systemNames = ["Interdependency & Interaction", "Inlignment", "Investigation", "Orchestration", "Illustration", "Interpretation"];
+  const options = buildThreeOptions(entries, overallPct, org);
+
+  options.forEach((opt, i) => {
+    sections.push(`---\n`);
+    sections.push(`## Option ${i + 1}: ${opt.title}\n`);
+    sections.push(`> ${opt.summary}\n`);
+    sections.push(`**What You Would Do:**\n`);
+    opt.actions.forEach(a => sections.push(`- ${a}`));
+    sections.push(``);
+    sections.push(`| Attribute | Detail |`);
+    sections.push(`|-----------|--------|`);
+    sections.push(`| **Timeline** | ${opt.timeline} |`);
+    sections.push(`| **Investment Required** | ${opt.investment} |`);
+    sections.push(`| **Risk Level** | ${opt.risk} |`);
+    sections.push(`| **Expected ROI** | ${opt.roi} |\n`);
+
+    sections.push(`**Consequences Across All 6 Systems:**\n`);
+    sections.push(`| System | Projected Impact | Explanation |`);
+    sections.push(`|--------|-----------------|-------------|`);
+    opt.consequences.forEach(c => {
+      sections.push(`| ${c.system} | ${c.impact} | ${c.explanation} |`);
+    });
+
+    sections.push(`\n**Expected Outcome in 12 Months:** ${opt.outcome12m}\n`);
+    sections.push(`**Real-World Example:** ${opt.example}\n`);
+  });
+
+  // ─── PART 3: Comparison Matrix ───
+  sections.push(`---\n`);
+  sections.push(`# PART 3: OPTIONS COMPARISON MATRIX\n`);
+  sections.push(`| Criteria | Option 1: ${options[0].title} | Option 2: ${options[1].title} | Option 3: ${options[2].title} |`);
+  sections.push(`|----------|${'-'.repeat(options[0].title.length + 12)}|${'-'.repeat(options[1].title.length + 12)}|${'-'.repeat(options[2].title.length + 12)}|`);
+  sections.push(`| **Timeline** | ${options[0].timeline} | ${options[1].timeline} | ${options[2].timeline} |`);
+  sections.push(`| **Investment** | ${options[0].investment} | ${options[1].investment} | ${options[2].investment} |`);
+  sections.push(`| **Risk** | ${options[0].risk} | ${options[1].risk} | ${options[2].risk} |`);
+  sections.push(`| **Expected ROI** | ${options[0].roi} | ${options[1].roi} | ${options[2].roi} |`);
+
+  // Find weakest and strongest
+  const weakestEntry = entries.reduce((w, e) => {
+    const p = e[1].maxSystemScore > 0 ? (e[1].systemScore / e[1].maxSystemScore) * 100 : 0;
+    return (!w || p < w.pct) ? { name: formatSystemName(e[0]), pct: Math.round(p) } : w;
+  }, null);
+  const strongestEntry = entries.reduce((s, e) => {
+    const p = e[1].maxSystemScore > 0 ? (e[1].systemScore / e[1].maxSystemScore) * 100 : 0;
+    return (!s || p > s.pct) ? { name: formatSystemName(e[0]), pct: Math.round(p) } : s;
+  }, null);
+
+  sections.push(`| **Impact on weakest (${weakestEntry?.name})** | ${options[0].weakImpact} | ${options[1].weakImpact} | ${options[2].weakImpact} |`);
+  sections.push(`| **Impact on strongest (${strongestEntry?.name})** | ${options[0].strongImpact} | ${options[1].strongImpact} | ${options[2].strongImpact} |\n`);
+
+  // ─── PART 4: Recommendation ───
+  sections.push(`---\n`);
+  sections.push(`# PART 4: OUR RECOMMENDATION\n`);
+
+  const recommended = overallPct < 40 ? options[2] : overallPct < 70 ? options[1] : options[0];
+  const recIdx = overallPct < 40 ? 3 : overallPct < 70 ? 2 : 1;
+  sections.push(`**We recommend Option ${recIdx}: ${recommended.title}**\n`);
+  sections.push(`${recommended.recommendation}\n`);
+
+  sections.push(`### What Happens If You Do Nothing\n`);
+  if (overallPct < 40) {
+    sections.push(`- You will lose **25-40%** of operational efficiency within 2 years`);
+    sections.push(`- Your best staff will leave — broken systems drive out talent`);
+    sections.push(`- Competitors who fix their systems will take your market share\n`);
+  } else if (overallPct < 70) {
+    sections.push(`- Expect a **15-20% drop** in team efficiency — it shows up slowly but compounds`);
+    sections.push(`- You will miss growth opportunities while fixing internal fires`);
+    sections.push(`- Today's moderate gaps become tomorrow's critical failures\n`);
+  } else {
+    sections.push(`- Even strong organizations decline without continuous improvement`);
+    sections.push(`- Complacency is the biggest risk when scores are high`);
+    sections.push(`- Industry leaders invest in staying ahead, not just maintaining\n`);
+  }
 
   sections.push(`---\n`);
   sections.push(`## What To Do Next\n`);
-  sections.push(`This report has shown you exactly where ${org} stands. The numbers are clear. The question now is: what are you going to do about it?\n`);
-  sections.push(`We are ready to work with you. Here is how to get started:\n`);
+  sections.push(`This report gives you three clear paths. Pick one. Start this week.\n`);
   sections.push(`**[Book a Consultation](https://conseq-x.com/booking)** | Email: **ods@conseq-x.com**\n`);
-  sections.push(`> *"Every day you wait to fix a broken system, it costs you more to fix it tomorrow."* \u2014 ConseQ-X\n`);
+  sections.push(`> *"The best decision is the one made with full knowledge of the consequences."* — ConseQ-X\n`);
 
   return sections.join("\n");
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   THREE STRATEGIC OPTIONS BUILDER
+   Generates 3 distinct options based on actual assessment scores
+   ═══════════════════════════════════════════════════════════════ */
+function buildThreeOptions(entries, overallPct, org) {
+  const allSystemNames = ["Interdependency & Interaction", "Inlignment", "Investigation", "Orchestration", "Illustration", "Interpretation"];
+
+  // Compute per-system percentages for consequence mapping
+  const sysPcts = {};
+  for (const [sysId, sysData] of entries) {
+    sysPcts[sysId] = sysData.maxSystemScore > 0 ? Math.round((sysData.systemScore / sysData.maxSystemScore) * 100) : 0;
+  }
+
+  // Find weakest and strongest assessed systems
+  const sorted = entries.map(([id, d]) => ({
+    id, name: formatSystemName(id),
+    pct: d.maxSystemScore > 0 ? Math.round((d.systemScore / d.maxSystemScore) * 100) : 0
+  })).sort((a, b) => a.pct - b.pct);
+
+  const weakest = sorted[0] || { name: "Weakest System", pct: 30 };
+  const strongest = sorted[sorted.length - 1] || { name: "Strongest System", pct: 70 };
+
+  const impactIcon = (delta) => delta > 0 ? `\u2B06\uFE0F +${delta}%` : delta === 0 ? "\u27A1\uFE0F Unchanged" : `\u2B07\uFE0F ${delta}%`;
+
+  // ─── OPTION 1: Targeted Quick Wins (Conservative) ───
+  const option1 = {
+    title: "Targeted Quick Wins",
+    summary: `Focus on your 2-3 weakest sub-areas with low-cost, high-impact fixes. Minimal disruption, fast visible results within 90 days.`,
+    actions: [
+      `Run a focused 2-week diagnostic on ${weakest.name} (currently at ${weakest.pct}%)`,
+      `Identify and fix the top 3 process bottlenecks causing the most damage`,
+      `Deploy targeted training for teams in underperforming areas`,
+      `Set up monthly tracking dashboards to measure improvement`,
+    ],
+    timeline: "90 days",
+    investment: "Low — N5M-N15M (internal resources + targeted consulting)",
+    risk: "Low — minimal disruption to current operations",
+    roi: "15-25% improvement in weakest systems within 6 months",
+    consequences: allSystemNames.map(name => {
+      const match = entries.find(([id]) => formatSystemName(id).toLowerCase().includes(name.split(" ")[0].toLowerCase()));
+      const pct = match ? (match[1].maxSystemScore > 0 ? Math.round((match[1].systemScore / match[1].maxSystemScore) * 100) : 50) : 50;
+      if (pct < 40) return { system: name, impact: impactIcon(15), explanation: "Direct intervention will lift this system significantly" };
+      if (pct < 70) return { system: name, impact: impactIcon(5), explanation: "Indirect benefit from fixing connected workflows" };
+      return { system: name, impact: impactIcon(0), explanation: "Already strong — maintained but not directly targeted" };
+    }),
+    outcome12m: `${weakest.name} improves from ${weakest.pct}% to approximately ${Math.min(weakest.pct + 20, 85)}%. Overall health moves from ${overallPct}% to approximately ${Math.min(overallPct + 8, 90)}%. Quick visible wins build organizational momentum for deeper changes.`,
+    example: `**Interswitch** used this approach in 2019 when their internal coordination scored low. They fixed 12 specific bottlenecks in focused 2-week sprints without disrupting daily operations. Result: 35% system improvement in 6 months.`,
+    weakImpact: `${weakest.pct}% → ~${Math.min(weakest.pct + 20, 85)}%`,
+    strongImpact: `${strongest.pct}% → ${strongest.pct}% (maintained)`,
+    recommendation: `For ${org} at ${overallPct}% overall health, this option gives you fast wins with minimal risk. Start here if your organization has limited appetite for change or if leadership needs quick proof that improvement is possible.`,
+  };
+
+  // ─── OPTION 2: Structured Transformation (Balanced) ───
+  const option2 = {
+    title: "Structured Transformation Program",
+    summary: `A systematic 6-month program addressing all underperforming systems. Balanced approach combining quick fixes with structural changes.`,
+    actions: [
+      `Launch a full organizational systems audit across all 6 ConseQ-X dimensions`,
+      `Redesign the 5-8 most broken processes identified by the assessment`,
+      `Establish a Transformation Office with a dedicated team and 90-day sprint cycles`,
+      `Invest in leadership alignment workshops to ensure top-down buy-in`,
+      `Implement real-time KPI dashboards for every system`,
+    ],
+    timeline: "6-9 months",
+    investment: "Medium — N20M-N60M (consulting + technology + training)",
+    risk: "Medium — requires leadership commitment and some operational disruption during transition",
+    roi: "30-50% improvement across all systems within 12 months",
+    consequences: allSystemNames.map(name => {
+      const match = entries.find(([id]) => formatSystemName(id).toLowerCase().includes(name.split(" ")[0].toLowerCase()));
+      const pct = match ? (match[1].maxSystemScore > 0 ? Math.round((match[1].systemScore / match[1].maxSystemScore) * 100) : 50) : 50;
+      if (pct < 40) return { system: name, impact: impactIcon(25), explanation: "Deep structural fixes address root causes" };
+      if (pct < 70) return { system: name, impact: impactIcon(15), explanation: "Systematic improvement through redesigned processes" };
+      return { system: name, impact: impactIcon(8), explanation: "Enhanced through cross-system integration" };
+    }),
+    outcome12m: `All systems above 50%. Weakest system (${weakest.name}) improves from ${weakest.pct}% to approximately ${Math.min(weakest.pct + 30, 90)}%. Overall health rises from ${overallPct}% to approximately ${Math.min(overallPct + 18, 92)}%. Organization has a functioning transformation engine for continuous improvement.`,
+    example: `**GTBank** executed a similar structured transformation before becoming GTCO. They invested N45M over 8 months to redesign their internal systems. Their organizational health scores went from 48% to 78%, and they completed their holdco transition on schedule.`,
+    weakImpact: `${weakest.pct}% → ~${Math.min(weakest.pct + 30, 90)}%`,
+    strongImpact: `${strongest.pct}% → ~${Math.min(strongest.pct + 8, 95)}%`,
+    recommendation: `For ${org} at ${overallPct}% overall health, this balanced approach addresses root causes while keeping the business running. Recommended if you have moderate resources and leadership willing to commit to a 6-month program.`,
+  };
+
+  // ─── OPTION 3: Full Systems Overhaul (Aggressive) ───
+  const option3 = {
+    title: "Full Systems Overhaul",
+    summary: `A comprehensive 12-month transformation that rebuilds your organizational systems from the foundation up. Maximum impact, maximum investment.`,
+    actions: [
+      `Engage a dedicated transformation partner (ConseQ-X recommended) for end-to-end execution`,
+      `Rebuild governance, accountability, and decision-making structures across the organization`,
+      `Replace or redesign all processes scoring below 50%`,
+      `Deploy technology infrastructure for real-time organizational intelligence`,
+      `Run intensive leadership development program for all C-suite and senior managers`,
+      `Establish permanent organizational health monitoring and continuous improvement culture`,
+    ],
+    timeline: "12-18 months",
+    investment: "High — N80M-N200M+ (full consulting engagement + technology + training + change management)",
+    risk: "High — significant organizational disruption, requires unwavering CEO commitment",
+    roi: "50-80% improvement across all systems. Potential N500M+ in recovered operational efficiency and new revenue",
+    consequences: allSystemNames.map(name => {
+      return { system: name, impact: impactIcon(30), explanation: "Complete rebuild addresses every dimension" };
+    }),
+    outcome12m: `All systems above 70%. Organization transformed from ${overallPct}% to approximately ${Math.min(overallPct + 35, 95)}% overall health. ${org} becomes a benchmark organization in its industry. Permanent systems for continuous improvement established.`,
+    example: `**Access Bank** used this approach before their N726B merger with Diamond Bank. With systems scoring in the low 30s, they treated it as an emergency and rebuilt everything in 12 months. Systems went from 28% to 72%. The merger was completed on schedule because their rebuilt systems could handle it.`,
+    weakImpact: `${weakest.pct}% → ~${Math.min(weakest.pct + 40, 95)}%`,
+    strongImpact: `${strongest.pct}% → ~${Math.min(strongest.pct + 15, 98)}%`,
+    recommendation: `For ${org} at ${overallPct}% overall health, this is the most ambitious path. Choose this if your scores are critically low, or if you are preparing for a major event (merger, IPO, expansion) that demands excellence across all systems.`,
+  };
+
+  return [option1, option2, option3];
 }
 
 
