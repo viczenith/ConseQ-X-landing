@@ -428,32 +428,68 @@ class OverviewView(APIView):
 		org = resolve_request_org(request)
 		org_id = str(org.id)
 
-		# scores from latest assessment per system; fallback to upload-derived; else random-ish
-		scores: Dict[str, int] = {k: 50 for k in CANONICAL_SYSTEMS}
-		latest_upload_ts = None
-
-		# latest assessment scores
+		# scores from latest assessment per system
+		scores: Dict[str, int] = {}
 		latest_by_sys: Dict[str, int] = {}
-		runs = AssessmentRun.objects.filter(organization=org).order_by("-timestamp_ms")[:500]
+
+		# Get all runs for this org (for both latest scores AND historical series)
+		runs = list(AssessmentRun.objects.filter(organization=org).order_by("-timestamp_ms")[:2000])
+
 		for r in runs:
 			k = normalize_system_key(r.system_id)
 			if k not in latest_by_sys:
 				latest_by_sys[k] = int(r.score)
+
 		for k in CANONICAL_SYSTEMS:
 			if k in latest_by_sys:
 				scores[k] = int(latest_by_sys[k])
+			else:
+				scores[k] = 0  # No data — frontend shows "No assessments yet"
+
+		# Build REAL time series from historical AssessmentRun data
+		per_system_series = {}
+		for k in CANONICAL_SYSTEMS:
+			sys_runs = [r for r in runs if normalize_system_key(r.system_id) == k]
+			sys_runs.sort(key=lambda r: int(r.timestamp_ms or 0))
+			if len(sys_runs) >= 2:
+				# Use actual historical data points
+				per_system_series[k] = [
+					{"ts": int(r.timestamp_ms), "value": int(r.score or 0), "upper": min(100, int(r.score or 0) + 3), "lower": max(0, int(r.score or 0) - 3)}
+					for r in sys_runs[-14:]  # Last 14 data points
+				]
+			elif len(sys_runs) == 1:
+				# Single data point — show as flat line with that score
+				ts = int(sys_runs[0].timestamp_ms)
+				val = int(sys_runs[0].score or 0)
+				per_system_series[k] = [{"ts": ts, "value": val, "upper": min(100, val + 3), "lower": max(0, val - 3)}]
+			else:
+				# No data — empty series
+				per_system_series[k] = []
+
+		# Overall series from all runs (aggregate by day)
+		active_scores = [v for v in scores.values() if v > 0]
+		overall = int(round(sum(active_scores) / max(1, len(active_scores)))) if active_scores else 0
+
+		# Build overall series from actual data
+		all_runs_sorted = sorted(runs, key=lambda r: int(r.timestamp_ms or 0))
+		if len(all_runs_sorted) >= 2:
+			overall_series = []
+			day_scores = {}
+			for r in all_runs_sorted:
+				day_key = int(r.timestamp_ms) // (24 * 3600 * 1000)
+				if day_key not in day_scores:
+					day_scores[day_key] = []
+				day_scores[day_key].append(int(r.score or 0))
+			for day_key in sorted(day_scores.keys())[-14:]:
+				avg = int(round(sum(day_scores[day_key]) / len(day_scores[day_key])))
+				overall_series.append({"ts": day_key * 24 * 3600 * 1000, "value": avg, "upper": min(100, avg + 3), "lower": max(0, avg - 3)})
+		elif overall > 0:
+			overall_series = [{"ts": int(time.time() * 1000), "value": overall, "upper": min(100, overall + 3), "lower": max(0, overall - 3)}]
+		else:
+			overall_series = []
 
 		latest_upload = Upload.objects.filter(organization=org).order_by("-timestamp_ms").first()
-		if latest_upload:
-			latest_upload_ts = int(latest_upload.timestamp_ms)
-			for k in latest_upload.analyzed_systems or []:
-				kk = normalize_system_key(k)
-				if kk in scores and kk not in latest_by_sys:
-					scores[kk] = 70
-
-		per_system_series = {k: make_series(int(scores.get(k) or 50)) for k in CANONICAL_SYSTEMS}
-		overall = int(round(sum(scores.values()) / max(1, len(scores))))
-		overall_series = make_series(overall)
+		latest_upload_ts = int(latest_upload.timestamp_ms) if latest_upload else None
 
 		payload = {
 			"overallSeries": overall_series,
@@ -461,6 +497,7 @@ class OverviewView(APIView):
 			"scores": scores,
 			"latest_upload_ts": latest_upload_ts,
 			"org_id": org_id,
+			"has_real_data": len(runs) > 0,
 		}
 		return Response(payload)
 
@@ -593,7 +630,7 @@ class DashboardSummaryView(APIView):
 			if latest:
 				system_scores.append({"key": k, "score": int(latest.score or 0), "coverage": float(latest.coverage or 1)})
 			else:
-				system_scores.append({"key": k, "score": 50, "coverage": 0.5})
+				system_scores.append({"key": k, "score": 0, "coverage": 0})
 
 		computed = compute_org_health(system_scores)
 		org_health = int(computed["orgHealth"])

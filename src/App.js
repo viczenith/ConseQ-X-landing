@@ -42,6 +42,7 @@ const PartnerRecommendations = React.lazy(() => import("./pages/CEO_Dashboard/CE
 const PartnerBenchmarking = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/BenchmarkingTrends"));
 
 const OrgHealthOverview = React.lazy(() => import("./pages/CEO_Dashboard/OrgHealthOverview"));
+const CEOArchive = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/Archive"));
 
 
 export default function App() {
@@ -114,6 +115,7 @@ export default function App() {
           <Route path="revenue" element={<CEORevenue />} />
 
           <Route path="org-health" element={<Suspense fallback={<div>Loading Org Health...</div>}><OrgHealthOverview /></Suspense>} />
+          <Route path="archive" element={<Suspense fallback={<div>Loading Archive...</div>}><CEOArchive /></Suspense>} />
 
         </Route>
 

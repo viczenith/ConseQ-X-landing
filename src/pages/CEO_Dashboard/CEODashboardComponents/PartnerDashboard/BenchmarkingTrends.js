@@ -5,15 +5,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts";
 import { CANONICAL_SYSTEMS } from "../../constants/systems";
-import { FaIndustry, FaChartLine, FaDownload, FaInfoCircle, FaSpinner, FaExclamationTriangle } from "react-icons/fa";
-
-/* ── Industry benchmark reference ── */
-const INDUSTRY_BENCHMARKS = {
-  technology:     { name: "Technology",         interdependency: 75, orchestration: 78, investigation: 82, interpretation: 77, illustration: 73, inlignment: 71 },
-  healthcare:     { name: "Healthcare",         interdependency: 68, orchestration: 71, investigation: 85, interpretation: 74, illustration: 69, inlignment: 78 },
-  financial:      { name: "Financial Services",  interdependency: 73, orchestration: 75, investigation: 79, interpretation: 81, illustration: 76, inlignment: 74 },
-  manufacturing:  { name: "Manufacturing",      interdependency: 70, orchestration: 82, investigation: 73, interpretation: 68, illustration: 81, inlignment: 75 },
-};
+import { FaIndustry, FaChartLine, FaDownload, FaInfoCircle, FaSpinner, FaExclamationTriangle, FaGlobeAfrica } from "react-icons/fa";
+import { INDUSTRY_BENCHMARKS, REGIONAL_ADJUSTMENTS, getAdjustedBenchmarks, getPercentilePosition } from "../../../../data/industryBenchmarks";
 
 const SYS_KEYS = CANONICAL_SYSTEMS.map((s) => s.key);
 const SYS_LABELS = Object.fromEntries(CANONICAL_SYSTEMS.map((s) => [s.key, s.title]));
@@ -24,6 +17,7 @@ export default function BenchmarkingTrends() {
   const { darkMode, summary, overview, loading, error, refresh } = ctx;
 
   const [selectedIndustry, setSelectedIndustry] = useState("technology");
+  const [selectedRegion, setSelectedRegion] = useState("global");
   const [selectedMetric, setSelectedMetric] = useState("overall");
 
   /* Real scores from backend summary */
@@ -34,64 +28,74 @@ export default function BenchmarkingTrends() {
     return map;
   }, [summary]);
 
+  /* Get adjusted benchmarks for selected industry + region */
+  const adjustedBenchmarks = useMemo(() => getAdjustedBenchmarks(selectedIndustry, selectedRegion), [selectedIndustry, selectedRegion]);
+  const benchmarkData = INDUSTRY_BENCHMARKS[selectedIndustry];
+
   /* Radar data: org vs industry benchmark vs top quartile */
   const radarData = useMemo(() => {
-    const bm = INDUSTRY_BENCHMARKS[selectedIndustry];
-    if (!bm) return [];
+    if (!adjustedBenchmarks) return [];
     return SYS_KEYS.map((key) => ({
       system: SYS_LABELS[key],
       current: currentScores[key] ?? 0,
-      benchmark: bm[key] ?? 0,
-      topQuartile: Math.min(100, (bm[key] ?? 0) + 15),
+      benchmark: adjustedBenchmarks.systems[key]?.avg ?? 0,
+      topQuartile: adjustedBenchmarks.systems[key]?.p75 ?? 0,
+      top10: adjustedBenchmarks.systems[key]?.p90 ?? 0,
+      percentile: getPercentilePosition(currentScores[key] ?? 0, adjustedBenchmarks.systems[key]),
     }));
-  }, [selectedIndustry, currentScores]);
+  }, [selectedIndustry, selectedRegion, currentScores, adjustedBenchmarks]);
 
   /* Real time-series from GET /api/overview (overview.time_series) */
   const trendData = useMemo(() => {
     const ts = overview?.time_series;
     if (!Array.isArray(ts) || ts.length === 0) return [];
-    const bm = INDUSTRY_BENCHMARKS[selectedIndustry];
+    if (!adjustedBenchmarks) return [];
     return ts.map((pt) => {
       const val = selectedMetric === "overall"
         ? pt.org_health ?? pt.overall
         : pt[selectedMetric];
+      const bmSystem = adjustedBenchmarks.systems[selectedMetric];
       const bmVal = selectedMetric === "overall"
-        ? Object.values(bm || {}).filter((v) => typeof v === "number").reduce((a, b) => a + b, 0) / 6
-        : bm?.[selectedMetric] ?? null;
+        ? Object.values(adjustedBenchmarks.systems).reduce((a, b) => a + b.avg, 0) / 6
+        : bmSystem?.avg ?? null;
       return {
         month: pt.label || pt.month || pt.date,
         value: val != null ? Math.round(val) : null,
         benchmark: bmVal != null ? Math.round(bmVal) : null,
       };
     });
-  }, [overview, selectedMetric, selectedIndustry]);
+  }, [overview, selectedMetric, adjustedBenchmarks]);
 
   /* Insights derived from real scores vs benchmarks */
   const insights = useMemo(() => {
-    const bm = INDUSTRY_BENCHMARKS[selectedIndustry];
-    if (!bm || Object.keys(currentScores).length === 0) return [];
+    if (!adjustedBenchmarks || Object.keys(currentScores).length === 0) return [];
     const out = [];
     const orgAvg = Object.values(currentScores).reduce((a, b) => a + b, 0) / Object.values(currentScores).length;
-    const bmAvg = SYS_KEYS.reduce((s, k) => s + (bm[k] || 0), 0) / 6;
+    const bmAvg = SYS_KEYS.reduce((s, k) => s + (adjustedBenchmarks.systems[k]?.avg || 0), 0) / 6;
 
-    if (orgAvg > bmAvg + 5) out.push({ type: "positive", text: `Performing ${Math.round(orgAvg - bmAvg)}% above ${bm.name} average` });
-    else if (orgAvg < bmAvg - 5) out.push({ type: "warning", text: `${Math.round(bmAvg - orgAvg)}% below ${bm.name} average — action needed` });
-    else out.push({ type: "info", text: `Tracking close to ${bm.name} industry average` });
+    if (orgAvg > bmAvg + 5) out.push({ type: "positive", text: `Performing ${Math.round(orgAvg - bmAvg)}% above ${adjustedBenchmarks.name} average${selectedRegion !== "global" ? ` (${REGIONAL_ADJUSTMENTS[selectedRegion]?.label})` : ""}` });
+    else if (orgAvg < bmAvg - 5) out.push({ type: "warning", text: `${Math.round(bmAvg - orgAvg)}% below ${adjustedBenchmarks.name} average — action needed` });
+    else out.push({ type: "info", text: `Tracking close to ${adjustedBenchmarks.name} industry average` });
 
-    const comparisons = SYS_KEYS.filter((k) => currentScores[k] != null).map((k) => ({ key: k, diff: currentScores[k] - (bm[k] || 0) }));
+    const comparisons = SYS_KEYS.filter((k) => currentScores[k] != null).map((k) => ({
+      key: k,
+      diff: currentScores[k] - (adjustedBenchmarks.systems[k]?.avg || 0),
+      percentile: getPercentilePosition(currentScores[k], adjustedBenchmarks.systems[k]),
+    }));
     if (comparisons.length) {
       const best = comparisons.reduce((a, b) => (a.diff > b.diff ? a : b));
       const worst = comparisons.reduce((a, b) => (a.diff < b.diff ? a : b));
-      if (best.diff > 0) out.push({ type: "positive", text: `${SYS_LABELS[best.key]} is your strongest vs industry (+${Math.round(best.diff)})` });
-      if (worst.diff < -3) out.push({ type: "warning", text: `${SYS_LABELS[worst.key]} needs attention (${Math.round(worst.diff)} vs industry)` });
+      if (best.diff > 0) out.push({ type: "positive", text: `${SYS_LABELS[best.key]} is your strongest vs industry (+${Math.round(best.diff)}, ${best.percentile})` });
+      if (worst.diff < -3) out.push({ type: "warning", text: `${SYS_LABELS[worst.key]} needs attention (${Math.round(worst.diff)} vs industry, ${worst.percentile})` });
     }
 
-    // Transformation readiness
-    const tr = summary?.transformation_readiness;
-    if (tr?.overall != null) out.push({ type: tr.overall >= 70 ? "positive" : "info", text: `Transformation readiness: ${tr.overall}%` });
+    // Industry characteristics
+    if (benchmarkData?.characteristics?.length) {
+      out.push({ type: "info", text: benchmarkData.characteristics[0] });
+    }
 
     return out;
-  }, [selectedIndustry, currentScores, summary]);
+  }, [adjustedBenchmarks, currentScores, selectedRegion, benchmarkData]);
 
   /* Export */
   const exportBenchmarkData = () => {
@@ -127,6 +131,10 @@ export default function BenchmarkingTrends() {
             className={`px-3 py-2 rounded-lg border text-sm ${darkMode ? "bg-gray-800 border-gray-600 text-gray-200" : "bg-white border-gray-300"}`}>
             {Object.entries(INDUSTRY_BENCHMARKS).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
           </select>
+          <select value={selectedRegion} onChange={(e) => setSelectedRegion(e.target.value)}
+            className={`px-3 py-2 rounded-lg border text-sm ${darkMode ? "bg-gray-800 border-gray-600 text-gray-200" : "bg-white border-gray-300"}`}>
+            {Object.entries(REGIONAL_ADJUSTMENTS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
           <button onClick={exportBenchmarkData} className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm">
             <FaDownload /> Export
           </button>
@@ -143,7 +151,7 @@ export default function BenchmarkingTrends() {
       {!noData && (
         <div className={`rounded-2xl p-6 border ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"}`}>
           <h4 className="font-semibold text-lg mb-1">Industry Comparison</h4>
-          <p className={`text-sm mb-4 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Your scores vs {INDUSTRY_BENCHMARKS[selectedIndustry]?.name}</p>
+          <p className={`text-sm mb-4 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Your scores vs {adjustedBenchmarks?.name}{selectedRegion !== "global" ? ` (${REGIONAL_ADJUSTMENTS[selectedRegion]?.label})` : ""}</p>
 
           <ResponsiveContainer width="100%" height={300}>
             <RadarChart data={radarData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
@@ -169,9 +177,19 @@ export default function BenchmarkingTrends() {
                     {item.current >= item.benchmark ? "+" : ""}{item.current - item.benchmark}
                   </span>
                 </div>
+                <div className={`text-xs mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{item.percentile}</div>
               </div>
             ))}
           </div>
+
+          {/* Industry context */}
+          {benchmarkData?.description && (
+            <div className={`mt-4 p-3 rounded-lg text-sm ${darkMode ? "bg-gray-800 text-gray-400" : "bg-gray-50 text-gray-600"}`}>
+              <FaGlobeAfrica className="inline mr-2" />
+              {benchmarkData.description} · {benchmarkData.sampleSize} organizations surveyed ({benchmarkData.year})
+              {selectedRegion !== "global" && ` · Adjusted for ${REGIONAL_ADJUSTMENTS[selectedRegion]?.label}`}
+            </div>
+          )}
         </div>
       )}
 
@@ -226,7 +244,8 @@ export default function BenchmarkingTrends() {
             <div className={`p-3 rounded-lg border ${darkMode ? "border-gray-600 bg-gray-800" : "border-gray-200 bg-gray-50"}`}>
               <div className="text-sm font-medium mb-1">Benchmark Source</div>
               <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                Static reference data for {INDUSTRY_BENCHMARKS[selectedIndustry]?.name} companies.
+                {benchmarkData?.name} industry data ({benchmarkData?.sampleSize} orgs, {benchmarkData?.year})
+                {selectedRegion !== "global" && ` · ${REGIONAL_ADJUSTMENTS[selectedRegion]?.label} adjusted`}
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { FaUpload, FaClock, FaDownload, FaEye, FaTrash, FaFileExport, FaTimes, F
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { getApiBase, getAccessToken } from '../../../services/apiClient';
+import { parseFileToChunks, saveDocChunks } from '../../../../../lib/rag';
 
 /* ───────── constants ───────── */
 const CANONICAL = [
@@ -276,6 +277,15 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
         backendId: backendRecord?.id || null,
         orgId,
       });
+
+      // Store parsed content as RAG chunks for AI chat retrieval
+      const textContent = parsed?.rows?.length
+        ? parsed.rows.map(r => Object.entries(r).map(([k,v]) => `${k}: ${v}`).join(', ')).join('\n')
+        : (parsed?.rawText || '');
+      if (textContent.length > 10) {
+        const chunks = parseFileToChunks(file.name, textContent);
+        saveDocChunks(orgId, chunks);
+      }
     }
 
     setUploadProgress({ show: true, progress: 100, status: backendSuccess > 0 ? 'Upload complete!' : 'Files analyzed (stored locally).' });

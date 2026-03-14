@@ -8,7 +8,7 @@ import {
 import { useAuth } from "../../../contexts/AuthContext";
 import { useIntelligence } from "../../../contexts/IntelligenceContext";
 import { normalizeSystemKey, CANONICAL_SYSTEMS } from "../constants/systems";
-import { buildIndex, queryIndex } from "../../../lib/rag";
+import { buildIndex, queryIndex, parseFileToChunks, loadStoredDocs, saveDocChunks } from "../../../lib/rag";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -470,9 +470,33 @@ export default function CEOChat() {
     const data3D = prepare3DData();
     let lines = [];
 
-    const greetings = ["Based on your organizational health data, here's my analysis:", "Let me analyze your current performance metrics:", "Here's what I can see from your recent data:"];
-    lines.push(greetings[Math.floor(Math.random() * greetings.length)]);
+    // ─── Interview Mode: detect decision/problem queries and ask clarifying questions first ───
+    const isDecisionQuery = /\b(should i|should we|what if|how to|decide|option|choice|consider|thinking about|planning to|want to|need to)\b/i.test(prompt);
+    const isProblemQuery = /\b(problem|issue|challenge|struggling|failing|losing|crisis|urgent|help with|advice on)\b/i.test(prompt);
+    const hasEnoughContext = prompt.length > 200 || /\b(because|since|context|background|details|specifically)\b/i.test(prompt);
 
+    if ((isDecisionQuery || isProblemQuery) && !hasEnoughContext) {
+      lines.push(`Thank you for bringing this to my attention. Before I provide my analysis, I need to understand the full picture.\n`);
+      lines.push(`**Please help me with these clarifying questions:**\n`);
+      if (isDecisionQuery) {
+        lines.push(`1. **What is the specific decision you're facing?** Describe the exact choice or fork in the road.`);
+        lines.push(`2. **What is the timeline?** When does this decision need to be made?`);
+        lines.push(`3. **Who are the key stakeholders?** Who will be affected and who needs to agree?`);
+        lines.push(`4. **What constraints exist?** Budget limits, regulatory requirements, or dependencies.`);
+      } else {
+        lines.push(`1. **When did this problem start?** How long has this been going on?`);
+        lines.push(`2. **What is the business impact?** Revenue, operations, people, or reputation.`);
+        lines.push(`3. **What have you tried so far?** Any interventions or fixes attempted.`);
+        lines.push(`4. **How urgent is this?** Does it need resolution this week, this month, or this quarter?`);
+      }
+      lines.push(`\n**Also:** If you have any supporting documents (reports, financials, contracts), please upload them using the 📎 button below. This will help me give you more precise recommendations.\n`);
+      lines.push(`Once I have this context, I'll present you with **3 strategic options** with projected consequences across your organizational systems.`);
+    } else {
+      const greetings = ["Based on your organizational health data, here's my analysis:", "Let me analyze your current performance metrics:", "Here's what I can see from your recent data:"];
+      lines.push(greetings[Math.floor(Math.random() * greetings.length)]);
+    }
+
+    if (!(isDecisionQuery || isProblemQuery) || hasEnoughContext) {
     if (lowerPrompt.includes('score') || lowerPrompt.includes('performance') || lowerPrompt.includes('health')) {
       lines.push(`\n**Overall Organizational Health: ${data3D.overall_health}%**`);
       lines.push(`- Total Systems Analyzed: ${data3D.total_systems}`);
@@ -499,16 +523,16 @@ export default function CEOChat() {
       lines.push("- High-performing systems correlate with 20% higher revenue efficiency");
       lines.push("- Predictive maintenance saves ₦2-5M annually");
     }
-
-    const include3D = needs3DVisualization(prompt);
-    if (include3D) {
-      lines.push("\n**3D Visualization** — Generating interactive view of your organizational data...");
-    }
-
     if (Object.keys(latestBySystem).length === 0) {
       lines.push("\nStart by running system assessments to get personalized insights.");
     } else {
       lines.push("\nWould you like me to generate a detailed action plan, create reports, or run a deep-dive on a specific system?");
+    }
+    } // end if hasEnoughContext
+
+    const include3D = needs3DVisualization(prompt);
+    if (include3D) {
+      lines.push("\n**3D Visualization** — Generating interactive view of your organizational data...");
     }
 
     const replyText = lines.join("\n");
@@ -587,30 +611,73 @@ export default function CEOChat() {
 
       let chatPayload;
 
+      // Build conversation history for multi-turn context (last 10 messages)
+      const recentHistory = messages
+        .filter(m => m.role === "user" || m.role === "assistant")
+        .slice(-10)
+        .map(m => ({ role: m.role, content: m.text || "" }));
+
+      const interviewSystemPrompt = `You are X-ULTRA, the executive intelligence assistant for the ConseQ-X Organizational Health Platform.
+
+YOUR CORE BEHAVIOR — INTERVIEW BEFORE ADVISING:
+When the CEO asks about a decision, problem, or situation, you MUST follow this protocol:
+1. FIRST, ask 2-3 clarifying questions to understand the full context. Ask about: scope, urgency, stakeholders involved, budget constraints, or timeline.
+2. If relevant, ask the CEO to upload supporting documents (contracts, financials, reports, org charts) using the file upload button.
+3. ONLY AFTER you have enough context (at least one round of Q&A), provide your analysis.
+
+YOUR ANALYSIS FORMAT — 3 OPTIONS WITH CONSEQUENCES:
+When you have enough context to advise, ALWAYS present:
+- **Option A** (Conservative): Low risk, incremental approach
+- **Option B** (Balanced): Moderate risk, structured transformation
+- **Option C** (Aggressive): High risk, maximum impact
+For EACH option, briefly state: what to do, timeline, cost level, risk, and projected consequence.
+
+RULES:
+- You operate in the Nigerian business context. Reference Nigerian/African examples.
+- Be warm but direct. No jargon. Use plain English.
+- Use actual numbers and data from assessments when available.
+- If the CEO gives a vague query, probe deeper before answering.
+- Keep responses focused and actionable.`;
+
       if (needsAssessments) {
-        const docs = Object.values(latestBySystem).map(r => ({
+        const assessmentDocs = Object.values(latestBySystem).map(r => ({
           id: r.id || `${r.systemId}-${r.timestamp}`,
           text: `System: ${r.systemId}\nScore: ${r.score}\nNotes: ${JSON.stringify(r.meta || {})}`,
           meta: { systemId: r.systemId, score: r.score, timestamp: r.timestamp }
         }));
-        const index = buildIndex(docs);
+        // Include persisted uploaded document chunks
+        const storedDocs = loadStoredDocs(orgId);
+        const allDocs = [...assessmentDocs, ...storedDocs];
+        const index = buildIndex(allDocs);
         const hits = queryIndex(index, text, 6);
-        const report = hits.map(h => `- [${h.doc.meta.systemId}] score: ${h.doc.meta.score} — excerpt: ${h.doc.text.slice(0, 200)}`).join('\n');
+        const report = hits.map(h => `- [${h.doc.meta.systemId || h.doc.meta.source || 'doc'}] ${h.doc.meta.score ? `score: ${h.doc.meta.score} — ` : ''}excerpt: ${h.doc.text.slice(0, 200)}`).join('\n');
 
         chatPayload = {
           model: "mistralai/mistral-7b-instruct",
           messages: [
-            { role: "system", content: "You are X-ULTRA, an executive intelligence assistant for the ConseQ-X Organizational Health Platform. Use the following assessment data to answer precisely with actionable recommendations. Use concise bullet points. The organization operates in Nigeria." },
-            { role: "system", content: `AssessmentReport:\n${report}` },
+            { role: "system", content: interviewSystemPrompt },
+            { role: "system", content: `ASSESSMENT DATA & UPLOADED DOCUMENTS:\n${report}` },
+            ...recentHistory,
             { role: "user", content: text }
           ]
         };
       } else {
         const contextualPrompt = intelligence.getContextualPrompt();
+        // Also include uploaded docs in non-assessment queries
+        const storedDocs = loadStoredDocs(orgId);
+        let docContext = "";
+        if (storedDocs.length > 0) {
+          const docIndex = buildIndex(storedDocs);
+          const docHits = queryIndex(docIndex, text, 3);
+          if (docHits.length > 0) {
+            docContext = `\n\nUPLOADED DOCUMENT EXCERPTS:\n${docHits.map(h => `- [${h.doc.meta.source}]: ${h.doc.text.slice(0, 200)}`).join('\n')}`;
+          }
+        }
         chatPayload = {
           model: "mistralai/mistral-7b-instruct",
           messages: [
-            { role: "system", content: `You are X-ULTRA, the executive intelligence assistant for the ConseQ-X Organizational Health Platform. Be warm, professional, and concise.\n\nCURRENT ORGANIZATIONAL CONTEXT: ${contextualPrompt}\n\nUse this data to provide contextual, relevant responses.` },
+            { role: "system", content: `${interviewSystemPrompt}\n\nCURRENT ORGANIZATIONAL CONTEXT: ${contextualPrompt}${docContext}` },
+            ...recentHistory,
             { role: "user", content: text }
           ]
         };
@@ -661,6 +728,19 @@ export default function CEOChat() {
     if (!file) return;
     const url = URL.createObjectURL(file);
     setUploadedFile({ name: file.name, size: file.size, url });
+
+    // Parse text-based files and persist chunks for RAG
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result;
+      if (text && text.length > 10) {
+        const chunks = parseFileToChunks(file.name, text);
+        saveDocChunks(orgId, chunks);
+      }
+    };
+    if (/\.(txt|csv|json|md|log)$/i.test(file.name)) {
+      reader.readAsText(file);
+    }
   }
 
   const handleNewChat = () => {

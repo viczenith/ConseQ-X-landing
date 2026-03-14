@@ -28,6 +28,7 @@ const PAGE_META = {
   "partner-dashboard/forecast":  { title: "Partner Forecast",    sub: "Predictive analytics for partner performance" },
   "partner-dashboard/recommendations": { title: "Recommendations", sub: "X Ultra improvement suggestions" },
   "partner-dashboard/benchmarking":    { title: "Benchmarking & Trends",     sub: "Compare performance against industry standards" },
+  archive:            { title: "Assessment Archive",      sub: "Historical 28-parameter organizational health analysis" },
 };
 
 function getPageMeta(pathname) {
@@ -496,6 +497,7 @@ export default function ConseqXCEODashboardShell() {
               </NavLink>
 
               <NavLink onClick={handleMobileNavClick} to="/ceo/team" className={({isActive}) => navItemClass(isActive)}>Team</NavLink>
+              <NavLink onClick={handleMobileNavClick} to="/ceo/archive" className={({isActive}) => navItemClass(isActive)}>Archive</NavLink>
               <NavLink onClick={handleMobileNavClick} to="/ceo/billing" className={({isActive}) => navItemClass(isActive)}>Billing</NavLink>
 
               
@@ -633,6 +635,7 @@ export default function ConseqXCEODashboardShell() {
                 </NavLink>
 
                 <NavLink to="/ceo/team" className={({isActive}) => navItemClass(isActive)}>Team</NavLink>
+                <NavLink to="/ceo/archive" className={({isActive}) => navItemClass(isActive)}>Archive</NavLink>
                 <NavLink to="/ceo/billing" className={({isActive}) => navItemClass(isActive)}>Billing</NavLink>
               </div>
             </nav>

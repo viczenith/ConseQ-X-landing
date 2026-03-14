@@ -49,8 +49,13 @@ The JSON input includes a "parameters28" array with 28 organizational health par
 Group them by category. For parameters marked "data_needed", note that the CEO should upload relevant data for a complete picture.
 
 ## PART 2: THREE STRATEGIC OPTIONS
-Present EXACTLY 3 distinct strategic options the CEO can take. For EACH option:
-- **Option Title** — a clear, action-oriented name
+Present EXACTLY 3 distinct strategic options the CEO can take, classified by risk appetite:
+- **Option 1 (Conservative):** Low-risk, targeted quick wins
+- **Option 2 (Balanced):** Moderate risk, structured transformation
+- **Option 3 (Aggressive):** High-risk, full systems overhaul
+
+For EACH option:
+- **Option Title** — include the label (Conservative / Balanced / Aggressive) and a clear, action-oriented name
 - **What You Would Do** — specific actions, not vague suggestions
 - **Timeline** — realistic implementation timeframe
 - **Investment Required** — Low / Medium / High with explanation
