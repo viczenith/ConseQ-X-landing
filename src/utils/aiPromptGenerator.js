@@ -1,3 +1,5 @@
+import { evaluateParameters, getParameterSummary, groupParametersByCategory } from '../data/parameters28';
+
 export async function generateSystemReport({ scores, userInfo, selectedSystems = [] }) {
   const openRouterKey = process.env.REACT_APP_OPENROUTER_KEY;
   const modelUrl = "https://openrouter.ai/api/v1/chat/completions";
@@ -12,7 +14,14 @@ export async function generateSystemReport({ scores, userInfo, selectedSystems =
   // ─── 1. Try OpenRouter API ───
   if (openRouterKey) {
     try {
-      const inputJson = JSON.stringify({ scores: filteredScores, userInfo }, null, 2);
+      // Evaluate the 28 parameters from system scores
+      const paramEval = evaluateParameters(filteredScores);
+      const paramSummary = getParameterSummary(paramEval);
+      const paramSnapshot = paramEval.map(p => ({
+        number: p.number, title: p.title, score: p.score, status: p.statusLabel,
+        confidence: p.confidence + "%", subMetrics: p.subMetrics,
+      }));
+      const inputJson = JSON.stringify({ scores: filteredScores, userInfo, parameters28: paramSnapshot, paramSummary }, null, 2);
 
       const systemPrompt = `You are ConseQ-X's senior organizational consultant writing a strategic decision report directly to a Nigerian CEO.
 
@@ -32,6 +41,12 @@ For EACH system in the JSON input, cover:
 1. What the score means in plain language
 2. Sub-assessment breakdown with scores
 3. Impact on daily operations, revenue, people and strategy
+
+## PART 1B: 28-PARAMETER HEALTH CHECK
+The JSON input includes a "parameters28" array with 28 organizational health parameters derived from the system scores. For each parameter that has a score:
+- State the parameter name, score, and status
+- Explain what the score means for the CEO's specific organization
+Group them by category. For parameters marked "data_needed", note that the CEO should upload relevant data for a complete picture.
 
 ## PART 2: THREE STRATEGIC OPTIONS
 Present EXACTLY 3 distinct strategic options the CEO can take. For EACH option:
@@ -167,6 +182,34 @@ function buildLocalReport(scores, userInfo) {
     sections.push(`- **Operations:** ${pct >= 70 ? "Running smoothly" : pct >= 40 ? "Bottlenecks and delays present" : "Constant firefighting"}`);
     sections.push(`- **Revenue:** ${pct >= 70 ? "System is protecting revenue" : pct >= 40 ? "Money being left on the table" : "Active revenue leakage"}`);
     sections.push(`- **People:** ${pct >= 70 ? "Team is engaged and productive" : pct >= 40 ? "Mixed morale, some frustration" : "Risk of losing key talent"}\n`);
+  }
+
+  // ─── PART 1B: 28-Parameter Health Check ───
+  sections.push(`---\n`);
+  sections.push(`# PART 1B: 28-PARAMETER ORGANIZATIONAL HEALTH CHECK\n`);
+
+  const paramEval = evaluateParameters(scores);
+  const paramSummary = getParameterSummary(paramEval);
+  const grouped = groupParametersByCategory(paramEval);
+
+  sections.push(`**Coverage:** ${paramSummary.assessed} of 28 parameters evaluated (${paramSummary.coveragePercent}%)  `);
+  sections.push(`**Average Score:** ${paramSummary.avgScore}%  `);
+  sections.push(`**Strong:** ${paramSummary.strong} | **Needs Work:** ${paramSummary.needsWork} | **Critical:** ${paramSummary.critical} | **Data Needed:** ${paramSummary.dataNeeded}\n`);
+
+  for (const [category, params] of Object.entries(grouped)) {
+    sections.push(`### ${category}\n`);
+    sections.push(`| # | Parameter | Score | Status | Key Indicators |`);
+    sections.push(`|---|-----------|-------|--------|----------------|`);
+    for (const p of params) {
+      const scoreText = p.score !== null ? `${p.score}%` : "—";
+      const indicators = p.subMetrics.slice(0, 2).join("; ");
+      sections.push(`| ${p.number} | **${p.title}** | ${scoreText} | ${p.statusLabel} | ${indicators} |`);
+    }
+    sections.push(``);
+  }
+
+  if (paramSummary.dataNeeded > 0) {
+    sections.push(`> **${paramSummary.dataNeeded} parameters** require additional data for accurate evaluation. Upload financial reports, HR data, customer surveys, or compliance records in the **Data Management** section to complete the picture.\n`);
   }
 
   // ─── PART 2: Three Strategic Options ───
