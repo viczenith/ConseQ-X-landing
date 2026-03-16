@@ -28,5 +28,5 @@ export default function PartnerTenantEntry() {
 
   // Single source of truth: partner dashboard lives inside the CEO workspace.
   const justLoggedIn = Boolean(location?.state?.justLoggedIn);
-  return <Navigate to="/ceo/partner-dashboard" replace state={justLoggedIn ? { justLoggedIn: true } : {}} />;
+  return <Navigate to="/ceo/dashboard" replace state={justLoggedIn ? { justLoggedIn: true } : {}} />;
 }

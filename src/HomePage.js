@@ -1150,7 +1150,7 @@ export default function HomePage() {
         setShowCEOPrompt(false);
         const cur = auth.getCurrent ? auth.getCurrent() : null;
         const slug = cur?.org?.slug;
-        const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/partner-dashboard");
+        const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/dashboard");
         navigate(next, { replace: true, state: { justLoggedIn: true } });
       } catch (err) {
         setError(err?.message || "Sign in failed. Please try again.");
@@ -1184,7 +1184,7 @@ export default function HomePage() {
         setShowCEOPrompt(false);
         const cur = auth.getCurrent ? auth.getCurrent() : null;
         const slug = cur?.org?.slug;
-        const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/partner-dashboard");
+        const next = authReturnTo || (slug ? `/partners/${slug}` : "/ceo/dashboard");
         navigate(next, { replace: true, state: { justLoggedIn: true } });
       } catch (err) {
         setError(err?.message || "Registration failed. Please try again.");
