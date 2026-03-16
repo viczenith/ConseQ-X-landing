@@ -1621,7 +1621,6 @@ export default function AssessmentPlatform(props) {
         open={showUpsellModal}
         onClose={() => setShowUpsellModal(false)}
         onUpgrade={() => {
-          auth.upgrade && auth.upgrade();
           setShowUpsellModal(false);
         }}
         darkMode={darkMode}

@@ -487,17 +487,6 @@ export default function CEOAssessments() {
     persistAndBroadcast(newList);
 
     try {
-      window.dispatchEvent(new CustomEvent("conseqx:assessment:completed", { 
-        detail: { 
-          orgId, 
-          assessment: normalized, 
-          systemId: normalized.systemId,
-          score: normalized.score 
-        } 
-      }));
-    } catch {}
-
-    try {
       orgHealth.ingestAssessment(normalized);
     } catch (e) {
       // non-fatal

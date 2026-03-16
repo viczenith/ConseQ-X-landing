@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
-  FaPaperPlane, FaPaperclip, FaCube, FaChartLine, FaFileAlt, FaDownload,
+  FaPaperPlane, FaPaperclip, FaCube, FaChartLine, FaFileAlt, FaCommentDots,
   FaBars, FaPlus, FaRegCopy, FaCheck, FaRedo, FaTrash, FaEllipsisH,
-  FaRegEdit, FaTimes, FaSearch
+  FaRegEdit, FaTimes, FaSearch, FaChevronDown, FaChevronUp
 } from "react-icons/fa";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useIntelligence } from "../../../contexts/IntelligenceContext";
@@ -179,6 +179,7 @@ export default function CEOChat() {
     } catch { return []; }
   });
   const [selectedFilter, setSelectedFilter] = useState('All');
+  const [expandedArchiveId, setExpandedArchiveId] = useState(null);
 
   /* ─── Assessment data ─── */
   const orgId = auth?.org?.id || "anon";
@@ -309,6 +310,138 @@ export default function CEOChat() {
 
   /* ═══ HELPER FUNCTIONS ═══ */
 
+  /** Build a full snapshot of ALL dashboard data for the AI to reference */
+  const buildFullDashboardContext = useCallback(() => {
+    const ctx = { org: {}, systems: {}, financials: null, actions: [], uploads: [], insights: [], progress: {} };
+
+    // Org info
+    ctx.org = { name: auth?.org?.name || 'Unknown', tier: auth?.org?.subscription?.tier || 'free', user: auth?.user?.name || 'CEO' };
+
+    // System scores
+    CANONICAL_SYSTEMS.forEach(sys => {
+      const latest = latestBySystem[sys.key];
+      ctx.systems[sys.key] = {
+        name: sys.title,
+        score: latest?.score ?? null,
+        assessed: !!latest,
+        subScores: latest?.meta?.subScores || [],
+        interpretation: latest?.meta?.interpretation || null,
+        timestamp: latest?.timestamp || null
+      };
+    });
+
+    const assessed = Object.values(ctx.systems).filter(s => s.assessed);
+    ctx.overallHealth = assessed.length > 0 ? Math.round(assessed.reduce((a, s) => a + s.score, 0) / assessed.length) : null;
+    ctx.assessedCount = assessed.length;
+    ctx.weakest = assessed.length > 0 ? assessed.sort((a, b) => a.score - b.score)[0] : null;
+    ctx.strongest = assessed.length > 0 ? assessed.sort((a, b) => b.score - a.score)[0] : null;
+
+    // Financial metrics
+    try {
+      const fin = localStorage.getItem('conseqx_fin_metrics_v1');
+      if (fin) {
+        const parsed = JSON.parse(fin);
+        // Only treat as available if at least one metric has a real value
+        const hasRealData = Object.values(parsed).some(v => v !== null && v !== undefined && v !== '' && v !== 0);
+        if (hasRealData) ctx.financials = parsed;
+      }
+    } catch {}
+
+    // Custom action items
+    try {
+      const acts = localStorage.getItem(`conseqx_custom_actions_v1_${orgId}`);
+      if (acts) ctx.actions = JSON.parse(acts);
+    } catch {}
+
+    // Uploaded documents
+    try {
+      const docs = localStorage.getItem(`conseqx_analyzed_docs_${orgId}`);
+      if (docs) {
+        const parsed = JSON.parse(docs);
+        ctx.uploads = parsed.map(d => ({ name: d.fileName, type: d.dataType, records: d.recordCount, systems: d.analyzedSystems }));
+      }
+    } catch {}
+
+    // Assessment progress
+    try {
+      const prog = localStorage.getItem('conseqx_assessment_progress_v1');
+      if (prog) {
+        const all = JSON.parse(prog);
+        ctx.progress = all[orgId] || {};
+      }
+    } catch {}
+
+    // Intelligence insights
+    ctx.insights = intelligence.activeInsights?.slice(0, 5) || [];
+    ctx.sharedMetrics = intelligence.sharedMetrics || {};
+
+    return ctx;
+  }, [auth, latestBySystem, orgId, intelligence]);
+
+  /** Convert the full context into a text block for the LLM system prompt */
+  const buildContextString = useCallback(() => {
+    const ctx = buildFullDashboardContext();
+    const parts = [];
+
+    parts.push(`ORGANISATION: ${ctx.org.name} (${ctx.org.tier} plan)`);
+    parts.push(`USER: ${ctx.org.user}`);
+
+    // Systems
+    if (ctx.assessedCount > 0) {
+      parts.push(`\nASSESSMENT RESULTS (${ctx.assessedCount} of 6 systems assessed, overall health: ${ctx.overallHealth}%):`);
+      Object.entries(ctx.systems).forEach(([, sys]) => {
+        if (sys.assessed) {
+          parts.push(`  - ${sys.name}: ${sys.score}%${sys.interpretation ? ` — "${sys.interpretation}"` : ''}`);
+          if (sys.subScores?.length > 0) {
+            parts.push(`    Sub-scores: ${sys.subScores.map(s => `${s.name || s.label}: ${s.score}%`).join(', ')}`);
+          }
+        }
+      });
+      const notAssessed = Object.values(ctx.systems).filter(s => !s.assessed);
+      if (notAssessed.length > 0) parts.push(`  Not yet assessed: ${notAssessed.map(s => s.name).join(', ')}`);
+      if (ctx.weakest && ctx.strongest && ctx.weakest.name !== ctx.strongest.name) {
+        parts.push(`  Weakest: ${ctx.weakest.name} (${ctx.weakest.score}%)`);
+        parts.push(`  Strongest: ${ctx.strongest.name} (${ctx.strongest.score}%)`);
+      }
+    } else {
+      parts.push('\nNo assessments completed yet.');
+    }
+
+    // Financials
+    if (ctx.financials) {
+      const f = ctx.financials;
+      parts.push('\nFINANCIAL METRICS (from Billing/Revenue page):');
+      if (f.annualRevenue) parts.push(`  Annual Revenue: ${f.annualRevenue}`);
+      if (f.operatingCost) parts.push(`  Operating Cost: ${f.operatingCost}`);
+      if (f.profitMarginPct != null) parts.push(`  Profit Margin: ${f.profitMarginPct}%`);
+      if (f.costOfDelays) parts.push(`  Cost of Delays: ${f.costOfDelays}`);
+      if (f.customerRetentionPct != null) parts.push(`  Customer Retention: ${f.customerRetentionPct}%`);
+      if (f.employeeTurnoverPct != null) parts.push(`  Employee Turnover: ${f.employeeTurnoverPct}%`);
+    }
+
+    // Actions
+    if (ctx.actions.length > 0) {
+      const pending = ctx.actions.filter(a => a.status !== 'completed');
+      const done = ctx.actions.filter(a => a.status === 'completed');
+      parts.push(`\nACTION ITEMS: ${pending.length} pending, ${done.length} completed`);
+      pending.slice(0, 5).forEach(a => parts.push(`  - [${a.priority || 'Medium'}] ${a.action || a.text || 'Unnamed task'}`));
+    }
+
+    // Uploads
+    if (ctx.uploads.length > 0) {
+      parts.push(`\nUPLOADED DATA: ${ctx.uploads.length} file(s)`);
+      ctx.uploads.slice(0, 5).forEach(u => parts.push(`  - ${u.name} (${u.type}, ${u.records} records, systems: ${u.systems?.join(', ') || 'none'})`));
+    }
+
+    // Recent insights
+    if (ctx.insights.length > 0) {
+      parts.push('\nRECENT INSIGHTS:');
+      ctx.insights.forEach(i => parts.push(`  - [${i.category}] ${i.title}: ${i.summary}`));
+    }
+
+    return parts.join('\n');
+  }, [buildFullDashboardContext]);
+
   const needs3DVisualization = (t) => {
     if (!t) return false;
     return /\b(3d|visuali[sz]|globe|pyramid|matrix view)\b/i.test(t);
@@ -388,34 +521,16 @@ export default function CEOChat() {
     });
   };
 
-  const extractRelatedMetrics = (category) => {
-    const map = { 'Financial': ['financialHealth'], 'Strategic': ['strategicAlignment'], 'Operational': ['operationalEfficiency'], 'Risk': ['riskLevel'], '3D Reports': ['overallHealth'] };
-    return map[category] || [];
-  };
-
-
-
   const captureIntelligence = (assistantId, output, include3D, visualData, visualType) => {
     const finalMsg = { id: assistantId, role: 'assistant', text: output, timestamp: new Date().toISOString(), ...(include3D && { visualization3D: true, visualData, visualType }) };
     const insight = analyzeMessageForInsights(finalMsg, assistantId);
     if (insight) {
       saveAnalysisToArchive(insight);
-      intelligence.addInsight({ title: insight.title, category: insight.category, summary: insight.summary, priority: insight.priority, source: 'x-ultra-chat', relatedMetrics: extractRelatedMetrics(insight.category) });
+      intelligence.addInsight({ title: insight.title, category: insight.category, summary: insight.summary, priority: insight.priority, source: 'x-ultra-chat' });
     }
   };
 
-  const downloadAnalysis = (item) => {
-    const content = `CONSEQ-X CHAT REPORT\n${'='.repeat(22)}\n\nTitle: ${item.title}\nCategory: ${item.category}\nPriority: ${item.priority}\nDate: ${new Date(item.timestamp).toLocaleString()}\n\nSUMMARY\n${'-'.repeat(8)}\n${item.summary}\n\nFULL CONVERSATION\n${'-'.repeat(18)}\n${item.content}\n\n---\nGenerated from X-ULTRA Chat\nConseQ-X Platform\nID: ${item.id}`;
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${item.title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+
 
   /* ═══ SIMULATE REPLY (fallback when no API key) ═══ */
 
@@ -423,9 +538,10 @@ export default function CEOChat() {
     setIsGenerating(true);
     const lowerPrompt = prompt.toLowerCase();
     const data3D = prepare3DData();
+    const ctx = buildFullDashboardContext();
     let lines = [];
 
-    // ─── Interview Mode: detect decision/problem queries and ask clarifying questions first ───
+    // ─── Interview Mode: detect decision/problem queries ───
     const isDecisionQuery = /\b(should i|should we|what if|how to|decide|option|choice|consider|thinking about|planning to|want to|need to)\b/i.test(prompt);
     const isProblemQuery = /\b(problem|issue|challenge|struggling|failing|losing|crisis|urgent|help with|advice on)\b/i.test(prompt);
     const hasEnoughContext = prompt.length > 200 || /\b(because|since|context|background|details|specifically)\b/i.test(prompt);
@@ -444,48 +560,239 @@ export default function CEOChat() {
         lines.push(`3. **What have you tried?** Any fixes or workarounds you've already put in place.`);
         lines.push(`4. **How urgent is it?** Does this need sorting this week, or can it wait a month?`);
       }
-      lines.push(`\n**Tip:** If you have any supporting documents — a report, a spreadsheet, a contract — upload them using the 📎 button below. The more context I have, the sharper my advice will be.\n`);
+      lines.push(`\n**Tip:** Upload supporting documents using the 📎 button — the more context I have, the sharper my advice.\n`);
       lines.push(`Once I understand the full picture, I'll give you **three clear options** with the likely consequences of each.`);
     } else {
-      const greetings = ["Here's what I can see from your data:", "Let me look at your numbers and break it down:", "Alright, let me pull up what we know:"];
-      lines.push(greetings[Math.floor(Math.random() * greetings.length)]);
-    }
 
-    if (!(isDecisionQuery || isProblemQuery) || hasEnoughContext) {
-    if (lowerPrompt.includes('score') || lowerPrompt.includes('performance') || lowerPrompt.includes('health')) {
-      lines.push(`\n**Here's where your organisation stands: ${data3D.overall_health}%**`);
-      lines.push(`- **${data3D.total_systems}** systems tracked in total`);
-      if (data3D.critical_systems > 0) lines.push(`- **${data3D.critical_systems}** system${data3D.critical_systems > 1 ? 's' : ''} need urgent attention`);
-      if (data3D.excellent_systems > 0) lines.push(`- **${data3D.excellent_systems}** system${data3D.excellent_systems > 1 ? 's are' : ' is'} performing really well`);
-      if (data3D.improving_systems > 0) lines.push(`- **${data3D.improving_systems}** system${data3D.improving_systems > 1 ? 's are' : ' is'} trending upward`);
+    // ─── Follow-up detection: short replies like "yes", "go ahead", "tell me more" ───
+    let effectivePrompt = prompt;
+    if (/^(yes|yeah|yep|sure|go ahead|okay|ok|tell me|tell me more|continue|go on|please|do it|absolutely|definitely)\b/i.test(prompt.trim()) && prompt.trim().length < 30) {
+      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user' && m.text !== prompt);
+      if (lastUserMsg) effectivePrompt = lastUserMsg.text;
     }
-    if (lowerPrompt.includes('system') || lowerPrompt.includes('department')) {
-      lines.push("\n**How each system is doing:**");
-      data3D.systems.filter(sys => sys.score > 0).forEach(sys => {
-        const icon = sys.score > 80 ? '✅' : sys.score > 60 ? '⚠️' : '🚨';
-        lines.push(`${icon} **${sys.name}**: ${sys.score}%`);
-      });
-      const unassessed = data3D.systems.filter(sys => sys.score === 0);
-      if (unassessed.length > 0) {
-        lines.push(`\n📋 **Not yet assessed:** ${unassessed.map(s => s.name).join(', ')}`);
+    const ep = effectivePrompt.toLowerCase();
+
+    // ─── Route to the right dashboard section based on the question ───
+    // Order matters: specific topics first, broad catch-all last
+
+    // SPECIFIC SYSTEM deep-dive (most specific — check first)
+    if (/\b(interdependency|orchestration|investigation|interpretation|illustration|inlignment)\b/i.test(ep)) {
+      const match = ep.match(/\b(interdependency|orchestration|investigation|interpretation|illustration|inlignment)\b/i);
+      const sysKey = match[1].toLowerCase();
+      const sys = ctx.systems[sysKey];
+      if (sys?.assessed) {
+        lines.push(`**${sys.name} — ${sys.score}%**\n`);
+        if (sys.interpretation) lines.push(`*"${sys.interpretation}"*\n`);
+        if (sys.subScores?.length > 0) {
+          lines.push(`**Breakdown:**`);
+          sys.subScores.forEach(sub => {
+            const icon = sub.score > 70 ? '✅' : sub.score > 45 ? '⚠️' : '🚨';
+            lines.push(`${icon} ${sub.name || sub.label}: ${sub.score}%`);
+          });
+        }
+        lines.push(`\nFor a full deep-dive with recommendations and African case studies, check the **Ultra View** page.`);
+      } else {
+        lines.push(`You haven't assessed **${sys?.name || sysKey}** yet. Head to **Assessments** to run it — once you do, I'll be able to break it down for you.`);
       }
     }
-    if (lowerPrompt.includes('recommendation') || lowerPrompt.includes('action') || lowerPrompt.includes('plan')) {
-      lines.push("\n**What I'd suggest focusing on:**");
-      if (data3D.critical_systems > 0) lines.push(`1. Tackle the ${data3D.critical_systems} system${data3D.critical_systems > 1 ? 's' : ''} that scored below 40% — those are holding things back`);
-      lines.push("2. Look at what's working in your stronger systems and apply those lessons to the weaker ones");
-      lines.push("3. Set up a regular check-in rhythm so you can spot problems before they grow");
+
+    // FINANCIALS / REVENUE / BILLING (before health — "financial metrics" contains "metric")
+    else if (/\b(financ|revenue|cost|profit|margin|billing|budget|money|turnover|retention|metric)\b/i.test(ep)) {
+      if (ctx.financials) {
+        const f = ctx.financials;
+        lines.push(`**Here's your financial picture:**\n`);
+        if (f.annualRevenue) lines.push(`- **Annual Revenue:** ${typeof f.annualRevenue === 'number' ? '₦' + f.annualRevenue.toLocaleString() : f.annualRevenue}`);
+        if (f.operatingCost) lines.push(`- **Operating Cost:** ${typeof f.operatingCost === 'number' ? '₦' + f.operatingCost.toLocaleString() : f.operatingCost}`);
+        if (f.profitMarginPct != null) lines.push(`- **Profit Margin:** ${f.profitMarginPct}%`);
+        if (f.costOfDelays) lines.push(`- **Cost of Delays:** ${typeof f.costOfDelays === 'number' ? '₦' + f.costOfDelays.toLocaleString() : f.costOfDelays}`);
+        if (f.customerRetentionPct != null) lines.push(`- **Customer Retention:** ${f.customerRetentionPct}%`);
+        if (f.employeeTurnoverPct != null) lines.push(`- **Employee Turnover:** ${f.employeeTurnoverPct}%`);
+        // Cross-reference with system scores
+        if (ctx.assessedCount > 0) {
+          lines.push(`\n**How this connects to your systems:**`);
+          if (f.profitMarginPct != null) lines.push(`- Profit margin links to **Orchestration** (process efficiency)`);
+          if (f.employeeTurnoverPct != null) lines.push(`- Employee turnover links to **Interpretation** (culture & engagement)`);
+          if (f.customerRetentionPct != null) lines.push(`- Customer retention links to **Interdependency** (stakeholder relationships)`);
+        }
+        if (f.profitMarginPct != null && f.profitMarginPct < 15) {
+          lines.push(`\n⚠️ Your profit margin is below 15% — that's tight. I'd look at the **Orchestration** system for quick wins on cost reduction.`);
+        }
+        if (f.employeeTurnoverPct != null && f.employeeTurnoverPct > 20) {
+          lines.push(`\n⚠️ Employee turnover above 20% is costly. Check your **Interpretation** scores — that covers culture, morale, and engagement.`);
+        }
+      } else {
+        lines.push(`I don't have your financial data yet.\n`);
+        lines.push(`Go to the **Org Metrics** (Billing) tab and enter your key numbers — revenue, operating costs, profit margins, customer retention, employee turnover.\n`);
+        lines.push(`Once those are in, I'll be able to show you exactly how your finances connect to each of the six systems and where money is being lost.`);
+      }
     }
-    if (lowerPrompt.includes('financial') || lowerPrompt.includes('revenue') || lowerPrompt.includes('cost')) {
-      lines.push("\n**On the financial side:**");
-      lines.push("I'd need to see your financial data to give you specific numbers. Upload a report or spreadsheet using the 📎 button and I'll work through it with you.");
+
+    // ACTION ITEMS / RECOMMENDATIONS / PLAN
+    else if (/\b(action|recommendation|plan|todo|task|next step|priorit|focus|what should)\b/i.test(ep)) {
+      if (ctx.actions.length > 0) {
+        const pending = ctx.actions.filter(a => a.status !== 'completed');
+        const done = ctx.actions.filter(a => a.status === 'completed');
+        lines.push(`**Your action items:**\n`);
+        lines.push(`✅ ${done.length} completed · 📋 ${pending.length} still open\n`);
+        if (pending.length > 0) {
+          lines.push(`**Open items:**`);
+          pending.slice(0, 6).forEach((a, i) => {
+            lines.push(`${i + 1}. ${a.action || a.text || 'Unnamed'} — *${a.priority || 'Medium'} priority*${a.owner ? ` (${a.owner})` : ''}`);
+          });
+        }
+        lines.push(`\nYou can manage these on the **Recommendations & Actions** page under Partner Dashboard.`);
+      } else if (ctx.assessedCount > 0) {
+        lines.push(`You don't have any custom action items yet, but based on your scores, here's what I'd prioritise:\n`);
+        const sorted = Object.values(ctx.systems).filter(s => s.assessed).sort((a, b) => a.score - b.score);
+        sorted.slice(0, 3).forEach((sys, i) => {
+          lines.push(`${i + 1}. **${sys.name}** (${sys.score}%) — this needs the most attention`);
+        });
+        lines.push(`\nGo to **Recommendations & Actions** in the Partner Dashboard to create specific tasks and assign owners.`);
+      } else {
+        lines.push(`Complete your first assessment so I can give you data-driven recommendations. Head to the **Assessments** tab to get started.`);
+      }
     }
-    if (Object.keys(latestBySystem).length === 0) {
-      lines.push("\nYou haven't run any assessments yet, so I'm working with limited information. Once you complete a few system assessments, I'll be able to give you much more specific guidance.");
-    } else {
-      lines.push("\nWant me to dig deeper into any of these systems, or would you like to talk through a specific challenge you're facing?");
+
+    // BENCHMARK / INDUSTRY / COMPARISON
+    else if (/\b(benchmark|industry|compar|ranking|percentile|peer|sector)\b/i.test(ep)) {
+      if (ctx.assessedCount > 0) {
+        lines.push(`**Industry Benchmarking**\n`);
+        lines.push(`Your overall health is **${ctx.overallHealth}%**. Here's how that typically stacks up:\n`);
+        lines.push(`- Above 75%: Top quartile — you're outperforming most organisations`);
+        lines.push(`- 50–75%: Middle of the pack — solid but with clear room to grow`);
+        lines.push(`- Below 50%: Below average — there are fundamentals to fix\n`);
+        lines.push(`For a detailed breakdown showing how each of your six systems compares to industry averages and top performers, check the **Industry Benchmarks** page under Partner Dashboard.`);
+      } else {
+        lines.push(`I'll need your assessment scores before I can benchmark you against the industry. Run at least one assessment from the **Assessments** tab.`);
+      }
     }
-    } // end if hasEnoughContext
+
+    // FORECAST / SCENARIO / IMPACT
+    else if (/\b(forecast|scenario|impact|project|simulat|what.*happen|predict)\b/i.test(ep)) {
+      if (ctx.assessedCount > 0) {
+        lines.push(`**Impact Simulator**\n`);
+        lines.push(`Based on your current scores, here's a quick read:\n`);
+        const critical = Object.values(ctx.systems).filter(s => s.assessed && s.score < 40);
+        if (critical.length > 0) {
+          lines.push(`If you improve ${critical.map(s => `**${s.name}**`).join(' and ')} by even 15–20 points, your overall health could jump from ${ctx.overallHealth}% to roughly ${Math.min(100, ctx.overallHealth + Math.round(critical.length * 5))}%.`);
+        } else {
+          lines.push(`Your scores are fairly balanced. A 10-point improvement in your weakest system (**${ctx.weakest?.name}**) would push your overall health to about ${Math.min(100, ctx.overallHealth + 2)}%.`);
+        }
+        lines.push(`\nFor interactive "what if" scenarios with sliders, go to **Forecast & Scenarios** in the Partner Dashboard.`);
+      } else {
+        lines.push(`I can't run forecasts without assessment data. Complete your assessments first, then use the **Forecast & Scenarios** tool on the Partner Dashboard to model different outcomes.`);
+      }
+    }
+
+    // DATA / UPLOADS / DOCUMENTS
+    else if (/\b(upload|data|document|file|spreadsheet|csv|excel|report.*upload)\b/i.test(ep)) {
+      if (ctx.uploads.length > 0) {
+        lines.push(`**Your uploaded data:**\n`);
+        ctx.uploads.slice(0, 5).forEach(u => {
+          lines.push(`- **${u.name}** (${u.type.toUpperCase()}, ${u.records} rows) → linked to: ${u.systems?.length > 0 ? u.systems.map(s => titleByKey[s] || s).join(', ') : 'no system detected'}`);
+        });
+        if (ctx.uploads.length > 5) lines.push(`- ...and ${ctx.uploads.length - 5} more`);
+        lines.push(`\nYou can manage these on the **Data Management** page, or upload more right here using the 📎 button.`);
+      } else {
+        lines.push(`You haven't uploaded any data files yet.\n`);
+        lines.push(`You can upload spreadsheets, reports, or documents two ways:`);
+        lines.push(`1. Use the 📎 button right here in chat — I'll read it and use it in our conversation`);
+        lines.push(`2. Go to the **Data Management** page for a full upload with automatic system mapping`);
+      }
+    }
+
+    // ASSESSMENT PROGRESS
+    else if (/\b(assess|progress|which.*done|which.*left|completed|remaining)\b/i.test(ep)) {
+      const assessed = Object.values(ctx.systems).filter(s => s.assessed);
+      const notAssessed = Object.values(ctx.systems).filter(s => !s.assessed);
+      lines.push(`**Assessment progress: ${assessed.length} of 6 complete**\n`);
+      if (assessed.length > 0) {
+        lines.push(`✅ **Done:**`);
+        assessed.forEach(s => lines.push(`  - ${s.name}: ${s.score}%`));
+      }
+      if (notAssessed.length > 0) {
+        lines.push(`\n📋 **Still to go:**`);
+        notAssessed.forEach(s => lines.push(`  - ${s.name}`));
+        lines.push(`\nEach assessment takes about 10–15 minutes. Head to the **Assessments** tab to continue.`);
+      } else {
+        lines.push(`\n🎉 All six systems assessed! You now have a complete picture.`);
+      }
+    }
+
+    // REPORT / ARCHIVE / SAVED
+    else if (/\b(report|archive|saved|history|past|previous|export|pdf)\b/i.test(ep)) {
+      lines.push(`**Reports & Archive**\n`);
+      if (ctx.assessedCount > 0) {
+        lines.push(`You can generate and download reports in two places:\n`);
+        lines.push(`- **Reports** page — full PDF report covering all your assessment results, sub-scores, and recommendations`);
+        lines.push(`- **Ultra View** — deep-dive PDF for any individual system\n`);
+        lines.push(`Your assessment history is saved in the **Archive** tab, where you can see how your scores have changed over time.`);
+      } else {
+        lines.push(`Once you complete assessments, you'll be able to generate PDF reports and view your history in the **Archive** tab.`);
+      }
+    }
+
+    // TEAM
+    else if (/\b(team|member|employee|staff|people|colleague|invite)\b/i.test(ep)) {
+      lines.push(`**Team management** is handled on the **Team** page in the sidebar.\n`);
+      lines.push(`From there you can invite team members, assign roles, and manage access to the platform.`);
+    }
+
+    // SCORES / HEALTH / OVERVIEW (broad — after all specific topics)
+    else if (/\b(health|overview|how.*doing|how.*we|status|standing|performance|score)\b/i.test(ep)) {
+      if (ctx.assessedCount > 0) {
+        lines.push(`**Your organisation's health: ${ctx.overallHealth}%** (based on ${ctx.assessedCount} of 6 systems)\n`);
+        Object.values(ctx.systems).filter(s => s.assessed).sort((a, b) => b.score - a.score).forEach(sys => {
+          const icon = sys.score > 80 ? '✅' : sys.score > 60 ? '⚠️' : '🚨';
+          lines.push(`${icon} **${sys.name}**: ${sys.score}%${sys.interpretation ? ` — ${sys.interpretation}` : ''}`);
+        });
+        const unassessed = Object.values(ctx.systems).filter(s => !s.assessed);
+        if (unassessed.length > 0) lines.push(`\n📋 **Not yet assessed:** ${unassessed.map(s => s.name).join(', ')}`);
+        if (ctx.weakest && ctx.strongest && ctx.weakest.name !== ctx.strongest.name) {
+          lines.push(`\nYour biggest opportunity for improvement is **${ctx.weakest.name}** at ${ctx.weakest.score}%. I'd start there.`);
+        }
+      } else {
+        lines.push(`You haven't completed any assessments yet, so I don't have scores to show you.\n`);
+        lines.push(`Head to the **Assessments** tab in the sidebar and work through your first system — it takes about 10–15 minutes. Once you do, I'll be able to give you a full health breakdown.`);
+      }
+    }
+
+    // GENERAL CATCH-ALL
+    else {
+      if (ctx.assessedCount > 0) {
+        lines.push(`Here's a snapshot of where things stand:\n`);
+        lines.push(`📊 **Overall Health:** ${ctx.overallHealth}% (${ctx.assessedCount}/6 systems assessed)`);
+        if (ctx.assessedCount > 1) {
+          if (ctx.weakest && ctx.weakest.score < 60) lines.push(`⚠️ **Needs attention:** ${ctx.weakest.name} (${ctx.weakest.score}%)`);
+          if (ctx.strongest) lines.push(`✅ **Going well:** ${ctx.strongest.name} (${ctx.strongest.score}%)`);
+        } else {
+          // Only 1 system — don't repeat it as both weakest and strongest
+          const only = Object.values(ctx.systems).find(s => s.assessed);
+          if (only) {
+            const icon = only.score >= 70 ? '✅' : only.score >= 50 ? '⚠️' : '🚨';
+            lines.push(`${icon} **${only.name}:** ${only.score}%`);
+            lines.push(`\nYou've assessed 1 of 6 systems so far. Complete more to get a fuller picture.`);
+          }
+        }
+        if (ctx.actions.length > 0) {
+          const pending = ctx.actions.filter(a => a.status !== 'completed').length;
+          if (pending > 0) lines.push(`📋 **Open action items:** ${pending}`);
+        }
+        if (ctx.financials) lines.push(`💰 **Financial data:** Available`);
+        if (ctx.uploads.length > 0) lines.push(`📁 **Uploaded files:** ${ctx.uploads.length}`);
+        lines.push(`\nWhat would you like to dig into? I can talk about any of your six systems, your financials, benchmarks, forecasts, action items, or help you work through a decision.`);
+      } else {
+        lines.push(`Welcome! I'm X-ULTRA — your AI advisor on this platform.\n`);
+        lines.push(`Right now I don't have much data to work with because you haven't completed any assessments yet. Here's how to get started:\n`);
+        lines.push(`1. **Assessments** — Run your first system assessment (takes ~15 minutes)`);
+        lines.push(`2. **Billing** — Enter your financial metrics so I can link them to your systems`);
+        lines.push(`3. **Data Management** — Upload spreadsheets or reports for deeper analysis\n`);
+        lines.push(`Once you've done even one assessment, I'll be able to give you actionable insights across your entire dashboard.`);
+      }
+    }
+
+    } // end else (not decision/problem)
+
 
     const include3D = needs3DVisualization(prompt);
     if (include3D) {
@@ -534,10 +841,6 @@ export default function CEOChat() {
     setMessages(prev => [...prev, { id: assistantId, role: "assistant", text: "...", timestamp: new Date().toISOString() }]);
     setIsGenerating(true);
 
-    const scores = {};
-    Object.keys(latestBySystem).forEach(k => { scores[k] = latestBySystem[k]?.score ?? null; });
-
-    const needsAssessmentContext = (t) => /\b(assess|score|system|results|report|priority|action plan|org|organization|company|revenue|metrics|kpi|how did we do|what is my score)\b/i.test(t);
     const askingForLink = (t) => /\b(link|url|navigate|go to|take me to|where|how do I|access|run|start)\b.*\b(assess|assessment|test|evaluation)\b/i.test(t);
 
     const openRouterKey = process.env.REACT_APP_OPENROUTER_KEY;
@@ -558,8 +861,6 @@ export default function CEOChat() {
         return;
       }
 
-      const hasAssessmentData = Object.keys(scores).length > 0;
-      const needsAssessments = needsAssessmentContext(text) && hasAssessmentData;
       const include3D = needs3DVisualization(text);
       const visualData = include3D ? prepare3DData() : null;
       let visualType = 'globe';
@@ -576,68 +877,64 @@ export default function CEOChat() {
 
       const interviewSystemPrompt = `You are X-ULTRA, the AI assistant built into the ConseQ-X platform. You help CEOs and business leaders understand their organisation's health and make better decisions.
 
+YOU HAVE ACCESS TO THE CEO'S FULL DASHBOARD DATA:
+- Assessment scores for each of the 6 systems (Interdependency, Orchestration, Investigation, Interpretation, Illustration, Inlignment)
+- Financial metrics (revenue, costs, margins, retention, turnover)
+- Action items and recommendations
+- Uploaded documents and data files
+- Industry benchmarks and forecasts
+- Recent AI insights
+
+GUIDE FOR NAVIGATING THE PLATFORM:
+- Ultra View: Deep-dive into each system with sub-scores, case studies, and recommendations
+- Data Management: Upload spreadsheets and documents for analysis
+- Partner Dashboard → Forecast & Scenarios: Interactive "what if" simulator
+- Partner Dashboard → Recommendations & Actions: Task management and priorities
+- Partner Dashboard → Industry Benchmarks: Compare against industry averages
+- Assessments: Run or continue system assessments
+- Reports: Generate PDF reports of results
+- Billing: Financial metrics linked to systems
+- Archive: Historical assessment data and trends
+- Team: Invite and manage team members
+
 HOW YOU SHOULD BEHAVE:
 - Write like a trusted advisor, not a machine. Be warm, direct, and practical.
 - Use plain English. No jargon, no corporate buzzwords, no filler.
-- When the CEO asks about a decision or problem, ask 2-3 clarifying questions first before giving advice.
-- If relevant, suggest they upload supporting documents (contracts, financials, reports) using the file upload button.
+- When the CEO asks about a decision or problem, ask 2-3 clarifying questions first.
+- Always reference the user's actual data and scores when they are available.
+- When relevant, point the CEO to the right page on the dashboard for more detail.
 
 WHEN YOU GIVE ADVICE:
-- Present 3 clear options when the situation calls for it:
-  - Option A (Play it safe): Lower risk, incremental steps
-  - Option B (Balanced approach): Moderate risk, structured change
-  - Option C (Go bold): Higher risk, bigger potential payoff
-- For each option, explain: what to do, roughly how long it takes, and what could go right or wrong.
+- Present 3 clear options when the situation calls for it.
+- For each option: what to do, roughly how long, and what could go right or wrong.
 
 RULES:
-- You are being used primarily in the Nigerian and African business context. Reference relevant local examples when helpful.
-- Use actual numbers and scores from assessment data when they are available.
-- If you do not have enough data to give a confident answer, say so honestly.
-- Keep responses focused. A CEO's time is valuable — do not ramble.`;
+- Primarily Nigerian and African business context. Reference relevant local examples.
+- If you do not have enough data, say so honestly.
+- Keep responses focused — a CEO's time is valuable.`;
 
-      if (needsAssessments) {
-        const assessmentDocs = Object.values(latestBySystem).map(r => ({
-          id: r.id || `${r.systemId}-${r.timestamp}`,
-          text: `System: ${r.systemId}\nScore: ${r.score}\nNotes: ${JSON.stringify(r.meta || {})}`,
-          meta: { systemId: r.systemId, score: r.score, timestamp: r.timestamp }
-        }));
-        // Include persisted uploaded document chunks
-        const storedDocs = loadStoredDocs(orgId);
-        const allDocs = [...assessmentDocs, ...storedDocs];
-        const index = buildIndex(allDocs);
-        const hits = queryIndex(index, text, 6);
-        const report = hits.map(h => `- [${h.doc.meta.systemId || h.doc.meta.source || 'doc'}] ${h.doc.meta.score ? `score: ${h.doc.meta.score} — ` : ''}excerpt: ${h.doc.text.slice(0, 200)}`).join('\n');
+      // Build rich context from ALL dashboard sections
+      const fullContext = buildContextString();
 
-        chatPayload = {
-          model: "mistralai/mistral-7b-instruct",
-          messages: [
-            { role: "system", content: interviewSystemPrompt },
-            { role: "system", content: `ASSESSMENT DATA & UPLOADED DOCUMENTS:\n${report}` },
-            ...recentHistory,
-            { role: "user", content: text }
-          ]
-        };
-      } else {
-        const contextualPrompt = intelligence.getContextualPrompt();
-        // Also include uploaded docs in non-assessment queries
-        const storedDocs = loadStoredDocs(orgId);
-        let docContext = "";
-        if (storedDocs.length > 0) {
-          const docIndex = buildIndex(storedDocs);
-          const docHits = queryIndex(docIndex, text, 3);
-          if (docHits.length > 0) {
-            docContext = `\n\nUPLOADED DOCUMENT EXCERPTS:\n${docHits.map(h => `- [${h.doc.meta.source}]: ${h.doc.text.slice(0, 200)}`).join('\n')}`;
-          }
+      // Include RAG hits from uploaded docs
+      const storedDocs = loadStoredDocs(orgId);
+      let ragContext = "";
+      if (storedDocs.length > 0) {
+        const docIndex = buildIndex(storedDocs);
+        const docHits = queryIndex(docIndex, text, 4);
+        if (docHits.length > 0) {
+          ragContext = `\n\nRELEVANT UPLOADED DOCUMENT EXCERPTS:\n${docHits.map(h => `- [${h.doc.meta.source || 'doc'}]: ${h.doc.text.slice(0, 250)}`).join('\n')}`;
         }
-        chatPayload = {
-          model: "mistralai/mistral-7b-instruct",
-          messages: [
-            { role: "system", content: `${interviewSystemPrompt}\n\nCURRENT ORGANIZATIONAL CONTEXT: ${contextualPrompt}${docContext}` },
-            ...recentHistory,
-            { role: "user", content: text }
-          ]
-        };
       }
+
+      chatPayload = {
+        model: "mistralai/mistral-7b-instruct",
+        messages: [
+          { role: "system", content: `${interviewSystemPrompt}\n\nFULL DASHBOARD SNAPSHOT:\n${fullContext}${ragContext}` },
+          ...recentHistory,
+          { role: "user", content: text }
+        ]
+      };
 
       const res = await fetch(modelUrl, {
         method: "POST",
@@ -758,9 +1055,9 @@ RULES:
   /* ─── Suggestion chips for empty state ─── */
   const suggestions = [
     { icon: <FaChartLine size={16} />, label: "How is my organisation doing overall?", prompt: "Give me an honest overview of how my organisation is performing across all six systems" },
-    { icon: <FaCube size={16} />, label: "Show me a visual of our health", prompt: "Show me a 3D visualization of how our six systems are performing" },
-    { icon: <FaFileAlt size={16} />, label: "What should I focus on first?", prompt: "Based on our scores, what are the most important things I should be working on right now?" },
-    { icon: <FaDownload size={16} />, label: "Help me think through a decision", prompt: "I have a decision I need to make and I'd like to talk it through with you" }
+    { icon: <FaFileAlt size={16} />, label: "What should I focus on first?", prompt: "Based on our scores and action items, what are the most important things I should be working on right now?" },
+    { icon: <FaCube size={16} />, label: "Show me my financial picture", prompt: "Walk me through our financial metrics and how they connect to our system scores" },
+    { icon: <FaCommentDots size={16} />, label: "Help me think through a decision", prompt: "I have a decision I need to make and I'd like to talk it through with you" }
   ];
 
   const isEmpty = messages.length === 0;
@@ -969,27 +1266,28 @@ RULES:
                 filteredArchive.map(item => (
                   <div
                     key={item.id}
-                    className={`p-2.5 rounded-lg ${darkMode ? 'bg-gray-800/50 hover:bg-gray-800' : 'bg-white hover:bg-gray-50 border border-gray-100'}`}
+                    className={`p-2.5 rounded-lg cursor-pointer ${darkMode ? 'bg-gray-800/50 hover:bg-gray-800' : 'bg-white hover:bg-gray-50 border border-gray-100'}`}
+                    onClick={() => setExpandedArchiveId(expandedArchiveId === item.id ? null : item.id)}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-xs font-medium truncate ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{item.title}</p>
+                      <p className={`text-xs font-medium ${expandedArchiveId === item.id ? '' : 'truncate'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{item.title}</p>
                       <span className={`text-[9px] px-1.5 py-0.5 rounded-full whitespace-nowrap ${
                         item.priority === 'Critical' ? 'bg-red-100 text-red-700'
                           : item.priority?.includes('High') ? 'bg-orange-100 text-orange-700'
                           : 'bg-gray-100 text-gray-600'
                       }`}>{item.priority}</span>
                     </div>
-                    <p className={`text-[11px] mt-1 line-clamp-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{item.summary}</p>
+                    <p className={`text-[11px] mt-1 ${expandedArchiveId === item.id ? '' : 'line-clamp-2'} ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {expandedArchiveId === item.id ? item.content : item.summary}
+                    </p>
                     <div className="flex items-center justify-between mt-2">
                       <span className={`text-[10px] ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>
                         {new Date(item.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
-                      <button
-                        onClick={() => downloadAnalysis(item)}
-                        className={`text-[11px] flex items-center gap-1 ${darkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-                      >
-                        <FaDownload size={10} /> Save
-                      </button>
+                      <span className={`text-[11px] flex items-center gap-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {expandedArchiveId === item.id ? <FaChevronUp size={9} /> : <FaChevronDown size={9} />}
+                        {expandedArchiveId === item.id ? 'Collapse' : 'Read'}
+                      </span>
                     </div>
                   </div>
                 ))

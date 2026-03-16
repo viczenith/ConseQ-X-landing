@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { getResults } from "./services/orgHealth"; // ensure path is correct
-import { FaChartPie, FaDownload, FaEye } from "react-icons/fa";
+import { FaChartPie, FaDownload, FaEye, FaExclamationTriangle, FaCheckCircle, FaArrowRight } from "react-icons/fa";
 import { downloadSystemDeepDivePDF } from "../../utils/pdfReportBuilder";
+import { evaluateParameters, getParameterSummary } from "../../data/parameters28";
 
 /* ----------------- helpers ----------------- */
 function normalizeKey(k = "") {
@@ -653,7 +654,58 @@ export default function OrgHealthOverview({ orgId = null }) {
         ))}
       </div>
 
-
+      {/* 28-Parameter Pulse */}
+      {(() => {
+        const systemScores = {};
+        perSystem.forEach(p => { if (p.score !== null) systemScores[p.id] = p.score; });
+        if (Object.keys(systemScores).length === 0) return null;
+        const evaluated = evaluateParameters(systemScores);
+        const summary = getParameterSummary(evaluated);
+        const critical = evaluated.filter(p => p.score !== null && p.score < 40).sort((a, b) => a.score - b.score).slice(0, 3);
+        const strong = evaluated.filter(p => p.score !== null && p.score >= 70).sort((a, b) => b.score - a.score).slice(0, 3);
+        return (
+          <div className={`mt-4 rounded-xl border p-3 ${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-indigo-50/30 border-indigo-100"}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className={`text-xs font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                28-Parameter Pulse — {summary.assessed}/28 scored, avg {summary.avgScore}%
+              </span>
+              <button onClick={() => navigate("/ceo/archive")} className={`text-[11px] flex items-center gap-1 ${darkMode ? "text-indigo-400 hover:text-indigo-300" : "text-indigo-600 hover:text-indigo-500"}`}>
+                Full Diagnostic <FaArrowRight className="text-[9px]" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {critical.length > 0 && (
+                <div className={`rounded-lg p-2 ${darkMode ? "bg-red-900/15" : "bg-red-50"}`}>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <FaExclamationTriangle className="text-red-400 text-[10px]" />
+                    <span className={`text-[10px] font-bold uppercase ${darkMode ? "text-red-300" : "text-red-600"}`}>Critical</span>
+                  </div>
+                  {critical.map(p => (
+                    <div key={p.id} className="flex items-center justify-between py-0.5">
+                      <span className={`text-[11px] truncate ${darkMode ? "text-gray-300" : "text-gray-600"}`}>{p.title}</span>
+                      <span className="text-[11px] font-bold text-red-500">{p.score}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {strong.length > 0 && (
+                <div className={`rounded-lg p-2 ${darkMode ? "bg-emerald-900/15" : "bg-emerald-50"}`}>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <FaCheckCircle className="text-emerald-400 text-[10px]" />
+                    <span className={`text-[10px] font-bold uppercase ${darkMode ? "text-emerald-300" : "text-emerald-600"}`}>Strong</span>
+                  </div>
+                  {strong.map(p => (
+                    <div key={p.id} className="flex items-center justify-between py-0.5">
+                      <span className={`text-[11px] truncate ${darkMode ? "text-gray-300" : "text-gray-600"}`}>{p.title}</span>
+                      <span className="text-[11px] font-bold text-emerald-500">{p.score}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal */}
       <Modal

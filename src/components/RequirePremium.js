@@ -46,20 +46,8 @@ export default function RequirePremium({ children }) {
       <UpsellModal
         open={showUpsell}
         onClose={() => setShowUpsell(false)}
-        onUpgrade={async ({ period } = {}) => {
-          try {
-            if (auth && typeof auth.upgrade === "function") {
-              const months = period === "yearly" ? 12 : 1;
-              auth.upgrade({ months, tier: "premium" });
-            }
-
-            // Wait briefly for state to propagate, then close
-            await new Promise((r) => setTimeout(r, 800));
-          } catch (err) {
-            console.error("RequirePremium upgrade error:", err);
-          } finally {
-            setShowUpsell(false);
-          }
+        onUpgrade={async () => {
+          setShowUpsell(false);
         }}
         redirectTo="/ceo"
       />
