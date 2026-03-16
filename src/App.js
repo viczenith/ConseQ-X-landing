@@ -35,8 +35,6 @@ const CEODashboardHome = React.lazy(() => import("./pages/CEO_Dashboard/CEODashb
 const CEOChat = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/Chat")); 
 const CEODataManagement = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/DataManagementView"));
 const PartnerDashboard = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard"));
-const PartnerOverview = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/OverviewView"));
-const PartnerDeepDive = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/SystemDeepDive"));
 const PartnerForecast = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/ForecastScenarios"));
 const PartnerRecommendations = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/RecommendationsActions"));
 const PartnerBenchmarking = React.lazy(() => import("./pages/CEO_Dashboard/CEODashboardComponents/PartnerDashboard/BenchmarkingTrends"));
@@ -99,9 +97,7 @@ export default function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<CEODashboardHome />} />
           <Route path="partner-dashboard/*" element={<Suspense fallback={<div>Loading Partner Dashboard...</div>}><PartnerDashboard /></Suspense>}>
-            <Route index element={<Navigate to="overview" replace />} />
-            <Route path="overview" element={<Suspense fallback={<div>Loading overview...</div>}><PartnerOverview /></Suspense>} />
-            <Route path="deep-dive" element={<Suspense fallback={<div>Loading deep dive...</div>}><PartnerDeepDive /></Suspense>} />
+            <Route index element={<Navigate to="forecast" replace />} />
             <Route path="forecast" element={<Suspense fallback={<div>Loading forecast...</div>}><PartnerForecast /></Suspense>} />
             <Route path="recommendations" element={<Suspense fallback={<div>Loading recommendations...</div>}><PartnerRecommendations /></Suspense>} />
             <Route path="benchmarking" element={<Suspense fallback={<div>Loading benchmarking...</div>}><PartnerBenchmarking /></Suspense>} />

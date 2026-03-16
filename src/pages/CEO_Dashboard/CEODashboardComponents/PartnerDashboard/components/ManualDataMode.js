@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { FaUpload, FaClock, FaDownload, FaEye, FaTrash, FaFileExport, FaTimes, FaSpinner } from 'react-icons/fa';
+import { FaUpload, FaEye, FaTrash, FaTimes, FaSpinner } from 'react-icons/fa';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { getApiBase, getAccessToken } from '../../../services/apiClient';
@@ -208,8 +208,6 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
     try { localStorage.setItem(`conseqx_analyzed_docs_${orgId}`, JSON.stringify(analyzedDocuments)); } catch {}
   }, [analyzedDocuments, orgId]);
 
-  const latestUpload = uploads.length ? uploads[0] : null;
-
   /* ── file selection ── */
   const handleFiles = useCallback(async (files) => {
     setUploadProgress({ show: true, progress: 10, status: 'Parsing files...' });
@@ -310,28 +308,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
     setAnalyzedDocuments(prev => prev.filter(d => d.id !== docId));
   };
 
-  const exportDocument = (doc) => {
-    const blob = new Blob([JSON.stringify({
-      fileName: doc.fileName, analyzedDate: doc.analyzedDate, dataType: doc.dataType,
-      analyzedSystems: doc.analyzedSystems, detectedSystems: doc.detectedSystems,
-      stats: doc.stats, recordCount: doc.recordCount, columns: doc.columns, preview: doc.preview,
-    }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url;
-    a.download = `analysis-${doc.fileName}-${new Date().toISOString().split('T')[0]}.json`;
-    a.click(); URL.revokeObjectURL(url);
-  };
 
-  const exportSnapshot = () => {
-    const blob = new Blob([JSON.stringify({
-      timestamp: new Date().toISOString(), uploads: uploads.slice(0, 10),
-      analyzedDocuments: analyzedDocuments.slice(0, 10), orgId,
-    }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url;
-    a.download = `conseqx-data-export-${new Date().toISOString().split('T')[0]}.json`;
-    a.click(); URL.revokeObjectURL(url);
-  };
 
   // ────────────────── RENDER ──────────────────
   return (
@@ -344,7 +321,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold flex items-center gap-2">
                   <FaUpload className="text-blue-600" />
-                  Data Upload Wizard
+                  Upload Your Data
                 </h3>
                 <button onClick={() => { setShowUploadWizard(false); setUploadStep(1); setParsedResults([]); }}
                   className={darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}>
@@ -375,9 +352,9 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
                   onDrop={(e) => { e.preventDefault(); setDragActive(false); handleFiles(Array.from(e.dataTransfer.files)); }}
                 >
                   <FaUpload className={`mx-auto text-4xl mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                  <p className="text-lg font-medium mb-2">Upload Organizational Data</p>
+                  <p className="text-lg font-medium mb-2">Drop your files here</p>
                   <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    CSV, Excel (.xlsx/.xls), JSON, or TXT files
+                    We accept CSV, Excel, JSON, or plain text files. We'll analyse them and map the data to your organisation's six systems.
                   </p>
                   <input ref={fileInputRef} type="file" multiple accept=".csv,.xlsx,.xls,.json,.txt"
                     onChange={(e) => { const f = Array.from(e.target.files || []); if (f.length) handleFiles(f); }}
@@ -392,7 +369,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
               {/* Step 2: Review parsed results */}
               {uploadStep === 2 && (
                 <div>
-                  <h4 className="font-semibold mb-4">Parsed Files ({parsedResults.length})</h4>
+                  <h4 className="font-semibold mb-4">We found {parsedResults.length} file{parsedResults.length !== 1 ? 's' : ''}</h4>
                   <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
                     {parsedResults.map((result, idx) => (
                       <div key={idx} className={`p-4 rounded-lg border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
@@ -422,7 +399,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
                             {Object.keys(result.systems).length > 0 ? (
                               <div className="mt-2">
                                 <div className={`text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                  Detected ConseQ-X Systems:
+                                  Systems this data relates to:
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                   {Object.keys(result.systems).map(sysKey => {
@@ -437,7 +414,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
                               </div>
                             ) : (
                               <div className={`text-xs mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                No specific systems detected from column names
+                                We couldn't automatically match this to a specific system, but we'll still store it for you.
                               </div>
                             )}
 
@@ -466,7 +443,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
                       disabled={parsedResults.length === 0 || parsedResults.every(r => r.error)}
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                       <FaUpload size={12} />
-                      Upload &amp; Save
+                      Save &amp; Continue
                     </button>
                   </div>
                 </div>
@@ -496,7 +473,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
             <div className="overflow-y-auto max-h-[calc(90vh-120px)] p-6 space-y-6">
               {/* Document info */}
               <div>
-                <h4 className="text-lg font-semibold mb-3">Document Information</h4>
+                <h4 className="text-lg font-semibold mb-3">About This File</h4>
                 <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div><span className="font-medium">File Name:</span> <span className="ml-2">{selectedDocument.fileName}</span></div>
@@ -512,7 +489,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
               {/* Detected systems */}
               {selectedDocument.analyzedSystems?.length > 0 && (
                 <div>
-                  <h4 className="text-lg font-semibold mb-3">Detected ConseQ-X Systems</h4>
+                  <h4 className="text-lg font-semibold mb-3">Systems This Data Relates To</h4>
                   <div className="space-y-2">
                     {selectedDocument.analyzedSystems.map(sysKey => {
                       const sys = CANONICAL.find(c => c.key === sysKey);
@@ -540,7 +517,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
               {/* Column statistics */}
               {selectedDocument.stats?.columnStats && Object.keys(selectedDocument.stats.columnStats).length > 0 && (
                 <div>
-                  <h4 className="text-lg font-semibold mb-3">Column Statistics</h4>
+                  <h4 className="text-lg font-semibold mb-3">Number Summary</h4>
                   <div className={`overflow-x-auto rounded-lg border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                     <table className="w-full text-sm">
                       <thead className={darkMode ? 'bg-gray-800' : 'bg-gray-50'}>
@@ -573,7 +550,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
               {/* Data preview */}
               {selectedDocument.preview && Array.isArray(selectedDocument.preview) && selectedDocument.preview.length > 0 && (
                 <div>
-                  <h4 className="text-lg font-semibold mb-3">Data Preview (First 5 Rows)</h4>
+                  <h4 className="text-lg font-semibold mb-3">Sample of Your Data</h4>
                   <div className={`overflow-x-auto rounded-lg border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                     <table className="w-full text-sm">
                       <thead className={darkMode ? 'bg-gray-800' : 'bg-gray-50'}>
@@ -607,7 +584,7 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
               {/* All columns */}
               {selectedDocument.columns?.length > 0 && (
                 <div>
-                  <h4 className="text-lg font-semibold mb-3">All Columns ({selectedDocument.columns.length})</h4>
+                  <h4 className="text-lg font-semibold mb-3">All Fields ({selectedDocument.columns.length})</h4>
                   <div className="flex flex-wrap gap-2">
                     {selectedDocument.columns.map((col, idx) => (
                       <span key={idx} className={`text-xs px-2 py-1 rounded ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
@@ -624,146 +601,90 @@ export default function ManualDataMode({ darkMode, orgId = "anon" }) {
 
       {/* ── Main content ── */}
       <div className={`rounded-2xl p-6 ${darkMode ? "bg-gray-900 border border-gray-700 text-gray-100" : "bg-white border border-gray-100 text-gray-900"}`}>
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-          <div className="flex-1">
-            {latestUpload && (
-              <div className="flex items-center gap-2 text-sm">
-                <FaClock className="text-green-500" />
-                <span className="text-green-600 dark:text-green-400">
-                  Last upload: {new Date(latestUpload.timestamp_ms || latestUpload.created_at).toLocaleString()}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
+
+        {/* Empty state — no documents yet */}
+        {!loading && analyzedDocuments.length === 0 && (
+          <div className={`text-center py-12 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <FaUpload className={`mx-auto mb-4 ${darkMode ? 'text-gray-600' : 'text-gray-300'}`} size={48} />
+            <h2 className={`text-lg font-semibold mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+              No Data Uploaded Yet
+            </h2>
+            <p className="text-sm max-w-md mx-auto mb-6">
+              Upload spreadsheets, reports, or any structured data from your organisation. We'll analyse it and connect it to the six systems so you can see the full picture.
+            </p>
             <button onClick={() => setShowUploadWizard(true)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors">
-              <FaUpload /> Upload Data
-            </button>
-            <button onClick={exportSnapshot}
-              className={`px-4 py-3 rounded-lg border flex items-center gap-2 ${darkMode ? 'border-gray-600 hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-50'}`}>
-              <FaDownload /> Export
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto transition-colors">
+              <FaUpload /> Upload Your First File
             </button>
           </div>
-        </div>
+        )}
 
-        {/* Summary cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className={`col-span-1 md:col-span-2 rounded-xl p-6 border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-50"}`}>
-            <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Uploads</div>
-            <div className="text-4xl font-bold mt-2">
-              {loading ? <FaSpinner className="animate-spin text-2xl" /> : uploads.length}
-            </div>
-            <div className="text-sm text-gray-400 mt-2">
-              {latestUpload ? `Latest: ${latestUpload.name}` : 'Upload datasets to get started'}
-            </div>
+        {loading && (
+          <div className="flex items-center justify-center py-12 gap-2 text-sm text-gray-400">
+            <FaSpinner className="animate-spin" /> Loading your documents...
           </div>
+        )}
 
-          <div className={`rounded-xl p-6 border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-50"}`}>
-            <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Analyzed Documents</div>
-            <div className="text-3xl font-bold mt-2">{analyzedDocuments.length}</div>
-            <div className="text-sm text-gray-400 mt-2">With parsed data available</div>
-          </div>
-        </div>
-
-        {/* Upload history + Analyzed documents */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Upload History */}
-          <div className={`p-6 rounded-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"}`}>
-            <h4 className="font-semibold mb-3">Upload History</h4>
-            {loading ? (
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <FaSpinner className="animate-spin" /> Loading...
+        {/* Has documents */}
+        {!loading && analyzedDocuments.length > 0 && (
+          <>
+            {/* Header with upload button */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                  Your Uploaded Documents
+                </h3>
+                <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {analyzedDocuments.length} file{analyzedDocuments.length !== 1 ? 's' : ''} uploaded and analysed
+                </p>
               </div>
-            ) : uploads.length === 0 ? (
-              <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No uploads yet</div>
-            ) : (
-              <div className="space-y-3">
-                {uploads.slice(0, 5).map((upload) => (
-                  <div key={upload.id} className="border-l-2 border-blue-500 pl-3">
-                    <div className="font-medium text-sm">{upload.name}</div>
-                    <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {new Date(upload.timestamp_ms || upload.created_at).toLocaleString()}
-                    </div>
-                    {upload.analyzed_systems?.length > 0 && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        Systems: {upload.analyzed_systems.slice(0, 3).join(', ')}
-                        {upload.analyzed_systems.length > 3 && ` +${upload.analyzed_systems.length - 3} more`}
+              <button onClick={() => setShowUploadWizard(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm transition-colors">
+                <FaUpload size={12} /> Upload More
+              </button>
+            </div>
+
+            {/* Document list */}
+            <div className="space-y-3">
+              {analyzedDocuments.slice(0, 20).map((doc) => (
+                <div key={doc.id} className={`rounded-lg p-4 border ${darkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <div className={`font-medium text-sm truncate ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{doc.fileName}</div>
+                      <div className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        Uploaded {new Date(doc.analyzedDate).toLocaleDateString()} · {doc.recordCount} rows · {doc.columnCount || 0} columns
                       </div>
-                    )}
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded uppercase flex-shrink-0 ${darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                      {doc.dataType}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
 
-          {/* Analyzed Documents */}
-          <div className={`p-6 rounded-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"}`}>
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-semibold">Analyzed Documents</h4>
-              <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                {analyzedDocuments.length} document{analyzedDocuments.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-
-            {analyzedDocuments.length === 0 ? (
-              <div className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                <FaFileExport className="mx-auto mb-2 text-2xl opacity-50" />
-                <div className="text-sm">No analyzed documents yet</div>
-                <div className="text-xs mt-1">Upload and analyze documents to see them here</div>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-72 overflow-y-auto">
-                {analyzedDocuments.slice(0, 10).map((doc) => (
-                  <div key={doc.id} className={`border rounded-lg p-3 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-sm truncate">{doc.fileName}</div>
-                        <div className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {new Date(doc.analyzedDate).toLocaleDateString()} · {doc.recordCount} records · {doc.columnCount || 0} columns
-                        </div>
-                      </div>
-                      <span className={`text-xs px-2 py-0.5 rounded uppercase flex-shrink-0 ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-700'}`}>
-                        {doc.dataType}
-                      </span>
+                  {doc.analyzedSystems?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {doc.analyzedSystems.map(sysKey => (
+                        <span key={sysKey} className={`text-xs px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
+                          {CANONICAL.find(c => c.key === sysKey)?.title || sysKey}
+                        </span>
+                      ))}
                     </div>
+                  )}
 
-                    {doc.analyzedSystems?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {doc.analyzedSystems.slice(0, 3).map(sysKey => (
-                          <span key={sysKey} className={`text-xs px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                            {CANONICAL.find(c => c.key === sysKey)?.title || sysKey}
-                          </span>
-                        ))}
-                        {doc.analyzedSystems.length > 3 && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
-                            +{doc.analyzedSystems.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => { setSelectedDocument(doc); setShowDocumentViewer(true); }}
-                        className={`px-2 py-1 rounded text-xs border transition-colors ${darkMode ? 'bg-gray-700 text-gray-100 border-gray-600 hover:bg-gray-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
-                        <FaEye className="inline mr-1" /> View
-                      </button>
-                      <button onClick={() => exportDocument(doc)}
-                        className={`px-2 py-1 rounded text-xs border transition-colors ${darkMode ? 'bg-gray-700 text-gray-100 border-gray-600 hover:bg-gray-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
-                        <FaFileExport className="inline mr-1" /> Export
-                      </button>
-                      <button onClick={() => { if (window.confirm(`Delete analysis for "${doc.fileName}"?`)) deleteDocument(doc.id); }}
-                        className="px-2 py-1 rounded text-xs border text-red-600 bg-white dark:bg-gray-700 dark:text-red-400 border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20">
-                        <FaTrash className="inline mr-1" /> Delete
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => { setSelectedDocument(doc); setShowDocumentViewer(true); }}
+                      className={`px-2.5 py-1 rounded text-xs border transition-colors ${darkMode ? 'bg-gray-700 text-gray-100 border-gray-600 hover:bg-gray-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
+                      <FaEye className="inline mr-1" /> View
+                    </button>
+                    <button onClick={() => { if (window.confirm(`Delete "${doc.fileName}"?`)) deleteDocument(doc.id); }}
+                      className={`px-2.5 py-1 rounded text-xs border transition-colors ${darkMode ? 'bg-gray-700 text-red-400 border-gray-600 hover:bg-red-900/20' : 'bg-white text-red-600 border-gray-300 hover:bg-red-50'}`}>
+                      <FaTrash className="inline mr-1" /> Delete
+                    </button>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

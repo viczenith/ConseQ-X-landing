@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { getResults } from "./services/orgHealth"; // ensure path is correct
-import { FaChartPie, FaDownload, FaEye, FaExternalLinkAlt } from "react-icons/fa";
+import { FaChartPie, FaDownload, FaEye } from "react-icons/fa";
+import { downloadSystemDeepDivePDF } from "../../utils/pdfReportBuilder";
 
 /* ----------------- helpers ----------------- */
 function normalizeKey(k = "") {
@@ -28,17 +29,6 @@ function pctToToneClass(pct, darkMode) {
   if (pct >= 80) return darkMode ? "text-green-300 bg-green-900/20" : "text-green-700 bg-green-50";
   if (pct >= 60) return darkMode ? "text-yellow-300 bg-yellow-900/20" : "text-yellow-700 bg-yellow-50";
   return darkMode ? "text-red-300 bg-red-900/20" : "text-red-700 bg-red-50";
-}
-
-/* simple CSV helper */
-function toCSV(rows) {
-  const esc = (v) => {
-    if (v === null || v === undefined) return "";
-    const s = String(v).replace(/\r?\n|\r/g, " ");
-    if (s.includes(",") || s.includes('"')) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-  };
-  return rows.map((r) => r.map(esc).join(",")).join("\n");
 }
 
 /* small Modal (responsive) */
@@ -141,12 +131,12 @@ export default function OrgHealthOverview({ orgId = null }) {
   /* canonical systems */
   const canonical = useMemo(
     () => [
-      { id: "interdependency", label: "Interdependency", blurb: "How well teams integrate and hand-off work across boundaries." },
-      { id: "iteration", label: "Iteration", blurb: "Pace of learning: experiments, feedback loops, and continuous improvement." },
-      { id: "investigation", label: "Investigation", blurb: "Root-cause discovery and data-driven problem solving." },
-      { id: "interpretation", label: "Interpretation", blurb: "How insights are turned into shared understanding and decisions." },
-      { id: "illustration", label: "Illustration", blurb: "Clarity in process, playbooks, and operational visualizations." },
-      { id: "inlignment", label: "Inlignment", blurb: "Strategic alignment — how goals, incentives, and execution line up." },
+      { id: "interdependency", label: "Interdependency", blurb: "How well your teams and departments work together across boundaries." },
+      { id: "orchestration", label: "Orchestration", blurb: "How quickly your organisation adapts, improves, and responds to change." },
+      { id: "investigation", label: "Investigation", blurb: "How well you get to the root of problems before they spread." },
+      { id: "interpretation", label: "Interpretation", blurb: "How well you turn information into smart decisions." },
+      { id: "illustration", label: "Illustration", blurb: "How clearly ideas and knowledge flow across the organisation." },
+      { id: "inlignment", label: "Inlignment", blurb: "How well your day-to-day work lines up with your bigger goals." },
     ],
     []
   );
@@ -207,108 +197,64 @@ export default function OrgHealthOverview({ orgId = null }) {
     return entries.map((e) => e.avg);
   }, [results]);
 
-  /* ---- Export helpers ---- */
-  function exportJSON(full = true, single = null) {
-    try {
-      const payload = single ? single : (results || []);
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = single ? `${(single.original?.title || single.id || "system")}_orghealth.json` : `${(org && org.name) || effectiveOrg}_orghealth.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    } catch {
-      alert("Export failed");
-    }
-  }
+  function handleExportPDF(systemLabel, result) {
+    if (!result) return;
+    const original = result?.original || {};
+    const subScoresRaw = original?.meta?.subScores || [];
+    const scorePct = result?.score ?? result?.original?.score ?? 0;
+    const ts = result?.timestamp || original?.timestamp || null;
+    const interp = original?.meta?.interpretation || {};
 
-  function exportCSV(full = true, single = null) {
-    try {
-      if (single) {
-        const r = single;
-        // try to flatten a few useful fields for CSV
-        const header = [
-          "system",
-          "score",
-          "timestamp",
-          "title",
-          "notes",
-        ];
-        const rows = [
-          header,
-          [r.normalizedSystemId || r.systemId || "", r.score ?? "", new Date(r.timestamp || r.original?.timestamp || Date.now()).toISOString(), r.original?.title || r.title || "", (r.original?.notes || r.original?.summary || "").replace(/\n/g, " ")],
-        ];
-        const csv = toCSV(rows);
-        const blob = new Blob([csv], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${(r.original?.title || r.normalizedSystemId || r.id)}_orghealth.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1500);
-        return;
-      }
-      // full export: list of rows (system, score, timestamp, title)
-      const rows = [["system", "score", "timestamp", "title"]];
-      (results || []).forEach((r) => {
-        const sys = normalizeKey(r.systemId || r.system || r.original?.systemId || r.original?.system || "general");
-        const score = r.score ?? r.original?.score ?? "";
-        const ts = new Date(r.timestamp || r.original?.timestamp || Date.now()).toISOString();
-        const title = r.original?.title || r.title || "";
-        rows.push([sys, score, ts, title]);
-      });
-      const csv = toCSV(rows);
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${(org && org.name) || effectiveOrg}_orghealth.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    } catch {
-      alert("CSV export failed");
-    }
-  }
+    // Derive the same data that ResultDetail computes
+    const insights = original?.meta?.insights || (() => {
+      if (subScoresRaw.length === 0) return [scorePct >= 75 ? "Your organisation shows strong leadership and clear direction in this area." : "There's room to improve how teams coordinate in this area."];
+      const sorted = [...subScoresRaw].sort((a, b) => (a.max > 0 ? a.score / a.max : 0) - (b.max > 0 ? b.score / b.max : 0));
+      const out = [];
+      if (interp.rating) out.push(`Your organisation rated at the "${interp.rating}" level for this system.`);
+      if (interp.interpretation) out.push(interp.interpretation);
+      const s = sorted[sorted.length - 1];
+      const w = sorted[0];
+      if (s) out.push(`Your strongest area is ${s.title}, scoring ${s.max > 0 ? Math.round((s.score / s.max) * 100) : 0}%.`);
+      if (w && w !== s) out.push(`${w.title} needs the most work at ${w.max > 0 ? Math.round((w.score / w.max) * 100) : 0}%.`);
+      return out.length ? out : [`You scored ${scorePct}% overall.`];
+    })();
 
-  function exportPrint(single = null) {
-    // simple printable HTML view — user can Print -> Save as PDF
-    const payload = single ? single : { composite, systems: perSystem };
-    const html = `
-      <html>
-        <head>
-          <title>Org Health Report</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <style>
-            body{font-family: Arial, Helvetica, sans-serif;padding:20px;color:#111}
-            h1{font-size:20px}
-            h2{font-size:16px;margin-top:18px}
-            .box{border:1px solid #ddd;padding:12px;margin-top:8px;border-radius:6px}
-            .muted{color:#666;font-size:12px}
-          </style>
-        </head>
-        <body>
-          <h1>Organizational Health — ${(org && org.name) || effectiveOrg}</h1>
-          <div class="muted">Generated: ${new Date().toLocaleString()}</div>
-          <div class="box"><strong>Composite:</strong> ${payload.composite ?? (single ? (single.score ?? "—") : "—")}</div>
-          ${single ? `<h2>System: ${single.normalizedSystemId || single.systemId || single.id}</h2>
-            <div class="box"><pre>${JSON.stringify(single, null, 2)}</pre></div>` : `<h2>Systems</h2>
-            <div class="box"><pre>${JSON.stringify(perSystem, null, 2)}</pre></div>`}
-        </body>
-      </html>
-    `;
-    const w = window.open("", "_blank", "noopener,noreferrer");
-    if (!w) return alert("Popup blocked");
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    // user prints manually to PDF
+    const forecasts = original?.meta?.forecasts || [
+      { horizon: "Next 4 weeks", text: scorePct < 50 ? "This needs attention soon." : "Things are stable. Look for small improvements." },
+      { horizon: "Next 3 months", text: scorePct < 50 ? "With focused effort you should make real progress." : "Keep at it and you'll see noticeable improvements." },
+      { horizon: "Over the next year", text: "Look at the bigger picture — culture, processes, and incentives." },
+    ];
+
+    const recommendations = original?.meta?.recommendations || [
+      { title: "Do this now (next 4 weeks)", items: ["Identify who owns each stuck task", "Start short daily check-ins to clear roadblocks"] },
+      { title: "Work on over the next few months", items: ["Test whether retention efforts are working", "Set clear expectations between teams"] },
+      { title: "Keep an eye on over the next year", items: ["Create simple playbooks for common processes", "Look into partnerships or outside help"] },
+    ];
+
+    const caseStudy = original?.meta?.caseStudy || {
+      company: "Dangote Group (Nigeria)",
+      summary: "Dangote noticed their divisions were working in silos. They brought in shared playbooks and weekly check-ins so teams could coordinate properly.",
+      result: "Top projects started getting done about 35% faster within 18 months.",
+    };
+
+    const allScores = perSystem.map(p => (p.score == null ? -1 : p.score));
+    const valid = allScores.filter(s => s >= 0);
+    const sorted = valid.slice().sort((a, b) => b - a);
+    const pos = sorted.indexOf(scorePct) + 1 || null;
+    const ranking = valid.length ? { rank: pos, total: valid.length } : null;
+
+    downloadSystemDeepDivePDF({
+      systemLabel,
+      score: scorePct,
+      timestamp: ts,
+      subScores: subScoresRaw,
+      insights,
+      forecasts,
+      recommendations,
+      caseStudy,
+      orgName: (org && org.name) || effectiveOrg,
+      ranking,
+    });
   }
 
   /* small spark bars */
@@ -352,36 +298,16 @@ export default function OrgHealthOverview({ orgId = null }) {
 
   /* ---------- Modal content ---------- */
 
-  // Components list (from your specification)
-  const COMPONENTS_LIST = [
-    "Industry Dynamics",
-    "Founding Roots",
-    "Organization",
-    "Leadership",
-    "Culture",
-    "Innovation",
-    "Strategy",
-    "Structure",
-    "Processes",
-    "Dynamic Behavior",
-    "Technology",
-    "Risk",
-    "Financials",
-    "Skills",
-    "Resources",
-    "Environment",
-    "Goals",
-    "Policy",
-    "Staff-People",
-  ];
-
-  // ResultDetail now follows the required output structure
   function ResultDetail({ systemLabel, result }) {
     const score = result?.score ?? result?.original?.score ?? null;
     const ts = result?.timestamp || result?.original?.timestamp || result?.original?.ts || null;
     const original = result?.original || {};
     const subProgress = original?.subProgress || original?.meta?.subProgress || null;
     const notes = original?.notes || original?.meta?.notes || original?.summary || "";
+
+    // Sub-scores from rubrics-based scoring
+    const subScoresRaw = original?.meta?.subScores || [];
+    const interp = original?.meta?.interpretation || {};
 
     // Rankings: system rank relative to other systems (compute quickly)
     const systemRank = (() => {
@@ -393,34 +319,89 @@ export default function OrgHealthOverview({ orgId = null }) {
       return { rank: pos, total: valid.length };
     })();
 
-    // Insights: try to read from original.meta.insights otherwise synthesize simple ones
-    const insights = original?.meta?.insights || original?.insights || [
-      `Core strength: ${score >= 75 ? "strong governance and clarity" : "needs improved coordination"}`,
-      `Area of concern: ${score < 60 ? "low ownership and slow handoffs" : "occasional misalignment under pressure"}`,
+    // Derive insights from subScores if enriched insights aren't available
+    const insights = original?.meta?.insights || (() => {
+      if (subScoresRaw.length === 0) {
+        return [
+          score >= 75
+            ? "Your organisation shows strong leadership and clear direction in this area. Teams seem to know what's expected and are delivering on it."
+            : "There's room to improve how teams coordinate in this area. Better handoffs and clearer ownership would go a long way.",
+          score < 60
+            ? "One thing that stood out is that accountability seems unclear in places — when no one clearly owns a task, things tend to fall through the cracks."
+            : "Under normal conditions things run smoothly, but when pressure builds, alignment tends to slip a bit. Worth keeping an eye on.",
+        ];
+      }
+      const sorted = [...subScoresRaw].sort((a, b) => {
+        const pA = a.max > 0 ? a.score / a.max : 0;
+        const pB = b.max > 0 ? b.score / b.max : 0;
+        return pA - pB;
+      });
+      const w = sorted[0];
+      const s = sorted[sorted.length - 1];
+      const out = [];
+      if (interp.rating) out.push(`Your organisation rated at the "${interp.rating}" level for this system.`);
+      if (interp.interpretation) out.push(interp.interpretation);
+      if (s) out.push(`Your strongest area is ${s.title}, where you scored ${s.max > 0 ? Math.round((s.score / s.max) * 100) : 0}% — that's something to build on.`);
+      if (w && w !== s) out.push(`The area that needs the most work is ${w.title}, which came in at ${w.max > 0 ? Math.round((w.score / w.max) * 100) : 0}%. This is where you'll want to focus your energy first.`);
+      return out.length ? out : [`You scored ${score}% overall for this system.`];
+    })();
+
+    const forecasts = original?.meta?.forecasts || [
+      { horizon: "Next 4 weeks", text: score < 50 ? "This needs attention soon — the longer these gaps stay open, the harder they get to close. Start with one or two quick fixes." : "Things are stable here. Look for a couple of small improvements you can make in the next few weeks to build some momentum." },
+      { horizon: "Next 3 months", text: score < 50 ? "With focused effort and clear ownership, you should be able to make real progress here. Don't try to fix everything — pick the biggest pain points first." : "If you keep at it, you should start seeing noticeable improvements in the areas that matter most." },
+      { horizon: "Over the next year", text: "For lasting change, look at the bigger picture — how people are measured, what the culture rewards, and whether your processes actually support the outcomes you want." },
     ];
 
-    const forecasts = original?.meta?.forecasts || original?.forecasts || [
-      { horizon: "4 weeks", text: "Stabilize processes — small wins expected" },
-      { horizon: "3 months", text: "Partial improvement if action plan executed" },
-      { horizon: "12 months", text: "Sustained lift if underlying culture & KPIs fixed" },
-    ];
-
-    // Recommendations (X-ULTRA)
-    const xUltraRecs = original?.meta?.recommendations || [
-      { title: "Short", items: ["Assign triage owners for blocked tickets", "Daily 15m unblock standup for critical flows"] },
-      { title: "Mid", items: ["Run 8-week retention test", "Implement cross-team SLAs"] },
-      { title: "Long", items: ["Embed playbooks and capability uplift program", "Consider partnerships to scale delivery"] },
-    ];
+    // Recommendations
+    const xUltraRecs = original?.meta?.recommendations || (() => {
+      if (subScoresRaw.length === 0) {
+        return [
+          { title: "Do this now (next 4 weeks)", items: ["Identify who owns each stuck task or blocked ticket — if no one owns it, it won't get fixed", "Start a short daily check-in (15 minutes) to clear roadblocks on your most important work"] },
+          { title: "Work on over the next few months", items: ["Test whether your team retention efforts are actually working — track it over 8 weeks", "Set clear expectations between teams so everyone knows what they can count on from each other"] },
+          { title: "Keep an eye on over the next year", items: ["Create simple playbooks for your most common processes so people don't have to figure things out from scratch", "Look into partnerships or outside help to take some of the delivery pressure off your core team"] },
+        ];
+      }
+      const shortItems = [];
+      const midItems = [];
+      const longItems = [];
+      subScoresRaw.forEach(sub => {
+        const pct = sub.max > 0 ? Math.round((sub.score / sub.max) * 100) : 0;
+        const recs = sub.interpretation?.recommendations || [];
+        if (pct < 50) shortItems.push(...recs.slice(0, 2).map(r => `For ${sub.title}: ${r}`));
+        else if (pct < 75) midItems.push(...recs.slice(0, 1).map(r => `For ${sub.title}: ${r}`));
+        else longItems.push(`${sub.title} is looking good — keep doing what's working and check back in regularly`);
+      });
+      if (!shortItems.length) shortItems.push("Start with the areas that scored lowest and decide who should take the lead on each one");
+      if (!midItems.length) midItems.push("Pick a couple of mid-range areas and spend focused time improving them over the next two months");
+      if (!longItems.length) longItems.push("Make it a habit to revisit these scores regularly — lasting improvement comes from consistency, not one-time pushes");
+      return [
+        { title: "Do this now (next 4 weeks)", items: shortItems.slice(0, 4) },
+        { title: "Work on over the next few months", items: midItems.slice(0, 4) },
+        { title: "Keep an eye on over the next year", items: longItems.slice(0, 4) }
+      ];
+    })();
 
     // African case-study
     const caseStudy = original?.meta?.caseStudy || {
       company: "Dangote Group (Nigeria)",
-      summary: "Improved cross-unit coordination via central playbooks and weekly triage; measured using delivery cycle time.",
-      result: "~35% faster delivery for prioritized initiatives in 12–18 months.",
+      summary: "Dangote noticed their different divisions were working in silos, which was slowing everything down. They brought in shared playbooks and weekly check-ins so teams could talk to each other properly and track how long things really took.",
+      result: "Their top projects started getting done about 35% faster within 18 months.",
     };
 
     // Build Rankings table at component-level if original.components available
-    const componentScores = original?.components || null; // expected shape { "Leadership": 78, ... }
+    const componentScores = original?.meta?.components || original?.components || null; // expected shape { "Leadership": 78, ... }
+    const subScores = original?.meta?.subScores || [];
+    const hasSubScores = subScores.length > 0;
+
+    const componentEntries = hasSubScores
+      ? subScores.map(sub => ({
+          name: sub.title,
+          score: sub.max > 0 ? Math.round((sub.score / sub.max) * 100) : (sub.percent || null),
+          rating: sub.interpretation?.rating || null
+        }))
+      : (componentScores
+          ? Object.entries(componentScores).map(([name, score]) => ({ name, score: Math.round(score), rating: null }))
+          : []);
 
     return (
       <div className="space-y-4">
@@ -433,37 +414,43 @@ export default function OrgHealthOverview({ orgId = null }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={() => exportJSON(false, result)} className="px-3 py-1 rounded-md border text-sm">Export JSON</button>
-            <button onClick={() => exportCSV(false, result)} className="px-3 py-1 rounded-md border text-sm">Export CSV</button>
-            <button onClick={() => exportPrint(result)} className="px-3 py-1 rounded-md border text-sm">Print / PDF</button>
+            <button onClick={() => handleExportPDF(systemLabel, result)} className="px-3 py-1 rounded-md border text-sm flex items-center gap-1"><FaDownload className="text-xs" /> Export PDF</button>
           </div>
         </div>
 
-        {/* Components list */}
-        <div>
-          <h5 className="font-semibold">Components examined</h5>
-          <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {COMPONENTS_LIST.map((c) => (
-              <div key={c} className={`p-2 rounded-md text-sm ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-gray-50 border border-gray-100"}`}>
-                <div className="font-medium">{c}</div>
-                <div className="text-xs text-gray-400 mt-1">{(componentScores && componentScores[c] != null) ? `${Math.round(componentScores[c])}%` : "—"}</div>
+        {/* Components / Sub-assessments */}
+        {componentEntries.length > 0 && <div>
+          <h5 className="font-semibold">{hasSubScores ? "How you scored on each area" : "Breakdown by component"}</h5>
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {componentEntries.map((c, idx) => (
+              <div key={c.name || idx} className={`p-2 rounded-md text-sm ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-gray-50 border border-gray-100"}`}>
+                <div className="font-medium">{c.name}</div>
+                <div className="flex items-center justify-between mt-1">
+                  <div className="text-xs text-gray-400">{c.score != null ? `${c.score}%` : "—"}</div>
+                  {c.rating && <div className="text-xs text-gray-500 truncate max-w-[60%] text-right">{c.rating}</div>}
+                </div>
+                {c.score != null && (
+                  <div className="mt-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                    <div className={`h-full rounded-full ${c.score >= 75 ? "bg-green-500" : c.score >= 50 ? "bg-yellow-500" : "bg-red-500"}`} style={{ width: `${c.score}%` }} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* Rankings */}
         <div>
-          <h5 className="font-semibold">1. Rankings</h5>
+          <h5 className="font-semibold">How this system compares</h5>
           <div className="mt-2 text-sm text-gray-600">
-            System rank: <strong>{systemRank.rank}/{systemRank.total}</strong>.
-            {componentScores ? " Component-level ranks are shown above." : " Component-level data not available."}
+            This system ranks <strong>{systemRank.rank} out of {systemRank.total}</strong> across all systems you've assessed.
+            {(hasSubScores || componentScores) ? " You can see the breakdown for each area above." : ""}
           </div>
         </div>
 
         {/* Insights */}
         <div>
-          <h5 className="font-semibold">2. Insights</h5>
+          <h5 className="font-semibold">What the results tell us</h5>
           <div className="mt-2 space-y-2">
             {insights.map((ins, i) => <div key={i} className={`p-3 rounded-md ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-gray-50 border border-gray-100"}`}>{ins}</div>)}
           </div>
@@ -471,18 +458,18 @@ export default function OrgHealthOverview({ orgId = null }) {
 
         {/* Case Study */}
         <div>
-          <h5 className="font-semibold">3. Case study from African business</h5>
+          <h5 className="font-semibold">How an African business tackled this</h5>
           <div className={`p-3 rounded-md ${darkMode ? "bg-green-900/10 border border-green-800" : "bg-green-50 border border-green-100"}`}>
             <div className="font-medium">{caseStudy.company}</div>
             <div className="text-sm mt-1">{caseStudy.summary}</div>
-            <div className="text-sm mt-2 font-medium">Outcome</div>
+            <div className="text-sm mt-2 font-medium">What happened</div>
             <div className="text-sm">{caseStudy.result}</div>
           </div>
         </div>
 
         {/* Forecasts */}
         <div>
-          <h5 className="font-semibold">4. Forecasts</h5>
+          <h5 className="font-semibold">What to expect going forward</h5>
           <div className="mt-2 space-y-2">
             {forecasts.map((f, i) => (
               <div key={i} className={`p-3 rounded-md ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-gray-50 border border-gray-100"}`}>
@@ -493,9 +480,9 @@ export default function OrgHealthOverview({ orgId = null }) {
           </div>
         </div>
 
-        {/* X-ULTRA Recommendations */}
+        {/* Recommendations */}
         <div>
-          <h5 className="font-semibold">5. X-ULTRA Recommendations</h5>
+          <h5 className="font-semibold">What we recommend</h5>
           <div className="mt-2 space-y-3">
             {xUltraRecs.map((r, i) => (
               <div key={i} className={`p-3 rounded-md ${darkMode ? "bg-blue-900/10 border border-blue-800" : "bg-blue-50 border border-blue-100"}`}>
@@ -523,21 +510,21 @@ export default function OrgHealthOverview({ orgId = null }) {
     return (
       <div className="space-y-4">
         <div>
-          <h4 className="text-lg font-semibold">No assessment found for {systemLabel}</h4>
-          <div className="text-sm text-gray-400 mt-1">We don't yet have data for this system.</div>
+          <h4 className="text-lg font-semibold">You haven't assessed {systemLabel} yet</h4>
+          <div className="text-sm text-gray-400 mt-1">Once you complete the assessment, you'll see your results here.</div>
         </div>
 
         <div className={`p-4 rounded-md ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-gray-50 border border-gray-100"}`}>
           <div className="text-sm text-gray-400">{blurb}</div>
           <ul className="list-disc pl-5 mt-3 text-sm text-gray-600">
-            <li>Understand how this system impacts delivery, quality and growth.</li>
-            <li>Get automated recommendations tailored to your organization.</li>
-            <li>Export actionable meeting agendas and owners to follow up quickly.</li>
+            <li>See how well this system is really working in your organisation.</li>
+            <li>Get practical, tailored recommendations you can act on right away.</li>
+            <li>Walk away with a clear list of next steps and who should own them.</li>
           </ul>
         </div>
 
         <div>
-          <p className="text-sm text-gray-500">Ready to assess? The assessment takes ~10–20 minutes per system and will populate this panel with an easy-to-read report and recommended next steps.</p>
+          <p className="text-sm text-gray-500">It takes about 10–20 minutes per system. Once you're done, this panel will fill up with a clear report and recommended next steps.</p>
           <div className="mt-4">
             <button
               onClick={() => {
@@ -586,13 +573,7 @@ export default function OrgHealthOverview({ orgId = null }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="inline-flex items-center gap-1 rounded-md border overflow-hidden">
-            <button onClick={() => exportJSON(true)} className={`px-2 py-1 text-xs ${darkMode ? "bg-gray-800 border-gray-700 text-gray-200" : "bg-white border border-gray-200 text-gray-700"}`} title="Export all (JSON)">JSON</button>
-            <button onClick={() => exportCSV(true)} className={`px-2 py-1 text-xs ${darkMode ? "bg-gray-800 border-gray-700 text-gray-200" : "bg-white border border-gray-200 text-gray-700"}`} title="Export all (CSV)">CSV</button>
-            <button onClick={() => exportPrint(null)} className={`px-2 py-1 text-xs ${darkMode ? "bg-gray-800 border-gray-700 text-gray-200" : "bg-white border border-gray-200 text-gray-700"}`} title="Print / PDF">Print</button>
-          </div>
-        </div>
+
       </div>
 
       {/* GRID: left = score/details, right = spark (keeps spark aligned and never overlapped) */}
@@ -602,7 +583,7 @@ export default function OrgHealthOverview({ orgId = null }) {
             <div>
               <div className="text-xs text-gray-400">Composite score</div>
               <div className="text-2xl font-bold mt-1">{loading ? "…" : composite !== null ? `${composite}%` : "—"}</div>
-              <div className={`text-sm mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{results && results.length ? `${results.length} datapoints` : "No data yet"}</div>
+              <div className={`text-sm mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{results && results.length ? `Based on ${results.length} assessment${results.length !== 1 ? "s" : ""}` : "No assessments yet"}</div>
             </div>
 
             <div className="flex-1 hidden sm:block">
@@ -633,24 +614,14 @@ export default function OrgHealthOverview({ orgId = null }) {
                 </div>
               </div>
 
-              {/* Blue progress bar for answered systems (if answeredPct available) */}
-              {p.answeredPct != null ? (
+              {p.score !== null ? (
                 <div className="mt-2">
-                  <div className="text-xs text-gray-400 mb-1">{p.answeredPct}% answered</div>
                   <div className={`w-full h-2 rounded-full ${darkMode ? "bg-gray-700" : "bg-gray-200"}`}>
-                    <div style={{ width: `${Math.max(4, Math.min(100, p.answeredPct))}%` }} className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-blue-500" />
-                  </div>
-                </div>
-              ) : p.score !== null ? (
-                // if no answeredPct but has score, show small indicator bar proportional to score
-                <div className="mt-2">
-                  <div className="text-xs text-gray-400 mb-1">Score progress</div>
-                  <div className={`w-full h-2 rounded-full ${darkMode ? "bg-gray-700" : "bg-gray-200"}`}>
-                    <div style={{ width: `${Math.max(4, Math.min(100, p.score))}%` }} className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-blue-500" />
+                    <div style={{ width: `${Math.max(4, Math.min(100, p.score))}%` }} className={`h-full rounded-full ${p.score >= 70 ? "bg-green-500" : p.score >= 50 ? "bg-yellow-500" : "bg-red-500"}`} />
                   </div>
                 </div>
               ) : (
-                <div className="mt-2 text-xs text-gray-400">Take your organizational health assessment to populate this system's report.</div>
+                <div className="mt-2 text-xs text-gray-400">Not yet assessed — click View to learn more, or take the assessment.</div>
               )}
             </div>
 
@@ -682,7 +653,7 @@ export default function OrgHealthOverview({ orgId = null }) {
         ))}
       </div>
 
-      <div className="mt-3 text-xs text-gray-400">Tip: run assessments from the Assessments panel to populate these scores. The OrgHealth engine stores recent results and emits suggestions into Reports.</div>
+
 
       {/* Modal */}
       <Modal
@@ -691,16 +662,13 @@ export default function OrgHealthOverview({ orgId = null }) {
           setModalOpen(false);
           setModalPayload(null);
         }}
-        title={modalPayload ? (modalPayload.result ? `THE SYSTEM OF ${(canonical.find(c => normalizeKey(c.id) === modalPayload.systemId)?.label || modalPayload.systemId).toUpperCase()} REPORT` : `THE SYSTEM OF ${(canonical.find(c => normalizeKey(c.id) === modalPayload.systemId)?.label || modalPayload.systemId).toUpperCase()} — GET STARTED`) : "System"}
+        title={modalPayload ? (modalPayload.result ? `${canonical.find(c => normalizeKey(c.id) === modalPayload.systemId)?.label || modalPayload.systemId} — Full Report` : `${canonical.find(c => normalizeKey(c.id) === modalPayload.systemId)?.label || modalPayload.systemId} — Get Started`) : "System"}
         darkMode={darkMode}
         footer={
           modalPayload ? (
             modalPayload.result ? (
               <>
-                <button onClick={() => exportJSON(false, modalPayload.result)} className="px-3 py-2 rounded-md border">JSON</button>
-                <button onClick={() => exportCSV(false, modalPayload.result)} className="px-3 py-2 rounded-md border">CSV</button>
-                <button onClick={() => exportPrint(modalPayload.result)} className="px-3 py-2 rounded-md border">Print</button>
-                <button onClick={() => { setModalOpen(false); navigate("/ceo/assessments"); }} className="px-3 py-2 rounded-md bg-gradient-to-r from-indigo-600 to-blue-600 text-white"><FaExternalLinkAlt className="inline mr-2" />Open assessment</button>
+                <button onClick={() => handleExportPDF(canonical.find(c => normalizeKey(c.id) === modalPayload.systemId)?.label || modalPayload.systemId, modalPayload.result)} className="px-3 py-2 rounded-md border flex items-center gap-1"><FaDownload className="text-xs" /> Export PDF</button>
               </>
             ) : (
               <>

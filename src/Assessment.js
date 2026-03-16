@@ -1454,14 +1454,14 @@ export default function AssessmentPlatform(props) {
             <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-6xl mx-auto">
               <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.2 } } }}>
                 <motion.div className="mb-2 text-center">
-                  <span className={`font-bold text-sm uppercase tracking-wider ${darkMode ? "text-yellow-400" : "text-yellow-500"}`}>TORIL Assessment System</span>
+                  <span className={`font-bold text-sm uppercase tracking-wider ${darkMode ? "text-yellow-400" : "text-yellow-500"}`}>The Six Systems Assessment</span>
                 </motion.div>
-                <motion.h2 className={`text-4xl md:text-5xl font-bold mb-8 text-center ${darkMode ? "text-white" : "text-gray-900"}`}>Organizational Health Assessment</motion.h2>
+                <motion.h2 className={`text-4xl md:text-5xl font-bold mb-8 text-center ${darkMode ? "text-white" : "text-gray-900"}`}>How Healthy Is Your Organisation?</motion.h2>
 
                 <motion.div className={`${ceoPartnerMode ? 'mb-6 p-4 sm:p-6 rounded-xl' : 'mb-12 p-8 rounded-2xl'} shadow-lg ${darkMode ? "bg-gray-800/50 border border-gray-700" : "bg-white border border-gray-200"}`}>
-                  <h3 className={`${ceoPartnerMode ? 'text-lg sm:text-xl' : 'text-2xl'} font-bold mb-3 sm:mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>About the TORIL System</h3>
-                  <p className={`${ceoPartnerMode ? 'text-sm sm:text-base' : 'text-lg'} mb-3 sm:mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>The TORIL framework evaluates six critical dimensions of organizational health. Each system represents a key area where alignment, clarity, and effectiveness contribute to overall performance.</p>
-                  <p className={`${ceoPartnerMode ? 'text-sm sm:text-base' : 'text-lg'} ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Complete each assessment to receive a comprehensive organizational health report with actionable insights.</p>
+                  <h3 className={`${ceoPartnerMode ? 'text-lg sm:text-xl' : 'text-2xl'} font-bold mb-3 sm:mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>How This Works</h3>
+                  <p className={`${ceoPartnerMode ? 'text-sm sm:text-base' : 'text-lg'} mb-3 sm:mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Your organisation runs on six core systems. Each one covers a different part of how your business operates — from how teams work together, to how you make decisions, to how well your day-to-day work lines up with your bigger goals.</p>
+                  <p className={`${ceoPartnerMode ? 'text-sm sm:text-base' : 'text-lg'} ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Pick a system below, answer the questions honestly, and you'll get a clear picture of where things stand — along with practical suggestions for what to work on next.</p>
                 </motion.div>
 
                 {/* CEO button inserted immediately after the "About" section for visibility */}

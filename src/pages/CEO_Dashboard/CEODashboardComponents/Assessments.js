@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import Assessment from "../../../Assessment";
-import { FaHistory, FaTrash, FaPlay, FaEye, FaTimes, FaCheckCircle, FaLightbulb, FaBuilding } from "react-icons/fa";
+import { FaTrash, FaPlay, FaEye, FaTimes, FaCheckCircle, FaLightbulb } from "react-icons/fa";
 import { getSystemsForUI, normalizeSystemKey } from "../constants/systems";
 import * as events from "../lib/events";
 import { motion, AnimatePresence } from "framer-motion";
@@ -101,36 +101,21 @@ function writeAssessmentProgress(orgId, progress) {
 }
 
 function calculateAnsweredCount(allAnswers, systemId) {
-  console.log(`calculateAnsweredCount called for ${systemId}:`, allAnswers);
+  if (!allAnswers || typeof allAnswers !== 'object') return 0;
   
-  if (!allAnswers || typeof allAnswers !== 'object') {
-    console.log(`calculateAnsweredCount: No valid answers for ${systemId}`);
-    return 0;
-  }
-  
-  // Count across all sub-assessments for this system
   let totalAnswered = 0;
-  
-  // Find the system definition to get all its sub-assessments
   const system = assessmentSystems.find(s => s.id === systemId);
-  if (!system || !system.subAssessments) {
-    console.log(`calculateAnsweredCount: No system found for ${systemId}`);
-    return 0;
-  }
+  if (!system || !system.subAssessments) return 0;
   
   system.subAssessments.forEach(subAssessment => {
     const subAnswers = allAnswers[subAssessment.id] || {};
     const answered = Object.keys(subAnswers).filter(key => {
       const answer = subAnswers[key];
-      const isAnswered = answer !== null && answer !== undefined && answer !== '' && answer !== 'null';
-      return isAnswered;
+      return answer !== null && answer !== undefined && answer !== '' && answer !== 'null';
     }).length;
-    
-    console.log(`calculateAnsweredCount: ${systemId} -> ${subAssessment.id}: ${answered} answers out of ${Object.keys(subAnswers).length} total`, subAnswers);
     totalAnswered += answered;
   });
   
-  console.log(`calculateAnsweredCount: ${systemId} FINAL TOTAL = ${totalAnswered}`);
   return totalAnswered;
 }
 
@@ -147,95 +132,54 @@ function ProgressBar({ pct = 0, darkMode = false }) {
 
 function AnalysisLoadingIndicator({ progress = 0, darkMode = false, systemTitle = "System" }) {
   return (
-    <div className={`mt-3 p-4 rounded-lg border-2 border-dashed ${
+    <div className={`mt-3 p-4 rounded-lg border ${
       darkMode 
-        ? "bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-blue-500/30" 
-        : "bg-gradient-to-br from-blue-50 to-purple-50 border-blue-300/50"
-    } relative overflow-hidden`}>
-      {/* Animated background pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className={`h-full w-full ${
-          darkMode ? "bg-blue-400" : "bg-blue-600"
-        } animate-pulse`} 
-        style={{
-          background: `linear-gradient(45deg, transparent 40%, ${darkMode ? '#3b82f6' : '#2563eb'} 50%, transparent 60%)`,
-          backgroundSize: '20px 20px',
-          animation: 'slide 2s linear infinite'
-        }} />
-      </div>
-      
-      <div className="relative z-10">
-        {/* Header with spinning icon */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            darkMode 
-              ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
-              : "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
-          } animate-spin`}>
-            🧠
-          </div>
-          <div>
-            <div className={`font-semibold ${darkMode ? "text-blue-200" : "text-blue-800"}`}>
-              AI Analysis in Progress
-            </div>
-            <div className={`text-sm ${darkMode ? "text-blue-300" : "text-blue-600"}`}>
-              Analyzing {systemTitle}...
-            </div>
-          </div>
+        ? "bg-gray-800 border-gray-700" 
+        : "bg-gray-50 border-gray-200"
+    }`}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+          darkMode 
+            ? "bg-blue-600 text-white" 
+            : "bg-blue-500 text-white"
+        } animate-spin`}>
+          ⚙️
         </div>
-
-        {/* Enhanced progress bar with glow effect */}
-        <div className={`relative h-3 rounded-full overflow-hidden ${
-          darkMode ? "bg-gray-800" : "bg-white/50"
-        }`}>
-          <div 
-            className={`h-full transition-all duration-500 ease-out relative ${
-              progress === 100 
-                ? "bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg shadow-green-500/30" 
-                : "bg-gradient-to-r from-blue-400 to-purple-500 shadow-lg shadow-blue-500/30"
-            }`}
-            style={{ width: `${progress}%` }}
-          >
-            {/* Animated shine effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+        <div>
+          <div className={`font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}>
+            Scoring your answers
           </div>
-        </div>
-
-        {/* Progress percentage with animated counter */}
-        <div className="flex items-center justify-between mt-2">
-          <div className={`text-sm font-medium ${darkMode ? "text-blue-200" : "text-blue-700"}`}>
-            {progress}% Complete
+          <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+            Working through {systemTitle}...
           </div>
-          <div className="flex gap-1">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className={`w-1.5 h-1.5 rounded-full ${
-                  darkMode ? "bg-blue-400" : "bg-blue-500"
-                } animate-bounce`}
-                style={{ animationDelay: `${i * 0.15}s` }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Status messages based on progress */}
-        <div className={`mt-2 text-xs ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-          {progress < 20 && "🔍 Initializing analysis engine..."}
-          {progress >= 20 && progress < 40 && "📊 Processing assessment data..."}
-          {progress >= 40 && progress < 60 && "🧮 Running AI algorithms..."}
-          {progress >= 60 && progress < 80 && "📈 Generating insights..."}
-          {progress >= 80 && progress < 100 && "✨ Finalizing recommendations..."}
-          {progress === 100 && "🎉 Analysis complete! Preparing results..."}
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes slide {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
+      <div className={`relative h-3 rounded-full overflow-hidden ${
+        darkMode ? "bg-gray-700" : "bg-gray-200"
+      }`}>
+        <div 
+          className={`h-full transition-all duration-500 ease-out ${
+            progress === 100 
+              ? "bg-green-500" 
+              : "bg-blue-500"
+          }`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between mt-2">
+        <div className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+          {progress}% done
+        </div>
+      </div>
+
+      <div className={`mt-2 text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+        {progress < 40 && "Reading through your responses..."}
+        {progress >= 40 && progress < 70 && "Comparing answers against the scoring rubric..."}
+        {progress >= 70 && progress < 100 && "Putting together your results..."}
+        {progress === 100 && "All done — your results are ready."}
+      </div>
     </div>
   );
 }
@@ -243,19 +187,10 @@ function AnalysisLoadingIndicator({ progress = 0, darkMode = false, systemTitle 
 function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
   // state = { status: "not-started"|"ready-to-run"|"in-progress"|"completed", progress, latestResult, answeredCount }
   const hasAnswers = (state.answeredCount || 0) > 0;
-  const muted = !hasAnswers; // Only mute if no answers at all
+  const muted = !hasAnswers;
   const score = state.latestResult?.score ?? null;
   const isAssessmentCompleted = state.status === "completed" && state.latestResult;
   const hasRunCompleted = state.status === "completed" && score !== null;
-  
-  // Debug logging to track state changes - DETAILED
-  console.log(`🔄 SystemRow RENDER ${s.id}:`, {
-    status: state.status,
-    answeredCount: state.answeredCount,
-    hasAnswers,
-    progress: state.progress,
-    timestamp: Date.now()
-  });
 
   const rowBgHover = darkMode ? "hover:bg-gray-800" : "hover:bg-gray-50";
   const titleColor = darkMode ? "text-gray-100" : "text-gray-900";
@@ -264,10 +199,8 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
   // Run button logic: Lock (no answers) → Run (has answers, not running) → Running (in progress)
   const isRunning = state.status === "in-progress" && state.progress < 100;
   const isReadyToRun = state.status === "ready-to-run" || (hasAnswers && state.status === "not-started");
-  const canRun = hasAnswers && !isRunning; // SIMPLE: Can run if has answers and not currently running
+  const canRun = hasAnswers && !isRunning;
   const runDisabled = !canRun;
-  
-  console.log(`🔘 Button Logic ${s.id}: hasAnswers=${hasAnswers}, isRunning=${isRunning}, canRun=${canRun}, runDisabled=${runDisabled}`);
   
   // More explicit button styling
   const runBtnBase = runDisabled
@@ -313,11 +246,11 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
           </div>
 
           <div className={`text-xs ${metaColor} mt-1`}>
-            {!hasAnswers && "Complete assessment questions first"}
-            {hasAnswers && (state.status === "not-started" || state.status === "ready-to-run") && "Ready to run analysis"} 
-            {hasAnswers && state.status === "in-progress" && state.progress < 100 && `Analyzing... ${state.progress}%`}
-            {hasAnswers && state.status === "in-progress" && state.progress >= 100 && "Analysis complete"}
-            {isAssessmentCompleted && `Analysis completed ${new Date(state.latestResult.timestamp).toLocaleString()}`}
+            {!hasAnswers && "Answer the questions above to unlock scoring"}
+            {hasAnswers && (state.status === "not-started" || state.status === "ready-to-run") && "Ready — hit Score My Answers to see your results"} 
+            {hasAnswers && state.status === "in-progress" && state.progress < 100 && `Scoring... ${state.progress}%`}
+            {hasAnswers && state.status === "in-progress" && state.progress >= 100 && "Scoring complete"}
+            {isAssessmentCompleted && `Scored on ${new Date(state.latestResult.timestamp).toLocaleDateString()}`}
             {hasAnswers && !isAssessmentCompleted && state.status !== "in-progress" && `${state.answeredCount} questions answered`}
           </div>
 
@@ -340,15 +273,15 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
         <button
           onClick={() => onStart(s.id)}
           disabled={runDisabled}
-          title={`${s.id}: ${state.status} (${state.answeredCount} answers) - ${!hasAnswers ? "Answer at least one question to unlock analysis" : isRunning ? "X Ultra analysis in progress..." : "Run comprehensive X Ultra analysis"}`}
+          title={`${!hasAnswers ? "Answer at least one question first" : isRunning ? "Scoring in progress..." : "Score your answers for this system"}`}
           className={`px-2 py-1.5 rounded-md border text-xs font-medium transition-all duration-200 ${runBtnBase} ${
             isRunning ? 'animate-pulse shadow-lg' : ''
           }`}
         >
           {isRunning ? (
             <>
-              <div className="inline-block mr-1 animate-spin">🧠</div>
-              AI Analyzing...
+              <div className="inline-block mr-1 animate-spin">⚙️</div>
+              Scoring...
             </>
           ) : !hasAnswers ? (
             <>
@@ -358,7 +291,7 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
           ) : (
             <>
               <FaPlay className="inline-block mr-1" size={10} />
-              {state.status === "ready-to-run" ? "🚀 Run X-ULTRA" : "▶ Run Analysis"}
+              Score My Answers
             </>
           )}
         </button>
@@ -376,7 +309,7 @@ function SystemRow({ s, state, onStart, onView, onRemove, darkMode = false }) {
           <button
             onClick={() => onRemove(state.latestResult.id)}
             className={`px-2 py-1.5 rounded-md text-xs transition-all duration-200 ${darkMode ? "text-gray-400 hover:text-gray-200 hover:bg-gray-800" : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"}`}
-            title="Remove assessment"
+            title="Clear this result"
           >
             <FaTrash size={10} />
           </button>
@@ -462,11 +395,9 @@ export default function CEOAssessments() {
   };
 
   useEffect(() => {
-    console.log('🔄 useEffect triggered by assessmentAnswers change');
     const currentAnswers = getCurrentAnswers();
     
     setSystemStates((prev) => {
-      console.log('⚡ Force updating systemStates from useEffect');
       const next = {};
       
       SYSTEMS.forEach((s) => {
@@ -476,8 +407,6 @@ export default function CEOAssessments() {
         
         const newStatus = hasExistingResult ? "completed" : 
                         answeredCount > 0 ? "ready-to-run" : "not-started";
-        
-        console.log(`🔧 Force update ${s.id}: ${currentState.answeredCount} -> ${answeredCount}, ${currentState.status} -> ${newStatus}`);
         
         next[s.id] = {
           status: newStatus,
@@ -529,7 +458,6 @@ export default function CEOAssessments() {
     // emit update event for DashboardHome and other components
     try {
       window.dispatchEvent(new CustomEvent("conseqx:assessment:update", { detail: { orgId, assessments: newList } }));
-      console.log(`📡 Assessments: Dispatched update event for ${newList.length} assessments`);
     } catch {}
     // BroadcastChannel for cross-tab (optional)
     try {
@@ -537,7 +465,6 @@ export default function CEOAssessments() {
         const bc = new BroadcastChannel("conseqx_assessments");
         bc.postMessage({ type: "assessments:update", orgId, assessments: newList });
         bc.close();
-        console.log(`📡 Assessments: Broadcast update for ${newList.length} assessments`);
       }
     } catch {}
   }
@@ -568,7 +495,6 @@ export default function CEOAssessments() {
           score: normalized.score 
         } 
       }));
-      console.log(`🎉 Assessments: Assessment completed for system ${normalized.systemId} with score ${normalized.score}%`);
     } catch {}
 
     try {
@@ -959,7 +885,6 @@ export default function CEOAssessments() {
             }
           };
 
-          console.log(`✅ Rubrics-based score for ${systemId}: ${scorePercent}% (${totalScore}/${maxPossibleScore})`, subScores);
           events.emitAssessmentCompleted(result);
         } catch (error) {
           console.error('Assessment scoring failed:', error);
@@ -1005,26 +930,14 @@ export default function CEOAssessments() {
           .map(ss => `${ss.title}: ${ss.interpretation.interpretation || ss.interpretation.rating || 'Review needed'}`)
           .slice(0, 6);
       }
-      // Fallback generic recommendations
+      // Fallback recommendations when no rubric data exists
       return [
-        "Implement structured feedback loops to improve communication",
-        "Establish clear performance metrics and tracking systems",
-        "Develop cross-functional collaboration protocols",
-        "Create standardized training programs for consistency"
+        "Set up regular check-ins with your team to keep communication flowing",
+        "Pick two or three key metrics and start tracking them consistently",
+        "Find one thing that's working well in another part of the business and apply it here"
       ];
     })();
 
-    const caseStudy = {
-      company: "Dangote Group (Nigeria)",
-      challenge: `Similar challenges in ${title.toLowerCase()} across multiple business units`,
-      solution: "Implemented centralized governance framework with decentralized execution",
-      result: "35% improvement in operational efficiency within 18 months",
-      keyLessons: [
-        "Standardized processes while maintaining local flexibility",
-        "Invested in technology infrastructure for real-time monitoring",
-        "Created cross-functional teams to break down silos"
-      ]
-    };
 
     return (
       <AnimatePresence>
@@ -1052,10 +965,10 @@ export default function CEOAssessments() {
                 </div>
                 <div>
                   <h2 className={`text-xl font-bold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
-                    {title} Assessment Results
+                    {title} — Your Results
                   </h2>
                   <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                    Completed {timestamp ? new Date(timestamp).toLocaleString() : 'Recently'}
+                    Scored on {timestamp ? new Date(timestamp).toLocaleDateString() : 'recently'}
                   </p>
                 </div>
               </div>
@@ -1071,7 +984,7 @@ export default function CEOAssessments() {
               {/* Score Overview */}
               <div className={`rounded-xl p-4 ${darkMode ? "bg-gray-800" : "bg-gray-50"}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className={`font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>Overall Score</h3>
+                  <h3 className={`font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>Your Score</h3>
                   <div className={`text-2xl font-bold ${score >= 80 ? "text-green-500" : score >= 60 ? "text-yellow-500" : "text-red-500"}`}>
                     {score}%
                   </div>
@@ -1108,7 +1021,7 @@ export default function CEOAssessments() {
               {/* Sub-assessments with progress and answers */}
               <div>
                 <h3 className={`text-lg font-semibold mb-4 ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
-                  Assessment Breakdown
+                  How Each Area Scored
                 </h3>
                 <div className="space-y-3">
                   {subProgress.map((sub, index) => {
@@ -1150,7 +1063,7 @@ export default function CEOAssessments() {
                           {rubricData.interpretation.rating} — {rubricData.interpretation.interpretation}
                         </p>
                       )}
-                      <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Responses:</p>
+                      <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Your answers:</p>
                       <ul className="list-disc list-inside ml-4">
                         {Object.entries(answers[sub.id] || {}).map(([qid, val]) => (
                           <li key={qid} className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Q{Number(qid) + 1}: <span className="font-semibold">{val}</span></li>
@@ -1166,7 +1079,7 @@ export default function CEOAssessments() {
               <div>
                 <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
                   <FaLightbulb className="text-yellow-500" />
-                  X Ultra Recommendations
+                  What We'd Suggest
                 </h3>
                 <div className="space-y-2">
                   {aiRecommendations.map((rec, index) => (
@@ -1177,40 +1090,6 @@ export default function CEOAssessments() {
                 </div>
               </div>
 
-              {/* African Company Case Study */}
-              <div>
-                <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
-                  <FaBuilding className="text-green-500" />
-                  African Success Story
-                </h3>
-                <div className={`rounded-xl p-4 border ${darkMode ? "bg-green-900/20 border-green-500/30" : "bg-green-50 border-green-200"}`}>
-                  <div className="space-y-3">
-                    <div>
-                      <h4 className={`font-semibold ${darkMode ? "text-green-200" : "text-green-800"}`}>{caseStudy.company}</h4>
-                      <p className={`text-sm mt-1 ${darkMode ? "text-green-300" : "text-green-700"}`}>{caseStudy.challenge}</p>
-                    </div>
-                    
-                    <div>
-                      <h5 className={`font-medium ${darkMode ? "text-green-200" : "text-green-800"}`}>Solution:</h5>
-                      <p className={`text-sm ${darkMode ? "text-green-300" : "text-green-700"}`}>{caseStudy.solution}</p>
-                    </div>
-                    
-                    <div>
-                      <h5 className={`font-medium ${darkMode ? "text-green-200" : "text-green-800"}`}>Result:</h5>
-                      <p className={`text-sm ${darkMode ? "text-green-300" : "text-green-700"}`}>{caseStudy.result}</p>
-                    </div>
-                    
-                    <div>
-                      <h5 className={`font-medium ${darkMode ? "text-green-200" : "text-green-800"}`}>Key Lessons:</h5>
-                      <ul className="list-disc list-inside space-y-1 mt-1">
-                        {caseStudy.keyLessons.map((lesson, index) => (
-                          <li key={index} className={`text-sm ${darkMode ? "text-green-300" : "text-green-700"}`}>{lesson}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </motion.div>
         </motion.div>
@@ -1227,9 +1106,9 @@ export default function CEOAssessments() {
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className={`${darkMode ? "text-gray-200" : "text-sm text-gray-700"}`}>
             <div>
-              Recent runs: <span className="font-semibold">{kpis.count}</span>
+              Assessments completed: <span className="font-semibold">{kpis.count}</span>
             </div>
-            <div className={`${darkMode ? "text-gray-400" : "text-xs text-gray-500"}`}>Avg score: {kpis.avgScore !== null ? `${kpis.avgScore}%` : "—"}</div>
+            <div className={`${darkMode ? "text-gray-400" : "text-xs text-gray-500"}`}>Average score: {kpis.avgScore !== null ? `${kpis.avgScore}%` : "—"}</div>
           </div>
         </div>
       </div>
@@ -1243,27 +1122,19 @@ export default function CEOAssessments() {
               darkMode={darkMode}
               onComplete={(res) => handleAssessmentComplete(res)}
               onAnswersChange={(answers) => {
-                console.log('🚀 onAnswersChange called with:', answers);
-                
-                // Track the actual answer state from Assessment.js
                 assessmentAnswersRef.current = answers;
                 setAssessmentAnswers(answers);
                 
-                // FORCE IMMEDIATE update of system states with new answered counts
                 setSystemStates((prev) => {
-                  console.log('⚡ Updating systemStates from onAnswersChange');
-                  const next = {}; // Create completely new object to force re-render
+                  const next = {};
                   
                   SYSTEMS.forEach((s) => {
                     const answeredCount = calculateAnsweredCount(answers, s.id);
                     const currentState = prev[s.id] || { status: "not-started", progress: 0, latestResult: null, answeredCount: 0 };
                     const hasExistingResult = currentState.latestResult;
                     
-                    // Determine new status based on answers and existing results
                     const newStatus = hasExistingResult ? "completed" : 
                                     answeredCount > 0 ? "ready-to-run" : "not-started";
-                    
-                    console.log(`📊 System ${s.id}: ${currentState.answeredCount} -> ${answeredCount} answers, ${currentState.status} -> ${newStatus}`);
                     
                     next[s.id] = {
                       status: newStatus,
@@ -1275,25 +1146,18 @@ export default function CEOAssessments() {
                     };
                   });
                   
-                  console.log('✅ New systemStates:', next);
-                  return next; // Always return new object
+                  return next;
                 });
                 
-                // Persist answers for cross-tab sync
                 writeAssessmentAnswers(orgId, answers);
               }}
               onQuestionAnswered={(data) => {
-                console.log('📝 onQuestionAnswered called:', data);
-                
-                // IMMEDIATE state update - don't wait for events
                 if (data.systemId && data.answeredCount !== undefined) {
                   setSystemStates((prev) => {
                     const currentState = prev[data.systemId] || { status: "not-started", progress: 0, latestResult: null, answeredCount: 0 };
                     const hasExistingResult = currentState.latestResult;
                     const newStatus = hasExistingResult ? "completed" : 
                                     data.answeredCount > 0 ? "ready-to-run" : "not-started";
-                    
-                    console.log(`🚀 IMMEDIATE update ${data.systemId}: ${currentState.answeredCount} -> ${data.answeredCount}`);
                     
                     return {
                       ...prev,

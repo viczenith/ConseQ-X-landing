@@ -5,17 +5,15 @@ import { useAuth } from "../../../contexts/AuthContext";
 import * as svc from "../services/serviceSelector";
 import { normalizeSystemKey, CANONICAL_SYSTEMS } from "../constants/systems";
 import {
-  FaEye, FaBrain, FaExclamationTriangle, FaArrowUp, FaArrowDown,
-  FaChartLine, FaLightbulb, FaCheckCircle, FaRocket, FaClock,
-  FaFileAlt, FaShieldAlt, FaNetworkWired, FaSearch, FaUsers,
-  FaPalette, FaBullseye, FaSyncAlt, FaChevronRight, FaTimes,
-  FaPlay, FaSignal
+  FaBrain, FaExclamationTriangle,
+  FaLightbulb, FaCheckCircle, FaRocket,
+  FaFileAlt, FaShieldAlt, FaUsers,
+  FaChevronRight, FaTimes
 } from "react-icons/fa";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis,
-  PolarRadiusAxis, Radar, AreaChart, Area, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend
+  PolarRadiusAxis, Radar, Tooltip
 } from "recharts";
 
 const UPLOADS_KEY = "conseqx_uploads_v1";
@@ -24,33 +22,33 @@ const UPLOADS_KEY = "conseqx_uploads_v1";
 const SYSTEM_META = {
   interdependency: {
     emoji: "🔗", color: "#3B82F6", gradient: "from-blue-500 to-blue-700",
-    insight: "Cross-functional collaboration & dependency flow",
-    shortAdvice: "Strengthen handoff protocols between departments",
+    insight: "How well your teams and departments work together",
+    shortAdvice: "Tighten up the handoffs between departments so nothing falls through the cracks",
   },
   orchestration: {
     emoji: "🔄", color: "#10B981", gradient: "from-emerald-500 to-emerald-700",
-    insight: "Adaptive capacity & continuous improvement cycles",
-    shortAdvice: "Implement faster feedback loops for agility",
+    insight: "How quickly your organisation adapts and improves",
+    shortAdvice: "Speed up how fast feedback reaches the people who need it",
   },
   investigation: {
     emoji: "🔍", color: "#F59E0B", gradient: "from-amber-500 to-amber-700",
-    insight: "Root cause analysis & data-driven decision making",
-    shortAdvice: "Deploy automated diagnostic monitoring systems",
+    insight: "How well you get to the root of problems before they spread",
+    shortAdvice: "Set up better ways to spot and diagnose issues early",
   },
   interpretation: {
     emoji: "💡", color: "#8B5CF6", gradient: "from-violet-500 to-violet-700",
-    insight: "Intelligence synthesis & strategic sense-making",
-    shortAdvice: "Establish decision intelligence center of excellence",
+    insight: "How well you turn information into smart decisions",
+    shortAdvice: "Start pulling your data together in one place so leadership can make sharper calls",
   },
   illustration: {
     emoji: "📊", color: "#EF4444", gradient: "from-red-500 to-red-700",
-    insight: "Communication effectiveness & knowledge transfer",
-    shortAdvice: "Improve cross-functional information visualization",
+    insight: "How clearly ideas and knowledge flow across the organisation",
+    shortAdvice: "Make it easier for teams to share what they know, especially across departments",
   },
   inlignment: {
     emoji: "🎯", color: "#06B6D4", gradient: "from-cyan-500 to-cyan-700",
-    insight: "Strategic coherence & goal synchronization",
-    shortAdvice: "Align departmental objectives with enterprise OKRs",
+    insight: "How well your day-to-day work lines up with your bigger goals",
+    shortAdvice: "Make sure every team's targets connect back to the company's main priorities",
   },
 };
 
@@ -69,16 +67,6 @@ function getHealthBg(score, dk) {
   if (score >= 50) return dk ? "bg-yellow-900/30" : "bg-yellow-100";
   if (score >= 30) return dk ? "bg-orange-900/30" : "bg-orange-100";
   return dk ? "bg-red-900/30" : "bg-red-100";
-}
-
-function generateSparkline(base, points = 7) {
-  const data = [];
-  let val = base || 50;
-  for (let i = 0; i < points; i++) {
-    val = Math.max(10, Math.min(100, val + (Math.random() - 0.45) * 8));
-    data.push({ day: `D${i + 1}`, value: Math.round(val) });
-  }
-  return data;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────
@@ -113,31 +101,11 @@ function HealthGauge({ score, darkMode }) {
   );
 }
 
-/* Mini sparkline */
-function MiniSparkline({ data, color }) {
-  return (
-    <ResponsiveContainer width="100%" height={40}>
-      <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id={`spark-${color?.replace("#","")}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-            <stop offset="100%" stopColor={color} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2}
-          fill={`url(#spark-${color?.replace("#","")})`} dot={false} />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
-
 /* System Health Card (interactive) */
 function SystemCard({ systemKey, score, darkMode, onClick }) {
   const canonical = CANONICAL_SYSTEMS.find(s => s.key === systemKey);
   const meta = SYSTEM_META[systemKey] || {};
   const health = getHealthLabel(score || 0);
-  const trend = useMemo(() => Math.round((Math.random() - 0.4) * 10), [score]); // eslint-disable-line
-  const sparkData = useMemo(() => generateSparkline(score), [score]); // eslint-disable-line
   const isAssessed = score !== null && score !== undefined;
   return (
     <motion.div
@@ -158,29 +126,18 @@ function SystemCard({ systemKey, score, darkMode, onClick }) {
               {canonical?.title || systemKey}
             </div>
             <div className={`text-[11px] ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-              {(canonical?.description || "").slice(0, 38)}…
+              {meta.insight || ""}
             </div>
           </div>
         </div>
-        {isAssessed && (
-          <div className={`flex items-center gap-1 text-xs font-medium ${
-            trend >= 0 ? "text-green-500" : "text-red-500"
-          }`}>
-            {trend >= 0 ? <FaArrowUp className="text-[10px]" /> : <FaArrowDown className="text-[10px]" />}
-            {Math.abs(trend)}%
-          </div>
-        )}
       </div>
       {isAssessed ? (
-        <>
-          <div className="flex items-end justify-between mb-2">
-            <div className={`text-2xl font-bold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{score}%</div>
-            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${getHealthBg(score, darkMode)} ${health.color}`}>
-              {health.text}
-            </span>
-          </div>
-          <MiniSparkline data={sparkData} color={meta.color} />
-        </>
+        <div className="flex items-end justify-between">
+          <div className={`text-2xl font-bold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{score}%</div>
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${getHealthBg(score, darkMode)} ${health.color}`}>
+            {health.text}
+          </span>
+        </div>
       ) : (
         <div className={`text-center py-3 rounded-lg ${darkMode ? "bg-gray-900/50" : "bg-gray-50"}`}>
           <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Not yet assessed</div>
@@ -194,7 +151,7 @@ function SystemCard({ systemKey, score, darkMode, onClick }) {
 /* Radar chart — 6 systems */
 function SystemsRadarChart({ scores, darkMode }) {
   const data = CANONICAL_SYSTEMS.map(s => ({
-    system: s.title, score: scores[s.key] || 0, benchmark: 70,
+    system: s.title, score: scores[s.key] || 0,
   }));
   return (
     <ResponsiveContainer width="100%" height={280}>
@@ -202,14 +159,12 @@ function SystemsRadarChart({ scores, darkMode }) {
         <PolarGrid stroke={darkMode ? "#374151" : "#E5E7EB"} />
         <PolarAngleAxis dataKey="system" tick={{ fontSize: 11, fill: darkMode ? "#9CA3AF" : "#6B7280" }} />
         <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 9, fill: darkMode ? "#6B7280" : "#9CA3AF" }} tickCount={5} />
-        <Radar name="Your Org" dataKey="score" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.2} strokeWidth={2} />
-        <Radar name="Benchmark" dataKey="benchmark" stroke="#10B981" fill="#10B981" fillOpacity={0.05} strokeWidth={1} strokeDasharray="4 4" />
+        <Radar name="Your Scores" dataKey="score" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.2} strokeWidth={2} />
         <Tooltip contentStyle={{
           backgroundColor: darkMode ? "#1F2937" : "#FFF",
           border: `1px solid ${darkMode ? "#374151" : "#E5E7EB"}`,
           borderRadius: 8, fontSize: 12,
         }} />
-        <Legend wrapperStyle={{ fontSize: 11 }} />
       </RadarChart>
     </ResponsiveContainer>
   );
@@ -223,9 +178,9 @@ function KeyAlertsPanel({ scores, darkMode, onViewSystem }) {
       if (score === null || score === undefined) return;
       const name = CANONICAL_SYSTEMS.find(s => s.key === key)?.title || key;
       if (score < 40)
-        list.push({ type: "critical", system: key, msg: `${name} critically low at ${score}% — immediate intervention required` });
+        list.push({ type: "critical", system: key, msg: `${name} is at ${score}% — this needs urgent attention before it starts dragging other areas down` });
       else if (score < 60)
-        list.push({ type: "warning", system: key, msg: `${name} at ${score}% — below organizational targets` });
+        list.push({ type: "warning", system: key, msg: `${name} scored ${score}% — it's not critical yet, but it's worth keeping a close eye on` });
     });
     // Cross-system imbalance alert
     const assessed = Object.entries(scores).filter(([, v]) => v !== null);
@@ -237,7 +192,7 @@ function KeyAlertsPanel({ scores, darkMode, onViewSystem }) {
         const hName = CANONICAL_SYSTEMS.find(s => s.key === highest[0])?.title || highest[0];
         const lName = CANONICAL_SYSTEMS.find(s => s.key === lowest[0])?.title || lowest[0];
         list.push({ type: "insight", system: lowest[0],
-          msg: `${gap}-point gap between ${hName} (${highest[1]}%) and ${lName} (${lowest[1]}%) — system imbalance detected` });
+          msg: `There's a ${gap}-point gap between ${hName} (${highest[1]}%) and ${lName} (${lowest[1]}%) — that kind of imbalance tends to cause friction across the business` });
       }
     }
     const order = { critical: 0, warning: 1, insight: 2 };
@@ -271,7 +226,7 @@ function KeyAlertsPanel({ scores, darkMode, onViewSystem }) {
           <div className="flex-1 min-w-0">
             <div className={`text-sm font-medium ${darkMode ? "text-gray-200" : "text-gray-800"}`}>{alert.msg}</div>
             <div className={`text-xs mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-              {alert.type === "critical" ? "Immediate action recommended" : alert.type === "warning" ? "Monitor closely" : "Strategic consideration"}
+              {alert.type === "critical" ? "Deal with this soon" : alert.type === "warning" ? "Worth watching" : "Something to think about"}
             </div>
           </div>
           <FaChevronRight className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-400"}`} />
@@ -295,20 +250,20 @@ function StrategicInsightsPanel({ scores, darkMode }) {
 
   const insights = [
     {
-      icon: <FaBrain className="text-purple-500" />, title: "Overall Diagnosis",
+      icon: <FaBrain className="text-purple-500" />, title: "The Big Picture",
       text: avg >= 70
-        ? `Organization shows strong health at ${avg}%. Focus on maintaining momentum and addressing the ${6 - assessed.length} unassessed system(s).`
+        ? `Your organisation is in good shape at ${avg}%. Keep the momentum going and don't forget to assess the ${6 - assessed.length} system${6 - assessed.length !== 1 ? "s" : ""} you haven't covered yet.`
         : avg >= 50
-        ? `Health at ${avg}% indicates room for improvement. Prioritize ${lName} (${lowest[1]}%) for the highest ROI intervention.`
-        : `Health score of ${avg}% signals urgent need for a structured transformation program across multiple systems.`,
+        ? `At ${avg}%, there's definite room for improvement. Focusing on ${lName} (${lowest[1]}%) would give you the biggest return for your effort.`
+        : `A score of ${avg}% tells us there are some serious gaps that need closing. The good news is — once you start fixing the right things, scores tend to move quickly.`,
     },
     {
-      icon: <FaRocket className="text-green-500" />, title: "Leverage Strength",
-      text: `${hName} is your strongest system at ${highest[1]}%. ${hMeta.shortAdvice || "Use it as an anchor to uplift weaker systems."}`,
+      icon: <FaRocket className="text-green-500" />, title: "Build on What's Working",
+      text: `${hName} is your strongest area at ${highest[1]}%. ${hMeta.shortAdvice || "Use what's working there as a model for the areas that need help."}`,
     },
     {
-      icon: <FaExclamationTriangle className="text-amber-500" />, title: "Priority Intervention",
-      text: `${lName} at ${lowest[1]}% is your most critical gap. ${lMeta.shortAdvice || "Deploy targeted capability programs to stabilize."}`,
+      icon: <FaExclamationTriangle className="text-amber-500" />, title: "Where to Focus First",
+      text: `${lName} scored ${lowest[1]}% — that's the area where focused effort will make the biggest difference. ${lMeta.shortAdvice || "Start with one or two practical changes."}`,
     },
   ];
 
@@ -318,10 +273,10 @@ function StrategicInsightsPanel({ scores, darkMode }) {
   if (culturalScores.length >= 2) {
     const cAvg = Math.round(culturalScores.reduce((a, b) => a + b, 0) / culturalScores.length);
     insights.push({
-      icon: <FaUsers className="text-pink-500" />, title: "Cultural Health",
+      icon: <FaUsers className="text-pink-500" />, title: "Your Team Culture",
       text: cAvg >= 70
-        ? `Cultural systems averaging ${cAvg}% — healthy, aligned culture. Continue reinforcing communication and strategic coherence.`
-        : `Cultural health at ${cAvg}% indicates potential misalignment between strategy, communication, and organizational goals.`,
+        ? `The culture side of things is looking healthy at ${cAvg}%. People seem to understand the vision and communicate well — keep reinforcing that.`
+        : `Culture scores are sitting at ${cAvg}%, which suggests that strategy, communication, and team alignment may not be quite in sync yet.`,
     });
   }
 
@@ -344,112 +299,7 @@ function StrategicInsightsPanel({ scores, darkMode }) {
   );
 }
 
-/* Quick Actions Bar */
-function QuickActionsBar({ navigate, assessedCount, darkMode }) {
-  const actions = [
-    { label: "Full Report", icon: <FaFileAlt />, path: "/ceo/org-health", show: assessedCount > 0 },
-    { label: "Partner Dashboard", icon: <FaSignal />, path: "/ceo/partner-dashboard/overview", show: true },
-    { label: "Data Management", icon: <FaChartLine />, path: "/ceo/data", show: true },
-  ].filter(a => a.show);
-  return (
-    <div className="flex flex-wrap gap-2">
-      {actions.map((a, i) => (
-        <button key={i} onClick={() => navigate(a.path)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            i === 0
-              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-md"
-              : darkMode ? "bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700"
-                         : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-          }`}
-        >
-          {a.icon} {a.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/* Assessment Progress Tracker */
-function AssessmentProgressTracker({ scores, darkMode, onStartAssessment }) {
-  const assessed = Object.values(scores).filter(v => v !== null).length;
-  const total = CANONICAL_SYSTEMS.length;
-  const pct = Math.round((assessed / total) * 100);
-  return (
-    <div className={`rounded-xl p-5 border ${darkMode ? "bg-gray-800/80 border-gray-700" : "bg-white border-gray-200"}`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className={`text-sm font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}>Assessment Progress</div>
-        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-          pct === 100 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                     : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-        }`}>{assessed} / {total} systems</span>
-      </div>
-      <div className={`w-full h-2.5 rounded-full ${darkMode ? "bg-gray-700" : "bg-gray-200"}`}>
-        <div style={{ width: `${pct}%` }} className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-green-500" : "bg-blue-500"}`} />
-      </div>
-      <div className="grid grid-cols-6 gap-1 mt-4">
-        {CANONICAL_SYSTEMS.map(s => {
-          const isOK = scores[s.key] !== null && scores[s.key] !== undefined;
-          const meta = SYSTEM_META[s.key] || {};
-          return (
-            <div key={s.key}
-              onClick={() => !isOK && onStartAssessment(s.key)}
-              className={`flex flex-col items-center p-2 rounded-lg text-center transition-all ${
-                isOK ? (darkMode ? "bg-gray-700/50" : "bg-gray-50")
-                     : "cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              }`}
-            >
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs mb-1 ${
-                isOK ? `bg-gradient-to-br ${meta.gradient} text-white`
-                     : darkMode ? "bg-gray-700 text-gray-500" : "bg-gray-200 text-gray-400"
-              }`}>
-                {isOK ? <FaCheckCircle className="text-[10px]" /> : <span className="text-[10px]">{meta.emoji}</span>}
-              </div>
-              <div className={`text-[10px] leading-tight ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{s.title.slice(0, 7)}</div>
-              {isOK && (
-                <div className={`text-[10px] font-bold mt-0.5 ${
-                  scores[s.key] >= 70 ? "text-green-500" : scores[s.key] >= 50 ? "text-yellow-500" : "text-red-500"
-                }`}>{scores[s.key]}%</div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {assessed < total && (
-        <button
-          onClick={() => { const u = CANONICAL_SYSTEMS.find(s => scores[s.key] === null || scores[s.key] === undefined); if (u) onStartAssessment(u.key); }}
-          className="mt-3 w-full py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all"
-        >
-          Continue Assessment — {total - assessed} system{total - assessed > 1 ? "s" : ""} remaining
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* Org Health Forecast Mini-Chart */
-function HealthForecastMini({ overallScore, darkMode }) {
-  const forecastData = useMemo(() => {
-    const data = []; let val = overallScore || 50;
-    ["Now", "Mo 1", "Mo 2", "Mo 3", "Mo 4", "Mo 5", "Mo 6"].forEach((m, i) => {
-      data.push({ month: m, projected: Math.round(val), optimistic: Math.round(Math.min(100, val + i * 2.5)), conservative: Math.round(Math.max(20, val - i * 1.5)) });
-      val = Math.min(100, val + (Math.random() * 3 - 0.5));
-    });
-    return data;
-  }, [overallScore]);
-  return (
-    <ResponsiveContainer width="100%" height={200}>
-      <AreaChart data={forecastData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#F3F4F6"} />
-        <XAxis dataKey="month" tick={{ fontSize: 10, fill: darkMode ? "#9CA3AF" : "#6B7280" }} />
-        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: darkMode ? "#9CA3AF" : "#6B7280" }} />
-        <Tooltip contentStyle={{ backgroundColor: darkMode ? "#1F2937" : "#FFF", border: `1px solid ${darkMode ? "#374151" : "#E5E7EB"}`, borderRadius: 8, fontSize: 11 }} />
-        <Area type="monotone" dataKey="optimistic" stroke="#10B981" fill="#10B981" fillOpacity={0.05} strokeWidth={1} strokeDasharray="4 4" name="Optimistic" />
-        <Area type="monotone" dataKey="projected" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.15} strokeWidth={2} name="Projected" />
-        <Area type="monotone" dataKey="conservative" stroke="#EF4444" fill="#EF4444" fillOpacity={0.05} strokeWidth={1} strokeDasharray="4 4" name="Conservative" />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
+/* Removed standalone AssessmentProgressTracker — progress bar merged into system cards section */
 
 // ─── Main Component ───────────────────────────────────────────────────
 export default function DashboardHome() {
@@ -564,11 +414,6 @@ export default function DashboardHome() {
     [systemScoresFromUpload]
   );
 
-  const lastUpdated = useMemo(() => {
-    if (latestUpload?.timestamp) return new Date(latestUpload.timestamp).toLocaleDateString();
-    return null;
-  }, [latestUpload]);
-
   // Handlers
   function handleViewSystem(systemKey) {
     const systemInfo = CANONICAL_SYSTEMS.find(s => s.key === systemKey) || { title: systemKey };
@@ -593,11 +438,6 @@ export default function DashboardHome() {
   // ─── Render ─────────────────────────────────────────────────────────
   return (
     <section className="space-y-6">
-      {/* ─── Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-       
-        <QuickActionsBar navigate={navigate} assessedCount={assessedCount} darkMode={darkMode} />
-      </div>
 
       {/* ─── Hero Row: Health Gauge + Radar ──────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -607,7 +447,7 @@ export default function DashboardHome() {
                    : "bg-gradient-to-br from-white to-gray-50 border-gray-200"
         }`}>
           <div className={`text-sm font-semibold mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-            Overall Organizational Health
+            How Your Organisation Is Doing
           </div>
           <HealthGauge score={overallScore} darkMode={darkMode} />
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
@@ -636,18 +476,18 @@ export default function DashboardHome() {
           <div className="flex items-center justify-between mb-2">
             <div>
               <div className={`text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                Six Systems Health Profile
+                How Your Six Systems Compare
               </div>
               <div className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                Your organization vs industry benchmark (70%)
+                Each axis represents one of the six systems that drive your organisation
               </div>
             </div>
-            <button onClick={() => navigate("/ceo/partner-dashboard/deep-dive")}
+            <button onClick={() => navigate("/ceo/org-health")}
               className={`text-xs flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors ${
                 darkMode ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Deep Dive <FaChevronRight className="text-[8px]" />
+              See Full Breakdown <FaChevronRight className="text-[8px]" />
             </button>
           </div>
           <SystemsRadarChart scores={systemScoresFromUpload} darkMode={darkMode} />
@@ -660,7 +500,7 @@ export default function DashboardHome() {
         <div className={`rounded-2xl p-5 border ${darkMode ? "bg-gray-800/80 border-gray-700" : "bg-white border-gray-200"}`}>
           <div className="flex items-center gap-2 mb-4">
             <FaExclamationTriangle className="text-amber-500" />
-            <div className={`text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Key Alerts & Notifications</div>
+            <div className={`text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Things That Need Your Attention</div>
           </div>
           <KeyAlertsPanel scores={systemScoresFromUpload} darkMode={darkMode} onViewSystem={handleViewSystem} />
         </div>
@@ -669,7 +509,7 @@ export default function DashboardHome() {
         <div className={`rounded-2xl p-5 border ${darkMode ? "bg-gray-800/80 border-gray-700" : "bg-white border-gray-200"}`}>
           <div className="flex items-center gap-2 mb-4">
             <FaBrain className="text-purple-500" />
-            <div className={`text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>X-ULTRA Strategic Insights</div>
+            <div className={`text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>What You Should Know</div>
           </div>
           {assessedCount > 0 ? (
             <StrategicInsightsPanel scores={systemScoresFromUpload} darkMode={darkMode} />
@@ -677,42 +517,46 @@ export default function DashboardHome() {
             <div className={`text-center py-8 rounded-xl ${darkMode ? "bg-gray-900/50" : "bg-gray-50"}`}>
               <FaBrain className="mx-auto text-3xl text-gray-400 mb-2" />
               <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                Complete at least one assessment to unlock XUltra-powered strategic insights
+                Complete at least one assessment to see personalised insights about your organisation
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ─── Bottom Row: Forecast + Assessment Progress ─────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Health Forecast */}
-        <div className={`rounded-2xl p-5 border ${darkMode ? "bg-gray-800/80 border-gray-700" : "bg-white border-gray-200"}`}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <FaChartLine className="text-blue-500" />
-              <div className={`text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>6-Month Health Forecast</div>
-            </div>
-            <button onClick={() => navigate("/ceo/partner-dashboard/forecast")}
-              className={`text-xs flex items-center gap-1 ${darkMode ? "text-blue-400" : "text-blue-600"} hover:underline`}
-            >
-              Full Forecast <FaChevronRight className="text-[8px]" />
-            </button>
+      {/* ─── System Cards + Progress ────────────────────────── */}
+      <div className={`rounded-2xl p-5 border ${darkMode ? "bg-gray-800/80 border-gray-700" : "bg-white border-gray-200"}`}>
+        <div className="flex items-center justify-between mb-1">
+          <div className={`text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+            Your Six Systems at a Glance
           </div>
-          {overallScore > 0 ? (
-            <HealthForecastMini overallScore={overallScore} darkMode={darkMode} />
-          ) : (
-            <div className={`text-center py-12 rounded-xl ${darkMode ? "bg-gray-900/50" : "bg-gray-50"}`}>
-              <FaChartLine className="mx-auto text-3xl text-gray-400 mb-2" />
-              <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                Complete assessments to generate predictive forecasts
-              </div>
-            </div>
-          )}
+          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+            assessedCount === 6
+              ? (darkMode ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-700")
+              : (darkMode ? "bg-blue-900/30 text-blue-400" : "bg-blue-100 text-blue-700")
+          }`}>{assessedCount} of 6 assessed</span>
         </div>
-
-        {/* Assessment Progress */}
-        <AssessmentProgressTracker scores={systemScoresFromUpload} darkMode={darkMode} onStartAssessment={startOrRetakeAssessment} />
+        {assessedCount < 6 && (
+          <div className="mb-4">
+            <div className={`w-full h-1.5 rounded-full mt-2 ${darkMode ? "bg-gray-700" : "bg-gray-200"}`}>
+              <div style={{ width: `${Math.round((assessedCount / 6) * 100)}%` }}
+                className={`h-full rounded-full transition-all duration-700 ${assessedCount === 6 ? "bg-green-500" : "bg-blue-500"}`} />
+            </div>
+          </div>
+        )}
+        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 ${assessedCount === 6 ? "mt-4" : ""}`}>
+          {CANONICAL_SYSTEMS.map(s => (
+            <SystemCard key={s.key} systemKey={s.key} score={systemScoresFromUpload[s.key]} darkMode={darkMode} onClick={() => handleViewSystem(s.key)} />
+          ))}
+        </div>
+        {assessedCount < 6 && (
+          <button
+            onClick={() => { const u = CANONICAL_SYSTEMS.find(s => systemScoresFromUpload[s.key] === null || systemScoresFromUpload[s.key] === undefined); if (u) startOrRetakeAssessment(u.key); }}
+            className="mt-4 w-full py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all"
+          >
+            Continue — {6 - assessedCount} system{6 - assessedCount > 1 ? "s" : ""} left to assess
+          </button>
+        )}
       </div>
 
       {/* ─── Quick View Modal ───────────────────────────────────── */}
@@ -776,41 +620,38 @@ export default function DashboardHome() {
                       <div className="flex items-start gap-3">
                         <FaBrain className="text-blue-500 mt-0.5" />
                         <div>
-                          <div className={`text-sm font-semibold mb-1 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>X-ULTRA Analysis</div>
+                          <div className={`text-sm font-semibold mb-1 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>What This Means</div>
                           <div className={`text-xs leading-relaxed ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            {quickModalPayload.meta?.insight || "Analyzing system performance patterns..."}
+                            {quickModalPayload.meta?.insight || "Looking at how this system is performing..."}
                             {quickModalPayload.score < 60 && (
                               <span className="block mt-2 font-medium text-amber-600 dark:text-amber-400">
-                                Recommended: {quickModalPayload.meta?.shortAdvice || "Deploy targeted improvement protocols."}
+                                Our suggestion: {quickModalPayload.meta?.shortAdvice || "Start with one or two practical improvements."}
                               </span>
                             )}
                           </div>
                         </div>
                       </div>
                     </div>
-                    <div>
-                      <h4 className={`text-sm font-semibold mb-3 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Strategic Recommendations</h4>
-                      <div className="space-y-2">
-                        {[
-                          "Run a focused improvement sprint (2–4 weeks) targeting the top 3 pain points.",
-                          "Establish KPI dashboards with weekly stakeholder reviews for accountability.",
-                          "Benchmark against industry peers and implement proven playbooks.",
-                        ].map((rec, i) => (
-                          <div key={i} className={`flex items-start gap-2 p-3 rounded-lg text-xs ${darkMode ? "bg-gray-800/50" : "bg-gray-50"}`}>
-                            <FaCheckCircle className="text-blue-500 mt-0.5 flex-shrink-0 text-[10px]" />
-                            <span className={darkMode ? "text-gray-300" : "text-gray-700"}>{rec}</span>
+                    {quickModalPayload.score < 65 && quickModalPayload.meta?.shortAdvice && (
+                      <div className={`p-4 rounded-xl ${darkMode ? "bg-amber-900/10 border border-amber-800/30" : "bg-amber-50 border border-amber-100"}`}>
+                        <div className="flex items-start gap-3">
+                          <FaRocket className="text-amber-500 mt-0.5" />
+                          <div>
+                            <div className={`text-sm font-semibold mb-1 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>Where to Start</div>
+                            <div className={`text-xs leading-relaxed ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                              {quickModalPayload.meta.shortAdvice}
+                            </div>
                           </div>
-                        ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </>
                 ) : (
                   <div className="text-center py-4">
                     <div className="text-4xl mb-3">📋</div>
-                    <h4 className={`text-lg font-semibold mb-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>Assessment Not Yet Taken</h4>
+                    <h4 className={`text-lg font-semibold mb-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>You Haven't Taken This Assessment Yet</h4>
                     <p className={`text-sm mb-4 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                      Take a short assessment (~10–20 min) to unlock a complete report with X-ULTRA
-                      recommendations, forecasts, and industry benchmarks.
+                      It takes about 10–20 minutes. Once you're done, you'll get a full report with scores, personalised recommendations, and practical next steps.
                     </p>
                   </div>
                 )}
@@ -827,11 +668,7 @@ export default function DashboardHome() {
                         darkMode ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
-                      <FaFileAlt className="inline mr-2" />Full Report
-                    </button>
-                    <button onClick={() => { navigate("/ceo/partner-dashboard/deep-dive"); setShowQuickModal(false); }}
-                      className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">
-                      <FaEye className="inline mr-2" />Deep Dive
+                      <FaFileAlt className="inline mr-2" />View Full Report
                     </button>
                     <button onClick={() => { startOrRetakeAssessment(quickModalPayload.systemKey); setShowQuickModal(false); }}
                       className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700">

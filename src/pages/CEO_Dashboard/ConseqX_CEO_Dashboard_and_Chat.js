@@ -13,22 +13,21 @@ const STORAGE_NOTIFS = "conseqx_reports_notifications_v1";
 
 // Route → page header mapping
 const PAGE_META = {
-  dashboard:        { title: "Strategic Ultra View",  sub: "Organizational health intelligence at a glance" },
-  data:             { title: "Data Management",           sub: "Upload datasets or enable real-time sync to feed the ConseQ-X Six Systems analysis" },
-  chat:             { title: "X Ultra Chat",                   sub: "Conversational intelligence powered by your organizational data" },
-  assessments:      { title: "Assessments",               sub: "Evaluate and score each of the Six Systems" },
-  reports:          { title: "Reports",                   sub: "Generate and review organizational health reports" },
-  team:             { title: "Team Management",           sub: "Manage users, roles, and permissions" },
+  dashboard:        { title: "Strategic Ultra View",  sub: "A clear picture of how your organisation is doing — all in one place" },
+  data:             { title: "Your Organisation's Data",    sub: "Upload spreadsheets and reports so we can connect the dots across your six systems" },
+  chat:             { title: "X Ultra Chat",                   sub: "Talk through challenges, explore your data, and get advice tailored to your organisation" },
+  assessments:      { title: "Assessments",               sub: "Score each of the six systems that drive your organisation's health" },
+  reports:          { title: "Reports",                   sub: "See how your organisation scored and what to focus on next" },
+  team:             { title: "Team Management",           sub: "Manage who has access and what they can do" },
   billing:          { title: "Billing & Subscription",    sub: "Manage your plan and payment details" },
-  revenue:          { title: "Organizational Metrics",   sub: "Track financial & operational KPIs aligned to the TORIL framework" },
-  "org-health":     { title: "Organizational Health",     sub: "Holistic view of your organization's wellbeing" },
+  revenue:          { title: "Organisational Metrics",   sub: "Track the financial and operational numbers that matter most" },
+  "org-health":     { title: "System Deep Dive",     sub: "Detailed breakdown, real-world case studies, and practical recommendations for each system" },
   "partner-dashboard":          { title: "Partner Dashboard",   sub: "C-Suite partner analytics and insights" },
-  "partner-dashboard/overview":  { title: "Partner Overview",    sub: "High-level partner performance summary" },
-  "partner-dashboard/deep-dive": { title: "Deep Dive Analysis",  sub: "Granular system-by-system analysis" },
-  "partner-dashboard/forecast":  { title: "Partner Forecast",    sub: "Predictive analytics for partner performance" },
-  "partner-dashboard/recommendations": { title: "Recommendations", sub: "X Ultra improvement suggestions" },
-  "partner-dashboard/benchmarking":    { title: "Benchmarking & Trends",     sub: "Compare performance against industry standards" },
-  archive:            { title: "Assessment Archive",      sub: "Historical 28-parameter organizational health analysis" },
+
+  "partner-dashboard/forecast":  { title: "Impact Simulator",    sub: "See how changes to any system would shift your overall health score" },
+  "partner-dashboard/recommendations": { title: "Recommendations & Actions", sub: "What your data says to focus on, plus your own action items to track" },
+  "partner-dashboard/benchmarking":    { title: "Benchmarking & Trends",     sub: "How you compare to others in your industry" },
+  archive:            { title: "Assessment Archive",      sub: "Your past assessment results, all in one place" },
 };
 
 function getPageMeta(pathname) {
@@ -454,19 +453,13 @@ export default function ConseqXCEODashboardShell() {
                     <span>Partner Dashboard</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">5 sections</span>
+                    <span className="text-xs text-gray-400">3 sections</span>
                     {partnerDashboardOpen ? <FaChevronUp/> : <FaChevronDown/>}
                   </div>
                 </button>
 
                 <div className={`overflow-hidden transition-all duration-200 ${partnerDashboardOpen ? "max-h-60" : "max-h-0"}`}>
                   <div className="mt-1 ml-3 flex flex-col gap-1">
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/overview" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                      System Overview
-                    </NavLink>
-                    <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/deep-dive" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                      Deep Dive Analysis
-                    </NavLink>
                     <NavLink onClick={handleMobileNavClick} to="/ceo/partner-dashboard/forecast" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
                       Forecast & Scenarios
                     </NavLink>
@@ -519,47 +512,6 @@ export default function ConseqXCEODashboardShell() {
             </button>
           </div>
 
-          {/* bottom pinned */}
-          <div className="flex-shrink-0 mt-auto pt-3" style={{ borderTop: darkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)' }}>
-            <div className="text-xs text-gray-400 font-medium">Latest Activity</div>
-            <div className="mt-2 space-y-2">
-              {recentActivity.length === 0 ? (
-                <div className="text-xs text-gray-500 italic">No activity yet — complete an assessment to get started.</div>
-              ) : (
-                recentActivity.map((item) => (
-                  <div key={item.id} className="flex items-start gap-2">
-                    <div className={`w-1 h-8 rounded-full flex-shrink-0 ${
-                      item.type === "assessment" ? (darkMode ? "bg-indigo-500" : "bg-indigo-400") :
-                      item.type === "metric" ? (darkMode ? "bg-emerald-500" : "bg-emerald-400") :
-                      (darkMode ? "bg-yellow-500" : "bg-yellow-400")
-                    }`} />
-                    <div className="min-w-0">
-                      <div className={`text-sm font-medium truncate ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{item.title}</div>
-                      <div className="text-xs text-gray-400">{item.time ? new Date(item.time).toLocaleDateString() : "—"}</div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="mt-3">
-              <div className="text-xs text-gray-400 font-medium">Systems Snapshot</div>
-              <div className="mt-2 space-y-1.5">
-                {systemScores.map((s) => (
-                  <div key={s.id} className="flex items-center justify-between text-sm">
-                    <span className={`flex items-center gap-1 ${darkMode ? "text-gray-200" : "text-gray-700"}`}>
-                      <span className="text-xs">{s.icon}</span> {s.title}
-                    </span>
-                    {s.scorePct !== null ? (
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.scorePct > 70 ? (darkMode ? "bg-green-900/50 text-green-300" : "bg-green-100 text-green-700") : s.scorePct > 45 ? (darkMode ? "bg-yellow-900/50 text-yellow-300" : "bg-yellow-100 text-yellow-700") : (darkMode ? "bg-red-900/50 text-red-300" : "bg-red-100 text-red-700")}`}>{s.scorePct}%</span>
-                    ) : (
-                      <span className="text-xs text-gray-500">—</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </aside>
       </div>
 
@@ -597,19 +549,13 @@ export default function ConseqXCEODashboardShell() {
                       <span>Partner Dashboard</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">5</span>
+                      <span className="text-xs text-gray-400">3</span>
                       {partnerDashboardOpen ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
                     </div>
                   </button>
 
                   <div className={`overflow-hidden transition-all duration-200 ${partnerDashboardOpen ? "max-h-60" : "max-h-0"}`}>
                     <div className="mt-1 ml-3 flex flex-col gap-1">
-                      <NavLink to="/ceo/partner-dashboard/overview" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                        System Overview
-                      </NavLink>
-                      <NavLink to="/ceo/partner-dashboard/deep-dive" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
-                        Deep Dive Analysis
-                      </NavLink>
                       <NavLink to="/ceo/partner-dashboard/forecast" className={({isActive}) => `px-2 py-1.5 rounded text-sm transition-colors ${isActive ? (darkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-900") : (darkMode ? "hover:bg-blue-900/20 text-gray-300" : "hover:bg-gray-100 text-gray-700")}`}>
                         Forecast & Scenarios
                       </NavLink>
@@ -656,46 +602,6 @@ export default function ConseqXCEODashboardShell() {
             </div>
 
             {/* Bottom pinned section */}
-            <div className="mt-auto flex-shrink-0 pt-3" style={{ borderTop: darkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)' }}>
-              <div className="text-xs text-gray-400 font-medium">Latest Activity</div>
-              <div className="mt-2 space-y-2">
-                {recentActivity.length === 0 ? (
-                  <div className="text-xs text-gray-500 italic">No activity yet — complete an assessment to get started.</div>
-                ) : (
-                  recentActivity.map((item) => (
-                    <div key={item.id} className="flex items-start gap-2">
-                      <div className={`w-1 h-8 rounded-full flex-shrink-0 ${
-                        item.type === "assessment" ? (darkMode ? "bg-indigo-500" : "bg-indigo-400") :
-                        item.type === "metric" ? (darkMode ? "bg-emerald-500" : "bg-emerald-400") :
-                        (darkMode ? "bg-yellow-500" : "bg-yellow-400")
-                      }`} />
-                      <div className="min-w-0">
-                        <div className={`text-sm font-medium truncate ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{item.title}</div>
-                        <div className="text-xs text-gray-400">{item.time ? new Date(item.time).toLocaleDateString() : "—"}</div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="mt-3">
-                <div className="text-xs text-gray-400 font-medium">Systems Snapshot</div>
-                <div className="mt-2 space-y-1.5">
-                  {systemScores.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between text-sm">
-                      <span className={`flex items-center gap-1 ${darkMode ? "text-gray-200" : "text-gray-700"}`}>
-                        <span className="text-xs">{s.icon}</span> {s.title}
-                      </span>
-                      {s.scorePct !== null ? (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.scorePct > 70 ? (darkMode ? "bg-green-900/50 text-green-300" : "bg-green-100 text-green-700") : s.scorePct > 45 ? (darkMode ? "bg-yellow-900/50 text-yellow-300" : "bg-yellow-100 text-yellow-700") : (darkMode ? "bg-red-900/50 text-red-300" : "bg-red-100 text-red-700")}`}>{s.scorePct}%</span>
-                      ) : (
-                        <span className="text-xs text-gray-500">—</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </aside>
 
           {/* Main */}

@@ -595,9 +595,7 @@ export default function CEORevenue() {
             No Metrics Recorded Yet
           </h3>
           <p className={`text-sm max-w-md mx-auto mb-5 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-            Start by adding your organization's financial and operational metrics.
-            These KPIs connect to the TORIL Six-System framework to provide a holistic
-            view of organizational health.
+            Add your organisation's key financial numbers — revenue, costs, margins, retention — so you can see how the money side of things connects to how well your business actually runs.
           </p>
           <button
             onClick={() => setFormOpen(true)}
@@ -914,9 +912,9 @@ export default function CEORevenue() {
               <FaShieldAlt className={`text-sm ${darkMode ? "text-purple-400" : "text-purple-500"}`} />
             </div>
             <div>
-              <h3 className={`text-base font-bold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>TORIL System Connections</h3>
+              <h3 className={`text-base font-bold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>What Your Numbers Tell Us About the Business</h3>
               <p className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                How your metrics relate to the Six-System organizational health framework
+                Here's how your financial data connects to the six areas that drive your organisation's health
               </p>
             </div>
           </div>
@@ -930,10 +928,10 @@ export default function CEORevenue() {
                 icon: <FaCogs className={darkMode ? "text-indigo-400" : "text-indigo-500"} />,
                 metrics: ["Revenue", "Operating Cost", "Profit Margin"],
                 insight: latest.profitMarginPct >= 20
-                  ? "Strong operational efficiency \u2014 systems are well-orchestrated."
+                  ? "Your operations are running well — the numbers show that things are clicking into place."
                   : latest.profitMarginPct >= 10
-                    ? "Moderate efficiency \u2014 review process bottlenecks."
-                    : "Low margins suggest systemic operational issues."
+                    ? "There's room to tighten things up. Take a look at where time and money leak out of your processes."
+                    : "Margins this low usually point to deeper problems — bottlenecks, waste, or misaligned priorities somewhere in the chain."
               },
               {
                 system: "Investigation",
@@ -942,8 +940,8 @@ export default function CEORevenue() {
                 icon: <FaSearch className={darkMode ? "text-amber-400" : "text-amber-500"} />,
                 metrics: ["Cost of Delays", "Cost of Errors"],
                 insight: latest.annualRevenue > 0 && ((latest.costOfDelays + latest.costOfErrors) / latest.annualRevenue) < 0.05
-                  ? "Low waste ratio \u2014 root cause processes are effective."
-                  : "High delay/error costs \u2014 invest in diagnostic capability."
+                  ? "You're keeping waste low — that means when issues come up, your team is getting to the root of the problem quickly."
+                  : "Delays and errors are eating into your revenue. It's worth investing time in figuring out where things keep going wrong."
               },
               {
                 system: "Interdependency",
@@ -952,8 +950,8 @@ export default function CEORevenue() {
                 icon: <FaUsers className={darkMode ? "text-blue-400" : "text-blue-500"} />,
                 metrics: ["Customer Retention"],
                 insight: latest.customerRetentionPct >= 85
-                  ? "High retention \u2014 strong stakeholder interdependencies."
-                  : "Retention below target \u2014 assess cross-functional collaboration."
+                  ? "Your customers are sticking around, which tells us trust and delivery are in good shape across teams."
+                  : "Customer retention is below where it should be — that often means teams aren't coordinating well enough to keep people happy."
               },
               {
                 system: "Interpretation",
@@ -962,8 +960,8 @@ export default function CEORevenue() {
                 icon: <FaLightbulb className={darkMode ? "text-purple-400" : "text-purple-500"} />,
                 metrics: ["Innovation Budget"],
                 insight: latest.annualRevenue > 0 && (latest.innovationBudget / latest.annualRevenue) >= 0.05
-                  ? "Healthy innovation allocation \u2014 supports adaptive capacity."
-                  : "Consider increasing R&D investment for strategic resilience."
+                  ? "You're putting real money into innovation — that's what keeps a business relevant and sharp over time."
+                  : "Your innovation spend is on the low side. Businesses that don't invest in new ideas tend to lose ground to competitors who do."
               },
               {
                 system: "Inlignment",
@@ -972,8 +970,8 @@ export default function CEORevenue() {
                 icon: <FaUsers className={darkMode ? "text-emerald-400" : "text-emerald-500"} />,
                 metrics: ["Employee Turnover"],
                 insight: latest.employeeTurnoverPct <= 10
-                  ? "Low turnover \u2014 workforce is well-aligned with purpose."
-                  : "High turnover indicates alignment or culture gaps."
+                  ? "People are staying — that's a strong signal that your team feels connected to the mission and valued."
+                  : "You're losing people faster than you should. That usually points to a disconnect between what staff want and what the organisation offers."
               },
               {
                 system: "Illustration",
@@ -982,8 +980,8 @@ export default function CEORevenue() {
                 icon: <FaChartBar className={darkMode ? "text-sky-400" : "text-sky-500"} />,
                 metrics: ["All Metrics Tracked"],
                 insight: records.length >= 3
-                  ? "Good data history \u2014 trends are becoming visible."
-                  : "Add more records to build meaningful trend illustrations."
+                  ? "You've got enough entries now that real trends are starting to show — keep adding records so the picture gets clearer."
+                  : "Add a few more records and you'll start to see useful trends. Right now there isn't quite enough data to draw from."
               },
             ].map((sys, i) => (
               <motion.div

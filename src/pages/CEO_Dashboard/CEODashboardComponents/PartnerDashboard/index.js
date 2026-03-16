@@ -7,7 +7,7 @@ export default function PartnerDashboardShell() {
   const darkMode = parentCtx.darkMode ?? false;
   const orgId = parentCtx.org?.id || "anon";
 
-  const { summary, overview, uploads, loading, error, refresh, simulateImpact } = useDashboardData();
+  const { summary, overview, uploads, loading, error, refresh, simulateImpact } = useDashboardData(orgId);
 
   return (
     <Outlet

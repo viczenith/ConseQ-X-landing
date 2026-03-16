@@ -260,22 +260,30 @@ function AssessmentRunCard({ run, darkMode, parameters, allRuns }) {
 
 /* ═══ Main Archive Page ═══ */
 export default function Archive() {
-  const { darkMode } = useOutletContext() || {};
+  const { darkMode, org } = useOutletContext() || {};
 
-  // Read all assessments
-  const orgId = (() => {
-    try {
-      const auth = JSON.parse(localStorage.getItem("conseqx_auth") || "{}");
-      return auth?.org?.id || "anon";
-    } catch { return "anon"; }
-  })();
+  const orgId = org?.id || "anon";
 
   const assessments = useMemo(() => readAssessments(orgId), [orgId]);
+
+  // Deduplicate: keep only the LATEST assessment per system per date
+  const deduped = useMemo(() => {
+    const latestBySystemDate = {};
+    assessments.forEach(a => {
+      const sys = a.systemId || "unknown";
+      const date = a.timestamp ? new Date(a.timestamp).toLocaleDateString("en-US") : "unknown";
+      const key = `${sys}__${date}`;
+      if (!latestBySystemDate[key] || (a.timestamp || 0) > (latestBySystemDate[key].timestamp || 0)) {
+        latestBySystemDate[key] = a;
+      }
+    });
+    return Object.values(latestBySystemDate).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  }, [assessments]);
 
   // Group by date
   const groupedByDate = useMemo(() => {
     const groups = {};
-    assessments.forEach(a => {
+    deduped.forEach(a => {
       const date = a.timestamp ? new Date(a.timestamp).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "Unknown Date";
       if (!groups[date]) groups[date] = [];
       groups[date].push(a);
@@ -288,7 +296,7 @@ export default function Archive() {
     });
   }, [assessments]);
 
-  if (assessments.length === 0) {
+  if (deduped.length === 0) {
     return (
       <div className={`flex flex-col items-center justify-center py-20 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
         <FaCalendarAlt className="text-4xl mb-4 opacity-50" />
@@ -319,7 +327,7 @@ export default function Archive() {
             </div>
             <div className="space-y-3">
               {runs.map((run, i) => (
-                <AssessmentRunCard key={run.id || `${run.systemId}-${i}`} run={run} darkMode={darkMode} parameters={parameters28} allRuns={assessments} />
+                <AssessmentRunCard key={run.id || `${run.systemId}-${i}`} run={run} darkMode={darkMode} parameters={parameters28} allRuns={deduped} />
               ))}
             </div>
           </div>

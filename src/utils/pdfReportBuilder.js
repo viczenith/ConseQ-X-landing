@@ -547,6 +547,356 @@ export function buildPDFBlobUrl({ scores, userInfo, analysisText }) {
   return URL.createObjectURL(blob);
 }
 
+/**
+ * Build and download a beautiful PDF for a single system deep-dive report.
+ * Called from OrgHealthOverview / System Deep Dive modal.
+ *
+ * @param {{ systemLabel, score, timestamp, subScores, insights, forecasts, recommendations, caseStudy, orgName }} opts
+ */
+export function downloadSystemDeepDivePDF({
+  systemLabel = "System",
+  score = null,
+  timestamp = null,
+  subScores = [],
+  insights = [],
+  forecasts = [],
+  recommendations = [],
+  caseStudy = null,
+  orgName = "Your Organisation",
+  ranking = null,
+}) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const scorePct = typeof score === "number" ? score : 0;
+
+  let y = 0;
+
+  function ensureSpace(needed) {
+    if (y + needed > PAGE_H - FOOTER_H - 6) {
+      addFooter(doc);
+      doc.addPage();
+      y = MARGIN;
+      return true;
+    }
+    return false;
+  }
+
+  /* ═══ COVER PAGE ═══ */
+  doc.setFillColor(...COLORS.coverBg);
+  doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+
+  // Accent stripe
+  doc.setFillColor(...COLORS.accent);
+  doc.rect(0, 0, PAGE_W, 4, "F");
+
+  // Subtle decorative circles
+  doc.setFillColor(255, 255, 255);
+  doc.setGState(new doc.GState({ opacity: 0.03 }));
+  doc.circle(170, 60, 80, "F");
+  doc.circle(40, 240, 60, "F");
+  doc.setGState(new doc.GState({ opacity: 1 }));
+
+  // Logo
+  doc.setFillColor(...COLORS.accent);
+  doc.circle(PAGE_W / 2, 50, 14, "F");
+  doc.setTextColor(...COLORS.coverBg);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("CX", PAGE_W / 2, 53.5, { align: "center" });
+
+  // Title
+  doc.setTextColor(...COLORS.white);
+  doc.setFontSize(28);
+  doc.setFont("helvetica", "bold");
+  doc.text("SYSTEM DEEP DIVE", PAGE_W / 2, 85, { align: "center" });
+
+  // System name
+  doc.setFontSize(20);
+  doc.setTextColor(...COLORS.accent);
+  doc.text(systemLabel.toUpperCase(), PAGE_W / 2, 100, { align: "center" });
+
+  // Gold divider
+  doc.setDrawColor(...COLORS.accent);
+  doc.setLineWidth(1);
+  doc.line(PAGE_W / 2 - 25, 108, PAGE_W / 2 + 25, 108);
+
+  // Info box
+  const boxY = 130;
+  doc.setFillColor(255, 255, 255);
+  doc.setGState(new doc.GState({ opacity: 0.08 }));
+  doc.roundedRect(MARGIN + 20, boxY, CONTENT_W - 40, 50, 4, 4, "F");
+  doc.setGState(new doc.GState({ opacity: 1 }));
+
+  doc.setFontSize(10);
+  doc.setTextColor(200, 210, 230);
+  doc.setFont("helvetica", "normal");
+  const infoX = MARGIN + 30;
+  doc.text("Organisation", infoX, boxY + 14);
+  doc.text("Report Date", infoX, boxY + 28);
+  doc.text("Assessment Date", infoX, boxY + 42);
+
+  doc.setTextColor(...COLORS.white);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text(orgName, infoX + 48, boxY + 14);
+  doc.text(today, infoX + 48, boxY + 28);
+  doc.text(timestamp ? new Date(timestamp).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—", infoX + 48, boxY + 42);
+
+  // Score ring
+  const ringCX = PAGE_W / 2;
+  const ringCY = 225;
+  const ringR = 24;
+
+  doc.setDrawColor(60, 80, 120);
+  doc.setLineWidth(6);
+  doc.circle(ringCX, ringCY, ringR, "S");
+
+  const statusInfo = getStatusInfo(scorePct);
+  const arcAngle = (scorePct / 100) * 360;
+  drawArc(doc, ringCX, ringCY, ringR, -90, -90 + arcAngle, statusInfo.color);
+
+  doc.setTextColor(...COLORS.white);
+  doc.setFontSize(26);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${scorePct}%`, ringCX, ringCY + 3, { align: "center" });
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(180, 200, 255);
+  doc.text("SYSTEM SCORE", ringCX, ringCY + 11, { align: "center" });
+  doc.text(statusInfo.label.toUpperCase(), ringCX, ringCY + 17, { align: "center" });
+
+  // Bottom accent
+  doc.setFillColor(...COLORS.accent);
+  doc.rect(0, PAGE_H - 4, PAGE_W, 4, "F");
+
+  doc.setFontSize(7);
+  doc.setTextColor(120, 140, 170);
+  doc.text("CONFIDENTIAL — Prepared for " + orgName, PAGE_W / 2, PAGE_H - 10, { align: "center" });
+
+  /* ═══ PAGE 2 — SUB-ASSESSMENT BREAKDOWN ═══ */
+  doc.addPage();
+  y = MARGIN;
+
+  if (subScores.length > 0) {
+    y = drawSectionHeader(doc, "SUB-ASSESSMENT BREAKDOWN", y);
+    y += 4;
+
+    // Summary text
+    const strongCount = subScores.filter(s => (s.max > 0 ? (s.score / s.max) * 100 : 0) >= 70).length;
+    const weakCount = subScores.filter(s => (s.max > 0 ? (s.score / s.max) * 100 : 0) < 40).length;
+    let summaryLine = `This system was assessed across ${subScores.length} areas. `;
+    if (strongCount > 0) summaryLine += `${strongCount} area${strongCount > 1 ? "s are" : " is"} performing well. `;
+    if (weakCount > 0) summaryLine += `${weakCount} area${weakCount > 1 ? "s need" : " needs"} urgent attention.`;
+    else if (strongCount === 0) summaryLine += "Most areas have room for improvement.";
+    y = drawWrappedText(doc, summaryLine, MARGIN, y, CONTENT_W, 10, COLORS.text);
+    y += 6;
+
+    // Table
+    const colWidths = [72, 22, 22, 58];
+    y = drawTableHeader(doc, ["Area", "Score", "%", "Rating"], colWidths, y);
+
+    subScores.forEach((sub, idx) => {
+      ensureSpace(10);
+      const pct = sub.max > 0 ? Math.round((sub.score / sub.max) * 100) : (sub.percent || 0);
+      const sInfo = getStatusInfo(pct);
+      const rating = sub.interpretation?.rating || getPlainRating(pct);
+      y = drawTableRow(doc, [
+        sub.title || `Area ${idx + 1}`,
+        `${sub.score}/${sub.max}`,
+        `${pct}%`,
+        rating
+      ], colWidths, y, idx % 2 === 1, sInfo.color);
+    });
+
+    y += 6;
+
+    // Visual score bars for each sub-assessment
+    ensureSpace(subScores.length * 10 + 15);
+    y = drawSectionSubheader(doc, "Visual Breakdown", y);
+    y += 3;
+
+    subScores.forEach((sub) => {
+      ensureSpace(12);
+      const pct = sub.max > 0 ? Math.round((sub.score / sub.max) * 100) : 0;
+      const sInfo = getStatusInfo(pct);
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...COLORS.dark);
+      const label = (sub.title || "").length > 35 ? sub.title.substring(0, 33) + ".." : (sub.title || "");
+      doc.text(label, MARGIN, y + 4);
+
+      // Bar background
+      const barX = MARGIN + 80;
+      const barW = CONTENT_W - 80 - 18;
+      doc.setFillColor(230, 230, 235);
+      doc.roundedRect(barX, y, barW, 5, 1.5, 1.5, "F");
+
+      // Bar fill
+      const fillW = Math.max(1, (pct / 100) * barW);
+      doc.setFillColor(...sInfo.color);
+      doc.roundedRect(barX, y, fillW, 5, 1.5, 1.5, "F");
+
+      // Percentage text
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...sInfo.color);
+      doc.text(`${pct}%`, barX + barW + 3, y + 4);
+
+      y += 9;
+    });
+  }
+
+  /* ═══ WHAT THE RESULTS TELL US (INSIGHTS) ═══ */
+  y += 4;
+  ensureSpace(30);
+  y = drawSectionHeader(doc, "WHAT THE RESULTS TELL US", y);
+  y += 4;
+
+  if (insights.length > 0) {
+    insights.forEach((ins) => {
+      ensureSpace(14);
+      // Gold bullet
+      doc.setFillColor(...COLORS.accent);
+      doc.circle(MARGIN + 2.5, y + 1.5, 1.5, "F");
+      y = drawWrappedText(doc, ins, MARGIN + 7, y, CONTENT_W - 7, 9.5, COLORS.text);
+      y += 3;
+    });
+  } else {
+    y = drawWrappedText(doc, `Your ${systemLabel} system scored ${scorePct}%. Run the assessment to see detailed insights here.`, MARGIN, y, CONTENT_W, 10, COLORS.textLight);
+    y += 4;
+  }
+
+  /* ═══ HOW AN AFRICAN BUSINESS TACKLED THIS (CASE STUDY) ═══ */
+  if (caseStudy) {
+    y += 4;
+    ensureSpace(40);
+    y = drawSectionHeader(doc, "HOW AN AFRICAN BUSINESS TACKLED THIS", y);
+    y += 4;
+
+    // Company name in bold
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COLORS.primary);
+    doc.text(caseStudy.company || "Case Study", MARGIN, y + 3);
+    y += 8;
+
+    // Story background box
+    const storyText = caseStudy.summary || "";
+    const storyLines = doc.splitTextToSize(storyText, CONTENT_W - 12);
+    const storyH = storyLines.length * 4.5 + 10;
+    ensureSpace(storyH + 20);
+
+    doc.setFillColor(240, 253, 244); // light green bg
+    doc.setDrawColor(34, 197, 94); // green border
+    doc.setLineWidth(0.5);
+    doc.roundedRect(MARGIN, y, CONTENT_W, storyH, 3, 3, "FD");
+
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COLORS.text);
+    doc.text(storyLines, MARGIN + 6, y + 7);
+    y += storyH + 4;
+
+    // Outcome
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COLORS.success);
+    doc.text("What happened:", MARGIN, y + 3);
+    y += 6;
+    y = drawWrappedText(doc, caseStudy.result || "", MARGIN, y, CONTENT_W, 9.5, COLORS.dark);
+    y += 4;
+  }
+
+  /* ═══ WHAT TO EXPECT GOING FORWARD (FORECASTS) ═══ */
+  if (forecasts.length > 0) {
+    y += 4;
+    ensureSpace(30);
+    y = drawSectionHeader(doc, "WHAT TO EXPECT GOING FORWARD", y);
+    y += 4;
+
+    forecasts.forEach((f) => {
+      ensureSpace(18);
+      // Horizon label
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...COLORS.primary);
+      doc.text(f.horizon || "", MARGIN, y + 3);
+      y += 6;
+      y = drawWrappedText(doc, f.text || "", MARGIN + 4, y, CONTENT_W - 4, 9.5, COLORS.text);
+      y += 4;
+    });
+  }
+
+  /* ═══ WHAT WE RECOMMEND ═══ */
+  if (recommendations.length > 0) {
+    y += 4;
+    ensureSpace(30);
+
+    // Check if we need a new page
+    if (y > PAGE_H / 2) {
+      addFooter(doc);
+      doc.addPage();
+      y = MARGIN;
+    }
+
+    y = drawSectionHeader(doc, "WHAT WE RECOMMEND", y);
+    y += 4;
+
+    recommendations.forEach((rec) => {
+      ensureSpace(20);
+
+      // Time horizon heading with blue bg
+      doc.setFillColor(239, 246, 255); // blue-50
+      doc.setDrawColor(...COLORS.primaryLight);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(MARGIN, y, CONTENT_W, 8, 2, 2, "FD");
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...COLORS.primary);
+      doc.text(rec.title || "", MARGIN + 4, y + 5.5);
+      y += 12;
+
+      (rec.items || []).forEach((item) => {
+        ensureSpace(12);
+        // Bullet dot
+        doc.setFillColor(...COLORS.accent);
+        doc.circle(MARGIN + 3, y + 1.5, 1, "F");
+        y = drawWrappedText(doc, item, MARGIN + 7, y, CONTENT_W - 7, 9, COLORS.text);
+        y += 3;
+      });
+
+      y += 3;
+    });
+  }
+
+  /* ═══ RANKING ═══ */
+  if (ranking) {
+    y += 4;
+    ensureSpace(20);
+    y = drawSectionSubheader(doc, "System Ranking", y);
+    y += 3;
+    y = drawWrappedText(doc, `This system ranks ${ranking.rank} out of ${ranking.total} across all systems assessed.`, MARGIN, y, CONTENT_W, 10, COLORS.text);
+    y += 4;
+  }
+
+  /* ═══ FOOTER ON LAST PAGE ═══ */
+  addFooter(doc);
+
+  // Add footer to all pages
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 2; i <= totalPages; i++) {
+    doc.setPage(i);
+    addFooter(doc);
+  }
+
+  // Save
+  const safeName = systemLabel.replace(/[^a-zA-Z0-9]/g, "_");
+  const safeOrg = orgName.replace(/[^a-zA-Z0-9]/g, "_");
+  doc.save(`${safeOrg}_${safeName}_Deep_Dive_Report.pdf`);
+}
+
 
 /* ═══════════════════════════════════════════════════════════════
    DRAWING HELPERS

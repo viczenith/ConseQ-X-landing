@@ -376,9 +376,7 @@ export default function AdminDashboard() {
         title: "Partner Intelligence Dashboard",
         links: [
           { to: tenantEntry, label: "Tenant Entry" },
-          { to: "/ceo/partner-dashboard/overview", label: "Partner Overview" },
 
-          { to: "/ceo/partner-dashboard/deep-dive", label: "Partner Deep Dive" },
           { to: "/ceo/partner-dashboard/forecast", label: "Partner Forecast Scenarios" },
           { to: "/ceo/partner-dashboard/recommendations", label: "Partner Recommendations" },
           { to: "/ceo/partner-dashboard/benchmarking", label: "Partner Benchmarking" },

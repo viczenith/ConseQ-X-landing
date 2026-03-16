@@ -3,10 +3,11 @@ import { useOutletContext } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSystemsForUI, normalizeSystemKey } from "../constants/systems";
 import { systems as assessmentSystems } from "../../../data/systems";
+import { downloadPDFReport } from "../../../utils/pdfReportBuilder";
 import {
-  FaChartBar, FaFileAlt, FaChevronDown, FaChevronUp,
-  FaExclamationTriangle, FaCheckCircle, FaArrowUp, FaArrowDown,
-  FaClock, FaPrint, FaFilter, FaInfoCircle
+  FaFileAlt, FaChevronDown, FaChevronUp,
+  FaExclamationTriangle, FaArrowUp, FaArrowDown,
+  FaDownload, FaInfoCircle
 } from "react-icons/fa";
 
 /* ── constants ─────────────────────────────────────────────── */
@@ -154,36 +155,38 @@ export default function CEOReports() {
       .sort((a, b) => (a.percent || 0) - (b.percent || 0))
       .slice(0, 5);
 
-    // History (all runs, chronological)
-    const history = [...assessments]
-      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-      .slice(0, 20);
-
-    return { systemResults, completed, avgScore, weakest, strongest, weakSubs, history };
+    return { systemResults, completed, avgScore, weakest, strongest, weakSubs };
   }, [latestBySystem, assessments, answers]);
 
   /* ── UI state ─────────────────────────────────────────────── */
   const [expandedSystem, setExpandedSystem] = useState(null);
-  const [filterLevel, setFilterLevel] = useState("all"); // all | critical | needs-attention | good | excellent
-  const [showHistory, setShowHistory] = useState(false);
 
-  const filteredSystems = useMemo(() => {
-    if (filterLevel === "all") return report.systemResults;
-    return report.systemResults.filter(s => {
-      if (!s.hasResult) return filterLevel === "critical";
-      const hm = healthMeta(s.score);
-      if (filterLevel === "critical") return hm.color === "red" || hm.color === "orange";
-      if (filterLevel === "needs-attention") return hm.color === "orange";
-      if (filterLevel === "good") return hm.color === "yellow";
-      if (filterLevel === "excellent") return hm.color === "green";
-      return true;
-    });
-  }, [report.systemResults, filterLevel]);
-
-  /* ── print ────────────────────────────────────────────────── */
-  const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+  /* ── PDF export ───────────────────────────────────────────── */
+  const handleDownloadPDF = useCallback(() => {
+    try {
+      const scores = {};
+      report.systemResults.forEach(sys => {
+        if (!sys.hasResult) return;
+        const subs = {};
+        sys.subScores.forEach(ss => {
+          subs[ss.id] = { score: ss.score, maxScore: ss.max, interpretation: ss.interpretation };
+        });
+        scores[sys.id] = {
+          systemScore: sys.rawScore ?? sys.score,
+          maxSystemScore: sys.maxScore ?? 100,
+          subAssessments: subs,
+          interpretation: sys.interpretation,
+        };
+      });
+      downloadPDFReport({
+        scores,
+        userInfo: { organization: orgName, role: "CEO" },
+        analysisText: "",
+      });
+    } catch (err) {
+      console.error("PDF download error:", err);
+    }
+  }, [report.systemResults, orgName]);
 
   /* ── no data state ────────────────────────────────────────── */
   const hasAnyData = report.completed.length > 0;
@@ -194,36 +197,15 @@ export default function CEOReports() {
   return (
     <section ref={printRef} className="print:bg-white">
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-       
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Filter */}
-          <div className="relative">
-            <select
-              value={filterLevel}
-              onChange={e => setFilterLevel(e.target.value)}
-              className={`text-xs pl-7 pr-3 py-1.5 rounded-lg border appearance-none cursor-pointer ${
-                darkMode
-                  ? "bg-gray-800 border-gray-700 text-gray-300"
-                  : "bg-white border-gray-200 text-gray-700"
-              }`}
-            >
-              <option value="all">All Systems</option>
-              <option value="critical">Critical Only</option>
-              <option value="needs-attention">Needs Attention</option>
-              <option value="good">Good</option>
-              <option value="excellent">Excellent</option>
-            </select>
-            <FaFilter className={`absolute left-2 top-1/2 -translate-y-1/2 text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`} />
-          </div>
-          {/* Print */}
-          <button onClick={handlePrint}
+      <div className="flex items-center justify-end mb-6">
+        {hasAnyData && (
+          <button onClick={handleDownloadPDF}
             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border ${
               darkMode ? "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
             }`}>
-            <FaPrint size={12} /> Print
+            <FaDownload size={12} /> Download PDF Report
           </button>
-        </div>
+        )}
       </div>
 
       {/* ── Empty state ────────────────────────────────────── */}
@@ -232,7 +214,7 @@ export default function CEOReports() {
           <FaFileAlt className={`mx-auto mb-4 ${darkMode ? "text-gray-600" : "text-gray-300"}`} size={48} />
           <h2 className={`text-lg font-semibold mb-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>No Reports Available Yet</h2>
           <p className={`text-sm max-w-md mx-auto ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-            Complete at least one TORIL system assessment on the <span className="font-semibold">Assessments</span> page, then return here to view your organizational health report.
+            Once you've completed at least one system assessment on the <span className="font-semibold">Assessments</span> page, your report will appear here with scores, insights, and recommended next steps.
           </p>
         </div>
       )}
@@ -246,7 +228,7 @@ export default function CEOReports() {
               darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-200"
             }`}>
               <p className={`text-xs uppercase tracking-wider mb-3 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                Overall Health Score
+                Your Organisation's Health Score
               </p>
               <ScoreRing score={report.avgScore || 0} darkMode={darkMode} />
               <p className={`mt-3 text-sm font-semibold ${healthMeta(report.avgScore || 0)[darkMode ? "darkText" : "text"]}`}>
@@ -261,14 +243,14 @@ export default function CEOReports() {
             <div className={`lg:col-span-2 rounded-xl p-5 border ${
               darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-200"
             }`}>
-              <h3 className={`text-sm font-semibold mb-4 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>Key Insights</h3>
+              <h3 className={`text-sm font-semibold mb-4 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>What Stands Out</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Strongest */}
                 {report.strongest.length > 0 && (
                   <div className={`p-3 rounded-lg border ${darkMode ? "bg-green-900/10 border-green-500/20" : "bg-green-50 border-green-200"}`}>
                     <div className="flex items-center gap-2 mb-2">
                       <FaArrowUp className="text-green-500" size={12} />
-                      <span className={`text-xs font-semibold ${darkMode ? "text-green-400" : "text-green-700"}`}>Strongest Areas</span>
+                      <span className={`text-xs font-semibold ${darkMode ? "text-green-400" : "text-green-700"}`}>Where You're Doing Well</span>
                     </div>
                     {report.strongest.map(s => (
                       <div key={s.id} className="flex items-center justify-between mb-1 last:mb-0">
@@ -283,7 +265,7 @@ export default function CEOReports() {
                   <div className={`p-3 rounded-lg border ${darkMode ? "bg-red-900/10 border-red-500/20" : "bg-red-50 border-red-200"}`}>
                     <div className="flex items-center gap-2 mb-2">
                       <FaArrowDown className="text-red-500" size={12} />
-                      <span className={`text-xs font-semibold ${darkMode ? "text-red-400" : "text-red-700"}`}>Needs Improvement</span>
+                      <span className={`text-xs font-semibold ${darkMode ? "text-red-400" : "text-red-700"}`}>Where to Focus Next</span>
                     </div>
                     {report.weakest.map(s => (
                       <div key={s.id} className="flex items-center justify-between mb-1 last:mb-0">
@@ -291,36 +273,6 @@ export default function CEOReports() {
                         <span className={`text-xs font-bold ${darkMode ? "text-red-400" : "text-red-600"}`}>{s.score}%</span>
                       </div>
                     ))}
-                  </div>
-                )}
-                {/* Coverage */}
-                <div className={`p-3 rounded-lg border ${darkMode ? "bg-gray-700/30 border-gray-600" : "bg-gray-50 border-gray-200"}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <FaChartBar className={`${darkMode ? "text-blue-400" : "text-blue-500"}`} size={12} />
-                    <span className={`text-xs font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Assessment Coverage</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <Bar pct={Math.round((report.completed.length / SYSTEMS.length) * 100)} darkMode={darkMode} />
-                    </div>
-                    <span className={`text-xs font-bold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                      {report.completed.length}/{SYSTEMS.length}
-                    </span>
-                  </div>
-                </div>
-                {/* Last Run */}
-                {report.history.length > 0 && (
-                  <div className={`p-3 rounded-lg border ${darkMode ? "bg-gray-700/30 border-gray-600" : "bg-gray-50 border-gray-200"}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <FaClock className={`${darkMode ? "text-gray-400" : "text-gray-500"}`} size={12} />
-                      <span className={`text-xs font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Last Assessment Run</span>
-                    </div>
-                    <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                      {new Date(report.history[0].timestamp).toLocaleString()}
-                    </p>
-                    <p className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                      {report.history.length} total run{report.history.length !== 1 ? 's' : ''} recorded
-                    </p>
                   </div>
                 )}
               </div>
@@ -332,15 +284,15 @@ export default function CEOReports() {
             <div className="px-5 py-4 border-b flex items-center justify-between"
               style={{ borderColor: darkMode ? "#374151" : "#E5E7EB" }}>
               <h3 className={`text-sm font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}>
-                System-by-System Breakdown
+                How Each System Is Performing
               </h3>
               <span className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                {filteredSystems.length} system{filteredSystems.length !== 1 ? 's' : ''}
+                {report.systemResults.length} system{report.systemResults.length !== 1 ? 's' : ''}
               </span>
             </div>
 
             <div className="divide-y" style={{ borderColor: darkMode ? "#374151" : "#E5E7EB" }}>
-              {filteredSystems.map(sys => {
+              {report.systemResults.map(sys => {
                 const expanded = expandedSystem === sys.id;
                 const hm = sys.hasResult ? healthMeta(sys.score) : null;
 
@@ -397,7 +349,7 @@ export default function CEOReports() {
                           <div className={`px-5 pb-4 pt-1 ${darkMode ? "bg-gray-800/30" : "bg-gray-50/50"}`}>
                             {!sys.hasResult ? (
                               <p className={`text-xs py-2 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                                No assessment results yet. Go to the <span className="font-semibold">Assessments</span> page to run this system.
+                                You haven't taken this assessment yet. Head over to <span className="font-semibold">Assessments</span> to get started.
                               </p>
                             ) : (
                               <div className="space-y-3">
@@ -413,17 +365,10 @@ export default function CEOReports() {
                                   </div>
                                 )}
 
-                                {/* Raw score */}
-                                {sys.rawScore != null && (
-                                  <p className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                                    Raw score: {sys.rawScore} / {sys.maxScore} points &bull; Assessed {new Date(sys.timestamp).toLocaleString()}
-                                  </p>
-                                )}
-
                                 {/* Sub-assessment breakdown */}
                                 {sys.subScores.length > 0 && (
                                   <div>
-                                    <p className={`text-xs font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Sub-Assessment Scores</p>
+                                    <p className={`text-xs font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Scores by Area</p>
                                     <div className="space-y-2">
                                       {sys.subScores.map(ss => {
                                         const shm = healthMeta(ss.percent);
@@ -435,9 +380,6 @@ export default function CEOReports() {
                                             </div>
                                             <Bar pct={ss.percent} darkMode={darkMode} />
                                             <div className="flex items-center justify-between mt-1">
-                                              <span className={`text-[10px] ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                                                {ss.score}/{ss.max} pts
-                                              </span>
                                               {ss.interpretation && (
                                                 <span className={`text-[10px] italic ${shm[darkMode ? "darkText" : "text"]}`}>
                                                   {ss.interpretation.rating}
@@ -451,13 +393,6 @@ export default function CEOReports() {
                                   </div>
                                 )}
 
-                                {/* Question completion */}
-                                <div className="flex items-center gap-2">
-                                  <FaCheckCircle className="text-green-500" size={11} />
-                                  <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                                    {sys.answeredQuestions}/{sys.totalQuestions} questions answered ({sys.completionPct}%)
-                                  </span>
-                                </div>
                               </div>
                             )}
                           </div>
@@ -475,7 +410,7 @@ export default function CEOReports() {
             <div className={`rounded-xl p-5 border mb-6 ${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-200"}`}>
               <h3 className={`text-sm font-semibold mb-4 flex items-center gap-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>
                 <FaExclamationTriangle className="text-yellow-500" size={13} />
-                Priority Improvement Areas
+                Areas That Need Your Attention First
               </h3>
               <div className="space-y-2.5">
                 {report.weakSubs.map((ss, i) => {
@@ -492,7 +427,7 @@ export default function CEOReports() {
                           <span className={`text-xs font-bold flex-shrink-0 ml-2 ${shm[darkMode ? "darkText" : "text"]}`}>{ss.percent}%</span>
                         </div>
                         <p className={`text-[11px] ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                          Under: {ss.systemTitle} &bull; Score: {ss.score}/{ss.max}
+                          Part of {ss.systemTitle}
                         </p>
                         {ss.interpretation && (
                           <p className={`text-xs mt-1 ${shm[darkMode ? "darkText" : "text"]}`}>
@@ -507,73 +442,11 @@ export default function CEOReports() {
             </div>
           )}
 
-          {/* ── Assessment History ──────────────────────────── */}
-          <div className={`rounded-xl border ${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-200"}`}>
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className={`w-full px-5 py-4 flex items-center justify-between text-left ${
-                darkMode ? "hover:bg-gray-700/30" : "hover:bg-gray-50"
-              } rounded-xl transition-colors`}
-            >
-              <h3 className={`text-sm font-semibold flex items-center gap-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>
-                <FaClock size={13} className={darkMode ? "text-gray-400" : "text-gray-500"} />
-                Assessment Run History
-                <span className={`text-xs font-normal ${darkMode ? "text-gray-500" : "text-gray-400"}`}>({report.history.length})</span>
-              </h3>
-              {showHistory ? <FaChevronUp size={10} className={darkMode ? "text-gray-500" : "text-gray-400"} /> : <FaChevronDown size={10} className={darkMode ? "text-gray-500" : "text-gray-400"} />}
-            </button>
-
-            <AnimatePresence>
-              {showHistory && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="px-5 pb-4">
-                    {report.history.length === 0 ? (
-                      <p className={`text-xs py-2 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>No runs recorded.</p>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {report.history.map((run, idx) => {
-                          const hm = healthMeta(run.score || 0);
-                          const sysInfo = SYSTEMS.find(s => s.id === normalizeSystemKey(run.systemId));
-                          return (
-                            <div key={run.id || idx}
-                              className={`flex items-center gap-3 py-2 px-3 rounded-lg ${
-                                darkMode ? "hover:bg-gray-700/20" : "hover:bg-gray-50"
-                              }`}
-                            >
-                              <span className="text-sm flex-shrink-0">{sysInfo?.icon || "📊"}</span>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-xs font-medium truncate ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                                  {run.title || sysInfo?.title || run.systemId}
-                                </p>
-                                <p className={`text-[10px] ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                                  {new Date(run.timestamp).toLocaleString()}
-                                  {run.meta?.rubricsBased && " • Rubrics-scored"}
-                                </p>
-                              </div>
-                              <span className={`text-xs font-bold flex-shrink-0 ${run.score != null ? hm[darkMode ? "darkText" : "text"] : (darkMode ? "text-gray-500" : "text-gray-400")}`}>
-                                {run.score != null ? `${run.score}%` : "–"}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
           {/* ── Footer note ────────────────────────────────── */}
           <div className="mt-6 flex items-start gap-2">
             <FaInfoCircle className={`flex-shrink-0 mt-0.5 ${darkMode ? "text-gray-600" : "text-gray-300"}`} size={12} />
             <p className={`text-[11px] ${darkMode ? "text-gray-600" : "text-gray-400"}`}>
-              Scores are calculated from your responses to the TORIL assessment rubrics. Re-run assessments periodically to track improvements. Results are stored securely per organization.
+              These scores come from your responses to the assessment questions. Run them again every few months to track how things are improving. All your data stays with your organisation.
             </p>
           </div>
         </>

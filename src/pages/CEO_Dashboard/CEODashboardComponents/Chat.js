@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import {
   FaPaperPlane, FaPaperclip, FaCube, FaChartLine, FaFileAlt, FaDownload,
   FaBars, FaPlus, FaRegCopy, FaCheck, FaRedo, FaTrash, FaEllipsisH,
-  FaRegEdit, FaTimes, FaSearch, FaChevronDown
+  FaRegEdit, FaTimes, FaSearch
 } from "react-icons/fa";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useIntelligence } from "../../../contexts/IntelligenceContext";
@@ -325,26 +325,8 @@ export default function CEOChat() {
         systemId: key, source: 'assessment', timestamp: system?.timestamp || new Date().toISOString()
       };
     });
-    try {
-      const uploadsRaw = localStorage.getItem('conseqx_uploads_v1');
-      const uploads = uploadsRaw ? JSON.parse(uploadsRaw) : [];
-      if (uploads.length > 0) {
-        const latest = uploads[0];
-        CANONICAL_SYSTEMS.forEach(sys => {
-          if (!systemsData[sys.key]) {
-            const has = Array.isArray(latest.analyzedSystems) && latest.analyzedSystems.includes(sys.key);
-            systemsData[sys.key] = {
-              name: sys.title,
-              score: has ? Math.floor(60 + Math.random() * 30) : Math.floor(30 + Math.random() * 40),
-              trend: has ? 'up' : 'stable', systemId: sys.key,
-              source: has ? 'upload' : 'estimated', timestamp: latest.timestamp || new Date().toISOString()
-            };
-          }
-        });
-      }
-    } catch {}
     const systems = CANONICAL_SYSTEMS.map(sys =>
-      systemsData[sys.key] || { name: sys.title, score: Math.floor(40 + Math.random() * 30), trend: 'stable', systemId: sys.key, source: 'default', timestamp: new Date().toISOString() }
+      systemsData[sys.key] || { name: sys.title, score: 0, trend: 'stable', systemId: sys.key, source: 'not-assessed', timestamp: new Date().toISOString() }
     );
     const overall_health = systems.length > 0 ? Math.round(systems.reduce((sum, s) => sum + s.score, 0) / systems.length) : 0;
     return {
@@ -353,12 +335,8 @@ export default function CEOChat() {
       critical_systems: systems.filter(s => s.score < 40).length,
       excellent_systems: systems.filter(s => s.score > 80).length,
       improving_systems: systems.filter(s => s.trend === 'up').length,
-      data_sources: {
-        assessments: systems.filter(s => s.source === 'assessment').length,
-        uploads: systems.filter(s => s.source === 'upload').length,
-        estimated: systems.filter(s => s.source === 'estimated').length,
-        default: systems.filter(s => s.source === 'default').length
-      }
+      assessed_systems: systems.filter(s => s.source === 'assessment').length,
+      not_assessed: systems.filter(s => s.source === 'not-assessed').length
     };
   }, [latestBySystem, titleByKey]);
 
@@ -375,11 +353,11 @@ export default function CEOChat() {
       : text.includes('important') || text.includes('significant') ? 'High Priority' : 'Medium';
 
     const categories = [
-      { match: ['revenue', 'financial', 'cost', 'profit', 'budget', 'roi'], title: 'Financial Performance Analysis', category: 'Financial' },
-      { match: ['strategic', 'planning', 'roadmap', 'objectives', 'goals'], title: 'Strategic Planning Insights', category: 'Strategic' },
-      { match: ['3d', 'visualization', 'interactive'], title: '3D Interactive Analysis', category: '3D Reports' },
-      { match: ['operational', 'efficiency', 'process', 'performance', 'optimization'], title: 'Operational Excellence Analysis', category: 'Operational' },
-      { match: ['risk', 'compliance', 'security', 'threat', 'vulnerability'], title: 'Risk Assessment Analysis', category: 'Risk' }
+      { match: ['revenue', 'financial', 'cost', 'profit', 'budget', 'roi'], title: 'Financial Discussion', category: 'Financial' },
+      { match: ['strategic', 'planning', 'roadmap', 'objectives', 'goals'], title: 'Strategic Conversation', category: 'Strategic' },
+      { match: ['3d', 'visualization', 'interactive'], title: '3D Visual Analysis', category: '3D Reports' },
+      { match: ['operational', 'efficiency', 'process', 'performance', 'optimization'], title: 'Operations Discussion', category: 'Operational' },
+      { match: ['risk', 'compliance', 'security', 'threat', 'vulnerability'], title: 'Risk Discussion', category: 'Risk' }
     ];
     for (const cat of categories) {
       if (cat.match.some(k => text.includes(k))) {
@@ -393,7 +371,7 @@ export default function CEOChat() {
     }
     if (text.length > 200 && (text.includes('analysis') || text.includes('insights') || text.includes('recommendations'))) {
       return {
-        id: `analysis_${messageId}_${Date.now()}`, title: 'X-ULTRA Executive Intelligence Brief',
+        id: `analysis_${messageId}_${Date.now()}`, title: 'X-ULTRA Conversation Summary',
         category: 'Strategic', type: 'executive', summary: text.substring(0, 120) + '...',
         content: message.text, timestamp, messageId, downloadable: true, priority
       };
@@ -415,29 +393,7 @@ export default function CEOChat() {
     return map[category] || [];
   };
 
-  const updateSharedMetricsFromAnalysis = (insight) => {
-    const { category, priority } = insight;
-    const metrics = intelligence.sharedMetrics;
-    if (!metrics) return;
-    const deltas = {
-      'Financial': { key: 'financialHealth', v: priority === 'Critical' ? -2 : priority === 'High Priority' ? 1 : 0.5 },
-      'Strategic': { key: 'strategicAlignment', v: priority === 'Critical' ? -1 : priority === 'High Priority' ? 1.5 : 1 },
-      'Operational': { key: 'operationalEfficiency', v: priority === 'Critical' ? -1.5 : priority === 'High Priority' ? 1 : 0.8 },
-      'Risk': { key: 'riskLevel', v: priority === 'Critical' ? 5 : priority === 'High Priority' ? -2 : -1 }
-    };
-    const d = deltas[category];
-    if (!d) return;
-    if (category === 'Risk') {
-      const cur = metrics.riskLevel.score;
-      const newScore = Math.max(0, Math.min(100, cur + d.v));
-      intelligence.updateMetricFromChat('riskLevel', { score: newScore, level: newScore < 30 ? 'Low' : newScore < 60 ? 'Medium' : 'High', trend: `${d.v > 0 ? '+' : ''}${d.v}%` });
-    } else {
-      intelligence.updateMetricFromChat(d.key, {
-        score: Math.min(100, metrics[d.key].score + d.v),
-        trend: `${d.v > 0 ? '+' : ''}${d.v}%`
-      });
-    }
-  };
+
 
   const captureIntelligence = (assistantId, output, include3D, visualData, visualType) => {
     const finalMsg = { id: assistantId, role: 'assistant', text: output, timestamp: new Date().toISOString(), ...(include3D && { visualization3D: true, visualData, visualType }) };
@@ -445,12 +401,11 @@ export default function CEOChat() {
     if (insight) {
       saveAnalysisToArchive(insight);
       intelligence.addInsight({ title: insight.title, category: insight.category, summary: insight.summary, priority: insight.priority, source: 'x-ultra-chat', relatedMetrics: extractRelatedMetrics(insight.category) });
-      updateSharedMetricsFromAnalysis(insight);
     }
   };
 
   const downloadAnalysis = (item) => {
-    const content = `X-ULTRA EXECUTIVE INTELLIGENCE REPORT\n${'='.repeat(38)}\n\nTitle: ${item.title}\nCategory: ${item.category}\nPriority: ${item.priority}\nGenerated: ${new Date(item.timestamp).toLocaleString()}\n\nEXECUTIVE SUMMARY\n${'-'.repeat(18)}\n${item.summary}\n\nDETAILED ANALYSIS\n${'-'.repeat(18)}\n${item.content}\n\n---\nPowered by X-ULTRA Executive Intelligence\nConseQ-X CEO Assessment Platform\nReport ID: ${item.id}`;
+    const content = `CONSEQ-X CHAT REPORT\n${'='.repeat(22)}\n\nTitle: ${item.title}\nCategory: ${item.category}\nPriority: ${item.priority}\nDate: ${new Date(item.timestamp).toLocaleString()}\n\nSUMMARY\n${'-'.repeat(8)}\n${item.summary}\n\nFULL CONVERSATION\n${'-'.repeat(18)}\n${item.content}\n\n---\nGenerated from X-ULTRA Chat\nConseQ-X Platform\nID: ${item.id}`;
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -476,57 +431,59 @@ export default function CEOChat() {
     const hasEnoughContext = prompt.length > 200 || /\b(because|since|context|background|details|specifically)\b/i.test(prompt);
 
     if ((isDecisionQuery || isProblemQuery) && !hasEnoughContext) {
-      lines.push(`Thank you for bringing this to my attention. Before I provide my analysis, I need to understand the full picture.\n`);
-      lines.push(`**Please help me with these clarifying questions:**\n`);
+      lines.push(`Good question — let me make sure I give you the right answer. A few things would help me understand the situation better:\n`);
+      lines.push(`**Quick questions before I advise:**\n`);
       if (isDecisionQuery) {
-        lines.push(`1. **What is the specific decision you're facing?** Describe the exact choice or fork in the road.`);
-        lines.push(`2. **What is the timeline?** When does this decision need to be made?`);
-        lines.push(`3. **Who are the key stakeholders?** Who will be affected and who needs to agree?`);
-        lines.push(`4. **What constraints exist?** Budget limits, regulatory requirements, or dependencies.`);
+        lines.push(`1. **What exactly are you deciding between?** Walk me through the options you're considering.`);
+        lines.push(`2. **What's the timeline?** Is this something you need to act on right away, or do you have a few weeks?`);
+        lines.push(`3. **Who else is involved?** Are there other people or teams who need to be on board?`);
+        lines.push(`4. **Any hard constraints?** Budget limits, regulations, or other things that are non-negotiable.`);
       } else {
-        lines.push(`1. **When did this problem start?** How long has this been going on?`);
-        lines.push(`2. **What is the business impact?** Revenue, operations, people, or reputation.`);
-        lines.push(`3. **What have you tried so far?** Any interventions or fixes attempted.`);
-        lines.push(`4. **How urgent is this?** Does it need resolution this week, this month, or this quarter?`);
+        lines.push(`1. **When did you first notice this?** Has it been building up, or did it come on suddenly?`);
+        lines.push(`2. **What's the impact so far?** Is it affecting revenue, operations, your team, or something else?`);
+        lines.push(`3. **What have you tried?** Any fixes or workarounds you've already put in place.`);
+        lines.push(`4. **How urgent is it?** Does this need sorting this week, or can it wait a month?`);
       }
-      lines.push(`\n**Also:** If you have any supporting documents (reports, financials, contracts), please upload them using the 📎 button below. This will help me give you more precise recommendations.\n`);
-      lines.push(`Once I have this context, I'll present you with **3 strategic options** with projected consequences across your organizational systems.`);
+      lines.push(`\n**Tip:** If you have any supporting documents — a report, a spreadsheet, a contract — upload them using the 📎 button below. The more context I have, the sharper my advice will be.\n`);
+      lines.push(`Once I understand the full picture, I'll give you **three clear options** with the likely consequences of each.`);
     } else {
-      const greetings = ["Based on your organizational health data, here's my analysis:", "Let me analyze your current performance metrics:", "Here's what I can see from your recent data:"];
+      const greetings = ["Here's what I can see from your data:", "Let me look at your numbers and break it down:", "Alright, let me pull up what we know:"];
       lines.push(greetings[Math.floor(Math.random() * greetings.length)]);
     }
 
     if (!(isDecisionQuery || isProblemQuery) || hasEnoughContext) {
     if (lowerPrompt.includes('score') || lowerPrompt.includes('performance') || lowerPrompt.includes('health')) {
-      lines.push(`\n**Overall Organizational Health: ${data3D.overall_health}%**`);
-      lines.push(`- Total Systems Analyzed: ${data3D.total_systems}`);
-      lines.push(`- Critical Systems: ${data3D.critical_systems}`);
-      lines.push(`- Excellent Systems: ${data3D.excellent_systems}`);
-      lines.push(`- Improving: ${data3D.improving_systems}`);
+      lines.push(`\n**Here's where your organisation stands: ${data3D.overall_health}%**`);
+      lines.push(`- **${data3D.total_systems}** systems tracked in total`);
+      if (data3D.critical_systems > 0) lines.push(`- **${data3D.critical_systems}** system${data3D.critical_systems > 1 ? 's' : ''} need urgent attention`);
+      if (data3D.excellent_systems > 0) lines.push(`- **${data3D.excellent_systems}** system${data3D.excellent_systems > 1 ? 's are' : ' is'} performing really well`);
+      if (data3D.improving_systems > 0) lines.push(`- **${data3D.improving_systems}** system${data3D.improving_systems > 1 ? 's are' : ' is'} trending upward`);
     }
     if (lowerPrompt.includes('system') || lowerPrompt.includes('department')) {
-      lines.push("\n**System Performance:**");
-      data3D.systems.slice(0, 5).forEach(sys => {
+      lines.push("\n**How each system is doing:**");
+      data3D.systems.filter(sys => sys.score > 0).forEach(sys => {
         const icon = sys.score > 80 ? '✅' : sys.score > 60 ? '⚠️' : '🚨';
         lines.push(`${icon} **${sys.name}**: ${sys.score}%`);
       });
+      const unassessed = data3D.systems.filter(sys => sys.score === 0);
+      if (unassessed.length > 0) {
+        lines.push(`\n📋 **Not yet assessed:** ${unassessed.map(s => s.name).join(', ')}`);
+      }
     }
     if (lowerPrompt.includes('recommendation') || lowerPrompt.includes('action') || lowerPrompt.includes('plan')) {
-      lines.push("\n**Strategic Recommendations:**");
-      if (data3D.critical_systems > 0) lines.push(`1. Address ${data3D.critical_systems} critical system(s) within 2-4 weeks`);
-      lines.push("2. Leverage high-performing systems to support weaker areas");
-      lines.push("3. Implement continuous monitoring and predictive analytics");
+      lines.push("\n**What I'd suggest focusing on:**");
+      if (data3D.critical_systems > 0) lines.push(`1. Tackle the ${data3D.critical_systems} system${data3D.critical_systems > 1 ? 's' : ''} that scored below 40% — those are holding things back`);
+      lines.push("2. Look at what's working in your stronger systems and apply those lessons to the weaker ones");
+      lines.push("3. Set up a regular check-in rhythm so you can spot problems before they grow");
     }
     if (lowerPrompt.includes('financial') || lowerPrompt.includes('revenue') || lowerPrompt.includes('cost')) {
-      lines.push("\n**Financial Insights:**");
-      lines.push("- Systems optimization can reduce costs by 15-25%");
-      lines.push("- High-performing systems correlate with 20% higher revenue efficiency");
-      lines.push("- Predictive maintenance saves ₦2-5M annually");
+      lines.push("\n**On the financial side:**");
+      lines.push("I'd need to see your financial data to give you specific numbers. Upload a report or spreadsheet using the 📎 button and I'll work through it with you.");
     }
     if (Object.keys(latestBySystem).length === 0) {
-      lines.push("\nStart by running system assessments to get personalized insights.");
+      lines.push("\nYou haven't run any assessments yet, so I'm working with limited information. Once you complete a few system assessments, I'll be able to give you much more specific guidance.");
     } else {
-      lines.push("\nWould you like me to generate a detailed action plan, create reports, or run a deep-dive on a specific system?");
+      lines.push("\nWant me to dig deeper into any of these systems, or would you like to talk through a specific challenge you're facing?");
     }
     } // end if hasEnoughContext
 
@@ -589,7 +546,7 @@ export default function CEOChat() {
     try {
       // Assessment link shortcut
       if (askingForLink(text)) {
-        const linkReply = `**Ready to run your organizational assessment?**\n\n**Quick Access:**\n- Navigate to the **Assessments** tab in your dashboard sidebar\n- Select **New Assessment** or **Run Systems Analysis**\n- Complete the questionnaire for instant results\n\nAfter completing assessments, return here for AI-powered analysis and 3D visualizations of your results.`;
+        const linkReply = `**Ready to assess your organisation?**\n\nHere's how to get started:\n\n1. Go to the **Assessments** tab in the sidebar\n2. Pick a system you'd like to assess\n3. Work through the questions — it usually takes about 10–20 minutes per system\n\nOnce you've completed a few assessments, come back here and I'll be able to give you much more specific, data-backed advice.`;
         setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, text: linkReply } : m));
         setIsGenerating(false);
         return;
@@ -617,27 +574,26 @@ export default function CEOChat() {
         .slice(-10)
         .map(m => ({ role: m.role, content: m.text || "" }));
 
-      const interviewSystemPrompt = `You are X-ULTRA, the executive intelligence assistant for the ConseQ-X Organizational Health Platform.
+      const interviewSystemPrompt = `You are X-ULTRA, the AI assistant built into the ConseQ-X platform. You help CEOs and business leaders understand their organisation's health and make better decisions.
 
-YOUR CORE BEHAVIOR — INTERVIEW BEFORE ADVISING:
-When the CEO asks about a decision, problem, or situation, you MUST follow this protocol:
-1. FIRST, ask 2-3 clarifying questions to understand the full context. Ask about: scope, urgency, stakeholders involved, budget constraints, or timeline.
-2. If relevant, ask the CEO to upload supporting documents (contracts, financials, reports, org charts) using the file upload button.
-3. ONLY AFTER you have enough context (at least one round of Q&A), provide your analysis.
+HOW YOU SHOULD BEHAVE:
+- Write like a trusted advisor, not a machine. Be warm, direct, and practical.
+- Use plain English. No jargon, no corporate buzzwords, no filler.
+- When the CEO asks about a decision or problem, ask 2-3 clarifying questions first before giving advice.
+- If relevant, suggest they upload supporting documents (contracts, financials, reports) using the file upload button.
 
-YOUR ANALYSIS FORMAT — 3 OPTIONS WITH CONSEQUENCES:
-When you have enough context to advise, ALWAYS present:
-- **Option A** (Conservative): Low risk, incremental approach
-- **Option B** (Balanced): Moderate risk, structured transformation
-- **Option C** (Aggressive): High risk, maximum impact
-For EACH option, briefly state: what to do, timeline, cost level, risk, and projected consequence.
+WHEN YOU GIVE ADVICE:
+- Present 3 clear options when the situation calls for it:
+  - Option A (Play it safe): Lower risk, incremental steps
+  - Option B (Balanced approach): Moderate risk, structured change
+  - Option C (Go bold): Higher risk, bigger potential payoff
+- For each option, explain: what to do, roughly how long it takes, and what could go right or wrong.
 
 RULES:
-- You operate in the Nigerian business context. Reference Nigerian/African examples.
-- Be warm but direct. No jargon. Use plain English.
-- Use actual numbers and data from assessments when available.
-- If the CEO gives a vague query, probe deeper before answering.
-- Keep responses focused and actionable.`;
+- You are being used primarily in the Nigerian and African business context. Reference relevant local examples when helpful.
+- Use actual numbers and scores from assessment data when they are available.
+- If you do not have enough data to give a confident answer, say so honestly.
+- Keep responses focused. A CEO's time is valuable — do not ramble.`;
 
       if (needsAssessments) {
         const assessmentDocs = Object.values(latestBySystem).map(r => ({
@@ -801,10 +757,10 @@ RULES:
 
   /* ─── Suggestion chips for empty state ─── */
   const suggestions = [
-    { icon: <FaChartLine size={16} />, label: "Analyze organizational health", prompt: "Provide a comprehensive organizational health analysis with actionable insights" },
-    { icon: <FaCube size={16} />, label: "3D performance visualization", prompt: "Show me a 3D visualization of our organizational health with real-time metrics" },
-    { icon: <FaFileAlt size={16} />, label: "Generate executive report", prompt: "Generate a detailed executive dashboard summary with key performance metrics" },
-    { icon: <FaDownload size={16} />, label: "System deep-dive analysis", prompt: "Provide detailed analysis of our systems performance with improvement recommendations" }
+    { icon: <FaChartLine size={16} />, label: "How is my organisation doing overall?", prompt: "Give me an honest overview of how my organisation is performing across all six systems" },
+    { icon: <FaCube size={16} />, label: "Show me a visual of our health", prompt: "Show me a 3D visualization of how our six systems are performing" },
+    { icon: <FaFileAlt size={16} />, label: "What should I focus on first?", prompt: "Based on our scores, what are the most important things I should be working on right now?" },
+    { icon: <FaDownload size={16} />, label: "Help me think through a decision", prompt: "I have a decision I need to make and I'd like to talk it through with you" }
   ];
 
   const isEmpty = messages.length === 0;
@@ -1007,7 +963,7 @@ RULES:
               {filteredArchive.length === 0 ? (
                 <div className={`text-center py-8 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>
                   <FaFileAlt className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-xs">No reports yet</p>
+                  <p className="text-xs">No saved conversations yet</p>
                 </div>
               ) : (
                 filteredArchive.map(item => (
@@ -1082,10 +1038,9 @@ RULES:
           )}
 
           <div className="flex-1 flex items-center justify-center">
-            <button className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${darkMode ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}>
-              X-ULTRA Intelligence
-              <FaChevronDown size={10} className={darkMode ? 'text-gray-500' : 'text-gray-400'} />
-            </button>
+            <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              X-ULTRA
+            </span>
           </div>
 
           {/* Status indicator */}
@@ -1106,10 +1061,10 @@ RULES:
                 <span className="text-white text-2xl font-bold">X</span>
               </div>
               <h2 className={`text-xl sm:text-2xl font-semibold mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                How can I help you today?
+                What's on your mind?
               </h2>
               <p className={`text-xs sm:text-sm mb-6 sm:mb-8 max-w-md text-center ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                I'm X-ULTRA, your executive intelligence analyst. Ask me about organizational health, system performance, strategic planning, or generate visual reports.
+                Ask me anything about your organisation — how your systems are doing, where to focus your energy, or talk through a decision you're weighing up.
               </p>
 
               {/* Suggestion chips */}
@@ -1199,7 +1154,7 @@ RULES:
                 value={textValue}
                 onChange={e => setTextValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message X-ULTRA..."
+                placeholder="Ask me anything about your organisation..."
                 rows={1}
                 className={`flex-1 resize-none bg-transparent outline-none text-sm sm:text-[15px] leading-6 hide-scrollbar ${
                   darkMode ? 'text-gray-200 placeholder-gray-500' : 'text-gray-800 placeholder-gray-400'
@@ -1224,7 +1179,7 @@ RULES:
 
             {/* Disclaimer */}
             <p className={`text-[11px] text-center mt-2 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>
-              X-ULTRA can make mistakes. Verify important organizational decisions independently.
+              X-ULTRA is here to help, but always use your own judgement for big decisions.
             </p>
           </div>
         </div>
